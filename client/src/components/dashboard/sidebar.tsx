@@ -26,7 +26,14 @@ export default function Sidebar() {
           </div>
           <div>
             <h1 className="text-lg font-semibold text-foreground">Exnl IP LOGGER</h1>
-            <p className="text-xs text-muted-foreground">Security Testing</p>
+            <a 
+              href="https://discord.gg/TrgmgtByzt" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-xs text-muted-foreground hover:text-foreground underline transition-colors"
+            >
+              Discord Server
+            </a>
           </div>
         </div>
       </div>
