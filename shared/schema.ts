@@ -136,7 +136,15 @@ export const insertRobloxLinkSchema = createInsertSchema(robloxLinks).omit({
   clickCount: true,
 });
 
-export const createRobloxLinkSchema = insertRobloxLinkSchema.extend({
+export const createRobloxLinkSchema = createInsertSchema(robloxLinks).omit({
+  id: true,
+  userId: true,
+  trackingId: true,
+  createdAt: true,
+  updatedAt: true,
+  clickCount: true,
+  isActive: true,
+}).extend({
   originalUrl: z.string().url("Please enter a valid URL"),
   linkType: z.enum(["private_server", "profile", "group"], {
     required_error: "Please select a link type",

@@ -1674,7 +1674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         linkType: validatedData.linkType,
         trackingId,
         title: validatedData.title,
-        description: validatedData.description
+        description: validatedData.description || undefined
       });
       
       res.json({
@@ -1756,7 +1756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userAgent = req.headers['user-agent'] || '';
       const referrer = req.headers.referer || '';
       const locationData = getLocationFromIp(ip);
-      const deviceInfo = parseUserAgent(userAgent);
+      const deviceInfo = parseDeviceInfo(userAgent);
 
       // Create IP log entry
       await storage.createIpLog({

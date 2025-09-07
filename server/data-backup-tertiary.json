@@ -32,13 +32,13 @@
       }
     ],
     [
-      "da69dc01-671d-40f3-ba25-cce3fd0632bf",
+      "604c8e4e-1aca-42e0-a0d7-b5e289c59127",
       {
         "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
-        "sessionToken": "da69dc01-671d-40f3-ba25-cce3fd0632bf",
-        "expiresAt": "2025-09-14T21:09:00.063Z",
-        "id": "5e9f2143-32a9-4170-be53-43333267d423",
-        "createdAt": "2025-09-07T21:09:00.063Z"
+        "sessionToken": "604c8e4e-1aca-42e0-a0d7-b5e289c59127",
+        "expiresAt": "2025-09-14T21:13:36.134Z",
+        "id": "228e695b-3b70-4943-95be-bdc263cf7116",
+        "createdAt": "2025-09-07T21:13:36.134Z"
       }
     ]
   ],
@@ -206,6 +206,6 @@
     ]
   ],
   "robloxLinks": [],
-  "timestamp": "2025-09-07T21:10:50.584Z",
+  "timestamp": "2025-09-07T21:13:40.140Z",
   "version": "2.1"
 }
