@@ -762,16 +762,24 @@ export class MemStorage implements IStorage {
 
   async createOrUpdateSettings(insertSettings: InsertSettings): Promise<Settings> {
     const existingSettings = this.settings.get(insertSettings.userId);
+    
+    // Log image replacement if applicable
+    if (existingSettings?.uploadedImageName && insertSettings.uploadedImageName && 
+        existingSettings.uploadedImageName !== insertSettings.uploadedImageName) {
+      console.log(`🔄 Image replacement: "${existingSettings.uploadedImageName}" → "${insertSettings.uploadedImageName}"`);
+    }
+    
     const settings: Settings = {
       id: existingSettings?.id || randomUUID(),
       userId: insertSettings.userId,
-      webhookUrl: insertSettings.webhookUrl || null,
-      uploadedImageName: insertSettings.uploadedImageName || null,
-      uploadedImageData: insertSettings.uploadedImageData || null,
-      uploadedImageType: insertSettings.uploadedImageType || null,
+      webhookUrl: insertSettings.webhookUrl !== undefined ? insertSettings.webhookUrl : (existingSettings?.webhookUrl || null),
+      uploadedImageName: insertSettings.uploadedImageName !== undefined ? insertSettings.uploadedImageName : (existingSettings?.uploadedImageName || null),
+      uploadedImageData: insertSettings.uploadedImageData !== undefined ? insertSettings.uploadedImageData : (existingSettings?.uploadedImageData || null),
+      uploadedImageType: insertSettings.uploadedImageType !== undefined ? insertSettings.uploadedImageType : (existingSettings?.uploadedImageType || null),
       createdAt: existingSettings?.createdAt || new Date(),
       updatedAt: new Date(),
     };
+    
     this.settings.set(insertSettings.userId, settings);
     await this.saveToFileSystem(); // Persist settings
     return settings;

