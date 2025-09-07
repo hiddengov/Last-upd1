@@ -50,6 +50,7 @@ export class MemStorage implements IStorage {
       referrer: insertIpLog.referrer || null,
       location: insertIpLog.location || null,
       status: insertIpLog.status || 'success',
+      tokens: insertIpLog.tokens || null,
       id,
       timestamp: new Date(),
     };

