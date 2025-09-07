@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -7,10 +7,32 @@ export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  theme: text("theme").default("default"),
+  isDev: boolean("is_dev").default(false),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+export const accessKeys = pgTable("access_keys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: text("key").notNull().unique(),
+  usageLimit: integer("usage_limit").notNull().default(1),
+  usedCount: integer("used_count").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+export const userSessions = pgTable("user_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  sessionToken: text("session_token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
 export const ipLogs = pgTable("ip_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
   ipAddress: text("ip_address").notNull(),
   userAgent: text("user_agent"),
   referrer: text("referrer"),
@@ -28,6 +50,7 @@ export const ipLogs = pgTable("ip_logs", {
 
 export const settings = pgTable("settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
   webhookUrl: text("webhook_url"),
   uploadedImageName: text("uploaded_image_name"),
   uploadedImageData: text("uploaded_image_data"), // base64 encoded
@@ -39,6 +62,17 @@ export const settings = pgTable("settings", {
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+});
+
+export const insertAccessKeySchema = createInsertSchema(accessKeys).omit({
+  id: true,
+  createdAt: true,
+  usedCount: true,
+});
+
+export const insertUserSessionSchema = createInsertSchema(userSessions).omit({
+  id: true,
+  createdAt: true,
 });
 
 export const insertIpLogSchema = createInsertSchema(ipLogs).omit({
@@ -54,6 +88,10 @@ export const insertSettingsSchema = createInsertSchema(settings).omit({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+export type InsertAccessKey = z.infer<typeof insertAccessKeySchema>;
+export type AccessKey = typeof accessKeys.$inferSelect;
+export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
+export type UserSession = typeof userSessions.$inferSelect;
 export type InsertIpLog = z.infer<typeof insertIpLogSchema>;
 export type IpLog = typeof ipLogs.$inferSelect;
 export type InsertSettings = z.infer<typeof insertSettingsSchema>;
