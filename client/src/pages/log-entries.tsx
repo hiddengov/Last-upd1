@@ -160,7 +160,7 @@ export default function LogEntries() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Total Entries</CardTitle>
-              </header>
+              </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-foreground">{data?.total || 0}</div>
                 <p className="text-sm text-muted-foreground">All access attempts</p>
@@ -170,7 +170,7 @@ export default function LogEntries() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Unique IPs</CardTitle>
-              </header>
+              </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-foreground">{getUniqueIPs().length}</div>
                 <p className="text-sm text-muted-foreground">Different visitors</p>
@@ -180,7 +180,7 @@ export default function LogEntries() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Recent Activity</CardTitle>
-              </header>
+              </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-foreground">
                   {data?.logs.filter(log => 

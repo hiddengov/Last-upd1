@@ -176,7 +176,7 @@
         "id": "01858b39-ef0f-48f3-971c-01c793a0d6b7",
         "key": "Av121988",
         "usageLimit": 999999,
-        "usedCount": 0,
+        "usedCount": 1,
         "isActive": true,
         "createdBy": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
         "createdAt": "2025-09-07T20:25:45.472Z"
@@ -195,6 +195,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-07T20:58:05.691Z",
+  "timestamp": "2025-09-07T20:59:11.994Z",
   "version": "2.0"
 }
