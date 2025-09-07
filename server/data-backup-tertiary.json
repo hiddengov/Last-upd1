@@ -22,16 +22,6 @@
   ],
   "sessions": [
     [
-      "53332fec-ca51-441c-b21f-68c364303daf",
-      {
-        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
-        "sessionToken": "53332fec-ca51-441c-b21f-68c364303daf",
-        "expiresAt": "2025-09-14T20:35:11.018Z",
-        "id": "b8c7b2d0-2c66-455f-9aa5-c5e25010e0c7",
-        "createdAt": "2025-09-07T20:35:11.018Z"
-      }
-    ],
-    [
       "8345f5b9-b293-418c-8176-3834db6b2251",
       {
         "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
@@ -39,6 +29,16 @@
         "expiresAt": "2025-09-14T20:36:05.821Z",
         "id": "c4a889ea-34c5-4cfb-99c3-e1be0be0f1f2",
         "createdAt": "2025-09-07T20:36:05.821Z"
+      }
+    ],
+    [
+      "1d2c7dd6-3f99-4c91-ad5b-ada57ad3f354",
+      {
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "sessionToken": "1d2c7dd6-3f99-4c91-ad5b-ada57ad3f354",
+        "expiresAt": "2025-09-14T20:43:32.978Z",
+        "id": "19ec3681-8a34-45ec-acc2-ca86fc2ef5f3",
+        "createdAt": "2025-09-07T20:43:32.978Z"
       }
     ]
   ],
@@ -122,6 +122,46 @@
         "deviceBrand": "Apple",
         "timestamp": "2025-09-07T20:36:29.685Z"
       }
+    ],
+    [
+      "eaf45c04-cde2-4ebf-ab2c-7005984ca153",
+      {
+        "id": "eaf45c04-cde2-4ebf-ab2c-7005984ca153",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "35.196.132.85",
+        "userAgent": "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)",
+        "referrer": null,
+        "location": "San Jose, CA, US",
+        "status": "youtube_proxy_access",
+        "isVpn": "no",
+        "vpnLocation": null,
+        "realLocation": null,
+        "deviceType": "unknown",
+        "browserName": "unknown",
+        "operatingSystem": "unknown",
+        "deviceBrand": "unknown",
+        "timestamp": "2025-09-07T20:42:04.049Z"
+      }
+    ],
+    [
+      "f082858f-438e-4904-a702-3935b05ddf96",
+      {
+        "id": "f082858f-438e-4904-a702-3935b05ddf96",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "referrer": null,
+        "location": "Chicago, US [VPN: Surfshark]",
+        "status": "youtube_proxy_access",
+        "isVpn": "yes",
+        "vpnLocation": "Chicago, US (Surfshark)",
+        "realLocation": "Perth, WA, Australia (Estimated Real Location)",
+        "deviceType": "unknown",
+        "browserName": "Chrome",
+        "operatingSystem": "unknown",
+        "deviceBrand": "Apple",
+        "timestamp": "2025-09-07T20:42:13.776Z"
+      }
     ]
   ],
   "settings": [
@@ -165,6 +205,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-07T20:40:36.509Z",
+  "timestamp": "2025-09-07T20:44:06.972Z",
   "version": "2.0"
 }
