@@ -56,20 +56,20 @@ export default function Dashboard() {
       
       <main className="flex-1 overflow-auto">
         {/* Header */}
-        <header className="bg-card border-b border-border px-6 py-4">
-          <div className="flex items-center justify-between">
+        <header className="bg-card border-b border-border px-4 sm:px-6 py-4">
+          <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
             <div>
-              <h2 className="text-2xl font-semibold text-foreground">Dashboard</h2>
-              <p className="text-muted-foreground">Monitor IP logging activity and system status</p>
+              <h2 className="text-xl sm:text-2xl font-semibold text-foreground">Dashboard</h2>
+              <p className="text-sm sm:text-base text-muted-foreground">Monitor IP logging activity and system status</p>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
               <div className="flex items-center space-x-2 text-sm">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span className="text-muted-foreground">System Active</span>
               </div>
               <Button 
                 onClick={handleExportLogs}
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 self-start sm:self-auto min-h-[44px]"
                 data-testid="button-export-logs"
               >
                 <Download className="mr-2 h-4 w-4" />
@@ -79,39 +79,39 @@ export default function Dashboard() {
           </div>
         </header>
 
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Metrics Grid */}
           <MetricsGrid metrics={metrics} isLoading={metricsLoading} />
 
           {/* Activity Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             <div className="lg:col-span-2 bg-card rounded-lg border border-border">
-              <div className="p-6 border-b border-border">
-                <div className="flex items-center justify-between">
+              <div className="p-4 sm:p-6 border-b border-border">
+                <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
                   <h3 className="text-lg font-semibold text-foreground">Recent Activity</h3>
-                  <select className="bg-input border border-border rounded-md px-3 py-1 text-sm text-foreground">
+                  <select className="bg-input border border-border rounded-md px-3 py-1 text-sm text-foreground w-full sm:w-auto min-h-[40px]">
                     <option>Last 24 hours</option>
                     <option>Last 7 days</option>
                     <option>Last 30 days</option>
                   </select>
                 </div>
               </div>
-              <div className="p-6">
-                <div className="h-64 bg-muted/20 rounded-lg flex items-center justify-center">
+              <div className="p-4 sm:p-6">
+                <div className="h-48 sm:h-64 bg-muted/20 rounded-lg flex items-center justify-center">
                   <div className="text-center">
-                    <Activity className="h-12 w-12 text-muted-foreground mb-3 mx-auto" />
-                    <p className="text-muted-foreground">Activity Chart</p>
-                    <p className="text-sm text-muted-foreground">Real-time request monitoring</p>
+                    <Activity className="h-8 sm:h-12 w-8 sm:w-12 text-muted-foreground mb-3 mx-auto" />
+                    <p className="text-sm sm:text-base text-muted-foreground">Activity Chart</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Real-time request monitoring</p>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="bg-card rounded-lg border border-border">
-              <div className="p-6 border-b border-border">
+              <div className="p-4 sm:p-6 border-b border-border">
                 <h3 className="text-lg font-semibold text-foreground">Image Status</h3>
               </div>
-              <div className="p-6 space-y-4">
+              <div className="p-4 sm:p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Current Image</span>
                   <span className="text-sm font-medium text-foreground">decoy_pixel.gif</span>
@@ -136,7 +136,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 
-                <Button className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90">
+                <Button className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90 min-h-[44px]">
                   Change Image
                 </Button>
               </div>

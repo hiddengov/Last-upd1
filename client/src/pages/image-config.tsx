@@ -134,28 +134,30 @@ export default function ImageConfig() {
 
       <main className="flex-1 overflow-auto">
         {/* Header */}
-        <header className="bg-card border-b border-border px-6 py-4">
-          <div className="flex items-center space-x-3">
+        <header className="bg-card border-b border-border px-4 sm:px-6 py-4">
+          <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-3">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setLocation("/dashboard")}
-              className="mr-2"
+              className="self-start sm:mr-2"
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
-            <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-              <ImageIcon className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-semibold text-foreground">Image Configuration</h2>
-              <p className="text-muted-foreground">Upload custom images and generate tracking links</p>
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                <ImageIcon className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-semibold text-foreground">Image Configuration</h2>
+                <p className="text-sm sm:text-base text-muted-foreground">Upload custom images and generate tracking links</p>
+              </div>
             </div>
           </div>
         </header>
 
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Current Image Status */}
           <Card>
             <CardHeader>
@@ -170,7 +172,7 @@ export default function ImageConfig() {
             <CardContent>
               {settings?.hasUploadedImage ? (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+                  <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
                         <ImageIcon className="h-5 w-5 text-green-500" />
@@ -186,6 +188,7 @@ export default function ImageConfig() {
                       onClick={() => deleteMutation.mutate()}
                       disabled={deleteMutation.isPending}
                       data-testid="button-delete-image"
+                      className="self-start sm:self-auto"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       {deleteMutation.isPending ? "Deleting..." : "Delete"}
@@ -194,13 +197,14 @@ export default function ImageConfig() {
 
                   {/* Image Preview */}
                   <div className="p-4 bg-muted/20 border border-border rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-3">
                       <p className="font-medium text-foreground">Live Preview</p>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={openTrackingUrl}
                         data-testid="button-preview-image"
+                        className="self-start sm:self-auto"
                       >
                         <ExternalLink className="h-4 w-4 mr-2" />
                         View Image
