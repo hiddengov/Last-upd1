@@ -31,6 +31,10 @@ export default function ImageConfig() {
       formData.append('image', file);
 
       const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+      
       const response = await fetch('/api/upload-image', {
         method: 'POST',
         headers: {
@@ -76,10 +80,6 @@ export default function ImageConfig() {
   });
 
   const handleFileUpload = (file: File) => {
-    if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "File Too Large", description: "Please select an image smaller than 10MB.", variant: "destructive" });
-      return;
-    }
     if (!file.type.startsWith('image/')) {
       toast({ title: "Invalid File", description: "Please select an image file.", variant: "destructive" });
       return;
@@ -333,7 +333,7 @@ export default function ImageConfig() {
                   </label>
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Max file size: 10MB • Supported: JPG, PNG, GIF, WebP
+                  No file size limit • Supported: JPG, PNG, GIF, WebP
                 </p>
               </div>
             </CardContent>
