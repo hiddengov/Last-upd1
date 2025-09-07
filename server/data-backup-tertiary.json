@@ -7,11 +7,11 @@
         "username": "exnldev",
         "password": "Av121988-",
         "theme": "default",
-        "isDev": false,
+        "isDev": true,
         "accessKeyUsed": null,
         "profilePicture": null,
         "createdAt": "2025-09-07T20:21:21.588Z",
-        "accountType": "user",
+        "accountType": "developer",
         "isBanned": false,
         "bannedAt": null,
         "bannedBy": null,
@@ -22,13 +22,13 @@
   ],
   "sessions": [
     [
-      "5980b6b2-2614-42f3-8a08-f00f0301f9ca",
+      "5f05b488-b703-407c-961f-21302ad871a8",
       {
         "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
-        "sessionToken": "5980b6b2-2614-42f3-8a08-f00f0301f9ca",
-        "expiresAt": "2025-09-14T20:21:28.225Z",
-        "id": "85fb82a5-a651-402a-9075-f7fa867d2efe",
-        "createdAt": "2025-09-07T20:21:28.226Z"
+        "sessionToken": "5f05b488-b703-407c-961f-21302ad871a8",
+        "expiresAt": "2025-09-14T20:25:59.068Z",
+        "id": "306298d1-a3c3-40e4-a052-b324ce387919",
+        "createdAt": "2025-09-07T20:25:59.068Z"
       }
     ]
   ],
@@ -55,7 +55,32 @@
     ]
   ],
   "settings": [],
-  "accessKeys": [],
-  "timestamp": "2025-09-07T20:24:33.984Z",
+  "accessKeys": [
+    [
+      "Av121988",
+      {
+        "id": "01858b39-ef0f-48f3-971c-01c793a0d6b7",
+        "key": "Av121988",
+        "usageLimit": 999999,
+        "usedCount": 0,
+        "isActive": true,
+        "createdBy": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "createdAt": "2025-09-07T20:25:45.472Z"
+      }
+    ],
+    [
+      "demo123",
+      {
+        "id": "fd94ad38-f6db-4ad7-9840-b36ede8c20ca",
+        "key": "demo123",
+        "usageLimit": 999999,
+        "usedCount": 0,
+        "isActive": true,
+        "createdBy": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "createdAt": "2025-09-07T20:25:45.472Z"
+      }
+    ]
+  ],
+  "timestamp": "2025-09-07T20:26:25.390Z",
   "version": "2.0"
 }
