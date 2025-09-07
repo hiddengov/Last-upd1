@@ -40,10 +40,7 @@ export default function RobloxTracking() {
   // Create Roblox link mutation
   const createMutation = useMutation({
     mutationFn: (data: CreateRobloxLink) => 
-      apiRequest("/api/roblox-links", {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
+      apiRequest("POST", "/api/roblox-links", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/roblox-links"] });
       form.reset();
@@ -65,9 +62,7 @@ export default function RobloxTracking() {
   // Delete Roblox link mutation
   const deleteMutation = useMutation({
     mutationFn: (id: string) => 
-      apiRequest(`/api/roblox-links/${id}`, {
-        method: "DELETE",
-      }),
+      apiRequest("DELETE", `/api/roblox-links/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/roblox-links"] });
       toast({
