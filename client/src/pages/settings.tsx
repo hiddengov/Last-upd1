@@ -10,7 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Link, Settings as SettingsIcon, Shield, Palette, Key } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Upload, Link, Settings as SettingsIcon, Shield, Palette, Key, Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,26 +23,56 @@ interface SettingsData {
   hasUploadedImage: boolean;
 }
 
+interface AccessKey {
+  id: string;
+  key: string;
+  usageLimit: number;
+  usedCount: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
 const settingsSchema = z.object({
   webhookUrl: z.string().url("Please enter a valid webhook URL").optional().or(z.literal("")),
 });
 
+const createKeySchema = z.object({
+  key: z.string().min(3, "Key must be at least 3 characters"),
+  usageLimit: z.number().min(1, "Usage limit must be at least 1"),
+});
+
 type SettingsForm = z.infer<typeof settingsSchema>;
+type CreateKeyForm = z.infer<typeof createKeySchema>;
 
 export default function Settings() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { themes, currentTheme, setTheme, isChangingTheme } = useTheme();
   const [dragOver, setDragOver] = useState(false);
+  const [activeTab, setActiveTab] = useState("general");
 
   const { data: settings, isLoading } = useQuery<SettingsData>({
     queryKey: ['/api/settings'],
+  });
+
+  // Key management queries
+  const { data: keys, isLoading: keysLoading } = useQuery<AccessKey[]>({
+    queryKey: ['/api/dev/keys'],
+    enabled: user?.isDev,
   });
 
   const form = useForm<SettingsForm>({
     resolver: zodResolver(settingsSchema),
     defaultValues: {
       webhookUrl: settings?.webhookUrl || "",
+    },
+  });
+
+  const createKeyForm = useForm<CreateKeyForm>({
+    resolver: zodResolver(createKeySchema),
+    defaultValues: {
+      key: "",
+      usageLimit: 10,
     },
   });
 
@@ -56,7 +87,10 @@ export default function Settings() {
     mutationFn: async (data: SettingsForm) => {
       const response = await fetch('/api/settings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
         body: JSON.stringify({
           webhookUrl: data.webhookUrl || null,
         }),
@@ -65,12 +99,19 @@ export default function Settings() {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: "Settings Updated", description: "Your webhook settings have been saved." });
       queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
+      toast({
+        title: "Settings Updated",
+        description: "Your webhook settings have been saved successfully.",
+      });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to update settings.", variant: "destructive" });
-    }
+      toast({
+        title: "Error",
+        description: "Failed to update settings. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const uploadMutation = useMutation({
@@ -80,6 +121,9 @@ export default function Settings() {
 
       const response = await fetch('/api/upload-image', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
         body: formData,
       });
       if (!response.ok) throw new Error('Failed to upload image');
@@ -100,7 +144,12 @@ export default function Settings() {
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/upload-image', { method: 'DELETE' });
+      const response = await fetch('/api/upload-image', { 
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
       if (!response.ok) throw new Error('Failed to delete image');
       return response.json();
     },
@@ -111,6 +160,64 @@ export default function Settings() {
     onError: () => {
       toast({ title: "Error", description: "Failed to delete image.", variant: "destructive" });
     }
+  });
+
+  // Key management mutations
+  const createKeyMutation = useMutation({
+    mutationFn: async (data: CreateKeyForm) => {
+      const response = await fetch('/api/dev/keys', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error('Failed to create key');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/dev/keys'] });
+      createKeyForm.reset();
+      toast({
+        title: "Success",
+        description: "Access key created successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create key",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteKeyMutation = useMutation({
+    mutationFn: async (keyId: string) => {
+      const response = await fetch(`/api/dev/keys/${keyId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to delete key');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/dev/keys'] });
+      toast({
+        title: "Success",
+        description: "Access key deleted successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error", 
+        description: error.message || "Failed to delete key",
+        variant: "destructive",
+      });
+    },
   });
 
   const handleFileUpload = (file: File) => {
@@ -169,7 +276,7 @@ export default function Settings() {
             </div>
             <div>
               <h2 className="text-2xl font-semibold text-foreground">Settings</h2>
-              <p className="text-muted-foreground">Configure webhook and decoy content settings for your IP logger</p>
+              <p className="text-muted-foreground">Configure your IP logger settings and preferences</p>
             </div>
           </div>
         </header>
@@ -191,230 +298,354 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* Theme Configuration */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Palette className="h-5 w-5" />
-                <span>Theme Settings</span>
-              </CardTitle>
-              <CardDescription>
-                Customize the appearance of your dashboard with 15 different themes
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Current Theme</label>
-                <Select
-                  value={currentTheme.id}
-                  onValueChange={setTheme}
-                  disabled={isChangingTheme}
-                >
-                  <SelectTrigger className="w-full" data-testid="select-theme">
-                    <SelectValue placeholder="Select a theme" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {themes.map((theme) => (
-                      <SelectItem key={theme.id} value={theme.id}>
-                        <div className="flex items-center space-x-2">
-                          <div 
-                            className="w-4 h-4 rounded-full border border-gray-300"
-                            style={{ backgroundColor: theme.colors.primary }}
-                          ></div>
-                          <span>{theme.name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Theme changes are saved automatically and persist across sessions
-                </p>
-              </div>
-              
-              {isChangingTheme && (
-                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                  <span>Applying theme...</span>
-                </div>
+          {/* Tabbed Settings Interface */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className={`grid w-full ${user?.isDev ? 'grid-cols-4' : 'grid-cols-3'}`}>
+              <TabsTrigger value="general" data-testid="tab-general">General</TabsTrigger>
+              <TabsTrigger value="themes" data-testid="tab-themes">Themes</TabsTrigger>
+              <TabsTrigger value="webhook" data-testid="tab-webhook">Webhook</TabsTrigger>
+              {user?.isDev && (
+                <TabsTrigger value="keys" data-testid="tab-keys">Key Management</TabsTrigger>
               )}
-            </CardContent>
-          </Card>
+            </TabsList>
 
-          {/* Developer Key Management */}
-          {user?.isDev && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Key className="h-5 w-5" />
-                  <span>Developer Key Management</span>
-                </CardTitle>
-                <CardDescription>
-                  Create and manage access keys for the Exnl Key System
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
-                      <Key className="h-5 w-5 text-blue-500" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">Manage Access Keys</p>
-                      <p className="text-sm text-muted-foreground">
-                        Create keys with custom usage limits and expiration
-                      </p>
-                    </div>
-                  </div>
-                  <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 border-blue-500/20">
-                    Developer Only
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Webhook Configuration */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Link className="h-5 w-5" />
-                <span>Discord Webhook Configuration</span>
-              </CardTitle>
-              <CardDescription>
-                Configure Discord webhook to receive IP logging notifications in real-time
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => settingsMutation.mutate(data))} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="webhookUrl"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Webhook URL</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            placeholder="https://discord.com/api/webhooks/..."
-                            data-testid="input-webhook-url"
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Discord webhook URL to receive IP access notifications
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
+            {/* General Tab */}
+            <TabsContent value="general" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Decoy Content Upload</CardTitle>
+                  <CardDescription>
+                    Upload image or video files that will be served when the tracking URL is accessed
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {settings?.hasUploadedImage ? (
+                      <div className="flex items-center justify-between p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
+                            <Upload className="h-5 w-5 text-green-500" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-foreground">{settings.uploadedImageName}</p>
+                            <p className="text-sm text-muted-foreground">
+                              Active decoy content - will be displayed when tracking URL is accessed
+                            </p>
+                          </div>
+                        </div>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => deleteMutation.mutate()}
+                          disabled={deleteMutation.isPending}
+                          data-testid="button-delete-image"
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
+                    ) : (
+                      <div
+                        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                          dragOver 
+                            ? 'border-primary bg-primary/5' 
+                            : 'border-muted-foreground/25 hover:border-primary/50'
+                        }`}
+                        onDrop={handleDrop}
+                        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                        onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
+                      >
+                        <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-foreground mb-2">Upload Decoy Content</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Drag and drop an image or video file, or click to browse
+                        </p>
+                        <input
+                          type="file"
+                          accept="image/*,video/*"
+                          onChange={handleFileSelect}
+                          className="hidden"
+                          id="file-upload"
+                          data-testid="input-file-upload"
+                        />
+                        <label htmlFor="file-upload">
+                          <Button variant="outline" className="cursor-pointer" asChild>
+                            <span>Choose File</span>
+                          </Button>
+                        </label>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Maximum file size: 10MB • Supported formats: Images, Videos
+                        </p>
+                      </div>
                     )}
-                  />
-
-                  <div className="flex items-center space-x-3">
-                    <Button 
-                      type="submit" 
-                      disabled={settingsMutation.isPending}
-                      data-testid="button-save-webhook"
-                    >
-                      {settingsMutation.isPending ? "Saving..." : "Save Webhook"}
-                    </Button>
-
-                    {settings?.webhookUrl && (
-                      <Badge variant="outline" className="text-green-600 border-green-600">
-                        Webhook Configured
-                      </Badge>
+                    
+                    {uploadMutation.isPending && (
+                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                        <span>Uploading file...</span>
+                      </div>
                     )}
                   </div>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          {/* Image Configuration Link */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Upload className="h-5 w-5" />
-                <span>Image Configuration</span>
-              </CardTitle>
-              <CardDescription>
-                Manage your decoy images and generate tracking links
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between p-4 bg-muted/20 border border-border rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <Upload className="h-5 w-5 text-primary" />
-                  </div>
+            {/* Themes Tab */}
+            <TabsContent value="themes" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Palette className="h-5 w-5" />
+                    <span>Theme Settings</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Customize the appearance of your dashboard with 15 different themes
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div>
-                    <p className="font-medium text-foreground">Upload & Configure Images</p>
-                    <p className="text-sm text-muted-foreground">
-                      {settings?.hasUploadedImage 
-                        ? `Current: ${settings.uploadedImageName}` 
-                        : "Using default 1x1 pixel"}
+                    <label className="block text-sm font-medium mb-2">Current Theme</label>
+                    <Select
+                      value={currentTheme.id}
+                      onValueChange={setTheme}
+                      disabled={isChangingTheme}
+                    >
+                      <SelectTrigger className="w-full" data-testid="select-theme">
+                        <SelectValue placeholder="Select a theme" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {themes.map((theme) => (
+                          <SelectItem key={theme.id} value={theme.id}>
+                            <div className="flex items-center space-x-2">
+                              <div 
+                                className="w-4 h-4 rounded-full border border-gray-300"
+                                style={{ backgroundColor: theme.colors.primary }}
+                              ></div>
+                              <span>{theme.name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Theme changes are saved automatically and persist across sessions
                     </p>
                   </div>
-                </div>
-                <Button asChild>
-                  <a href="/image-config" data-testid="button-manage-images">
-                    Manage Images
-                  </a>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                  
+                  {isChangingTheme && (
+                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                      <span>Applying theme...</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          {/* Usage Instructions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Usage Instructions</CardTitle>
-              <CardDescription>
-                How to use your IP logger
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center mt-0.5">
-                  <span className="text-xs font-medium text-primary">1</span>
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">Share the Tracking URL</p>
-                  <p className="text-sm text-muted-foreground">
-                    Send this URL: <code className="bg-muted px-2 py-1 rounded text-xs">
-                      {window.location.origin}/track/{settings?.uploadedImageName || 'test'}
-                    </code>
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Captures cookies, tokens, browser storage, and IP data for security testing
-                  </p>
-                </div>
-              </div>
+            {/* Webhook Tab */}
+            <TabsContent value="webhook" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Link className="h-5 w-5" />
+                    <span>Discord Webhook Configuration</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Configure Discord webhook to receive IP logging notifications in real-time
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit((data) => settingsMutation.mutate(data))} className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="webhookUrl"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Webhook URL</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="https://discord.com/api/webhooks/..."
+                                data-testid="input-webhook-url"
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Discord webhook URL to receive IP access notifications
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-              <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center mt-0.5">
-                  <span className="text-xs font-medium text-primary">2</span>
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">Monitor Activity</p>
-                  <p className="text-sm text-muted-foreground">
-                    View IP logs in the dashboard and receive Discord notifications
-                  </p>
-                </div>
-              </div>
+                      <div className="flex items-center space-x-3">
+                        <Button 
+                          type="submit" 
+                          disabled={settingsMutation.isPending}
+                          data-testid="button-save-settings"
+                        >
+                          {settingsMutation.isPending ? "Saving..." : "Save Settings"}
+                        </Button>
+                        
+                        {settings?.webhookUrl && (
+                          <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-green-500/20">
+                            Webhook Active
+                          </Badge>
+                        )}
+                      </div>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-              <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center mt-0.5">
-                  <span className="text-xs font-medium text-primary">3</span>
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">Export Data</p>
-                  <p className="text-sm text-muted-foreground">
-                    Export collected data as CSV for analysis and reporting
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            {/* Key Management Tab */}
+            {user?.isDev && (
+              <TabsContent value="keys" className="space-y-4">
+                {/* Create New Key */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Plus className="h-5 w-5" />
+                      <span>Create New Access Key</span>
+                    </CardTitle>
+                    <CardDescription>
+                      Generate new access keys with custom usage limits for the Exnl Key System
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Form {...createKeyForm}>
+                      <form 
+                        onSubmit={createKeyForm.handleSubmit((data) => createKeyMutation.mutate(data))} 
+                        className="space-y-4"
+                      >
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField
+                            control={createKeyForm.control}
+                            name="key"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Access Key</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    {...field}
+                                    placeholder="Enter key name (e.g., demo123)"
+                                    data-testid="input-key-name"
+                                  />
+                                </FormControl>
+                                <FormDescription>
+                                  Unique identifier for the access key
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={createKeyForm.control}
+                            name="usageLimit"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Usage Limit</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    {...field}
+                                    type="number"
+                                    min={1}
+                                    onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                                    data-testid="input-usage-limit"
+                                  />
+                                </FormControl>
+                                <FormDescription>
+                                  Maximum number of times this key can be used
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <Button 
+                          type="submit" 
+                          disabled={createKeyMutation.isPending}
+                          data-testid="button-create-key"
+                        >
+                          {createKeyMutation.isPending ? "Creating..." : "Create Key"}
+                        </Button>
+                      </form>
+                    </Form>
+                  </CardContent>
+                </Card>
+
+                {/* Existing Keys List */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Key className="h-5 w-5" />
+                      <span>Active Access Keys</span>
+                    </CardTitle>
+                    <CardDescription>
+                      Manage and monitor existing access keys
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {keysLoading ? (
+                      <div className="space-y-3">
+                        {[...Array(3)].map((_, i) => (
+                          <div key={i} className="animate-pulse bg-muted rounded h-16"></div>
+                        ))}
+                      </div>
+                    ) : !keys || keys.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Key className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No access keys created yet</p>
+                        <p className="text-sm">Create your first key above to get started</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {keys.map((key) => (
+                          <div
+                            key={key.id}
+                            className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border"
+                          >
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                                <Key className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-foreground">{key.key}</p>
+                                <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                                  <span>Uses: {key.usedCount}/{key.usageLimit}</span>
+                                  <span>•</span>
+                                  <span>Created: {new Date(key.createdAt).toLocaleDateString()}</span>
+                                  <span>•</span>
+                                  <Badge 
+                                    variant={key.isActive && key.usedCount < key.usageLimit ? "default" : "secondary"}
+                                    className="text-xs"
+                                  >
+                                    {key.isActive && key.usedCount < key.usageLimit ? "Active" : "Inactive"}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => deleteKeyMutation.mutate(key.id)}
+                              disabled={deleteKeyMutation.isPending}
+                              data-testid={`button-delete-key-${key.id}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
+          </Tabs>
         </div>
       </main>
     </div>

@@ -291,7 +291,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Username already exists' });
       }
 
-      const user = await storage.createUser(validatedData);
+      const user = await storage.createUser({
+        ...validatedData,
+        accessKeyUsed: req.body.accessKey || null
+      });
       res.json({ 
         success: true, 
         user: { 
@@ -378,6 +381,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(keys);
     } catch (error) {
       console.error('Keys fetch error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.delete('/api/dev/keys/:keyId', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      if (!req.user.isDev) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const { keyId } = req.params;
+      const success = await storage.deleteAccessKey(keyId, req.user.id);
+      
+      if (!success) {
+        return res.status(404).json({ error: 'Key not found or access denied' });
+      }
+
+      res.json({ success: true, message: 'Key deleted successfully' });
+    } catch (error) {
+      console.error('Key deletion error:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });

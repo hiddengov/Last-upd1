@@ -13,6 +13,7 @@ export interface IStorage {
   getAccessKey(key: string): Promise<AccessKey | undefined>;
   useAccessKey(key: string): Promise<boolean>;
   getUserAccessKeys(userId: string): Promise<AccessKey[]>;
+  deleteAccessKey(keyId: string, userId: string): Promise<boolean>;
   
   // Session operations
   createSession(session: InsertUserSession): Promise<UserSession>;
@@ -54,6 +55,7 @@ export class MemStorage implements IStorage {
       password: "Av121988-",
       theme: "default",
       isDev: true,
+      accessKeyUsed: null,
       createdAt: new Date(),
     };
     this.users.set(devUser.id, devUser);
@@ -93,13 +95,14 @@ export class MemStorage implements IStorage {
     );
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async createUser(insertUser: InsertUser & { accessKeyUsed?: string }): Promise<User> {
     const id = randomUUID();
     const user: User = { 
       ...insertUser, 
       id,
       theme: "default",
       isDev: false,
+      accessKeyUsed: insertUser.accessKeyUsed || null,
       createdAt: new Date()
     };
     this.users.set(id, user);
@@ -143,6 +146,15 @@ export class MemStorage implements IStorage {
 
   async getUserAccessKeys(userId: string): Promise<AccessKey[]> {
     return Array.from(this.accessKeys.values()).filter(key => key.createdBy === userId);
+  }
+
+  async deleteAccessKey(keyId: string, userId: string): Promise<boolean> {
+    const accessKey = Array.from(this.accessKeys.values()).find(key => key.id === keyId && key.createdBy === userId);
+    if (accessKey) {
+      this.accessKeys.delete(accessKey.key);
+      return true;
+    }
+    return false;
   }
 
   async createSession(insertSession: InsertUserSession): Promise<UserSession> {

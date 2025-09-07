@@ -9,6 +9,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   theme: text("theme").default("default"),
   isDev: boolean("is_dev").default(false),
+  accessKeyUsed: text("access_key_used"), // Track which key the user used for access
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
