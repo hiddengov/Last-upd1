@@ -158,37 +158,82 @@ export class MemStorage implements IStorage {
   }
 
   private async loadFromFileSystem(): Promise<void> {
-    try {
-      if (await fs.access(this.dataFilePath).then(() => true).catch(() => false)) {
-        const data = JSON.parse(await fs.readFile(this.dataFilePath, 'utf8'));
+    const backupFiles = [this.dataFilePath, this.dataFilePath2, this.dataFilePath3];
+    let dataLoaded = false;
 
-        // Restore data structures
-        this.users = new Map(data.users || []);
-        this.ipLogs = new Map(data.ipLogs || []);
-        this.settings = new Map(data.settings || []);
-        this.accessKeys = new Map(data.accessKeys || []);
-        this.sessions = new Map(data.sessions || []);
+    // Try each backup file in order
+    for (const filePath of backupFiles) {
+      try {
+        if (await fs.access(filePath).then(() => true).catch(() => false)) {
+          console.log(`Attempting to load from ${path.basename(filePath)}...`);
+          const rawData = await fs.readFile(filePath, 'utf8');
+          
+          // Validate JSON before parsing
+          if (!rawData.trim()) {
+            console.log(`${path.basename(filePath)} is empty, trying next backup...`);
+            continue;
+          }
 
-        // Convert date strings back to Date objects
-        this.ipLogs.forEach((log, key) => {
-          if (log.timestamp) log.timestamp = new Date(log.timestamp);
-          this.ipLogs.set(key, log);
-        });
+          let data;
+          try {
+            data = JSON.parse(rawData);
+          } catch (parseError) {
+            console.error(`JSON parsing failed for ${path.basename(filePath)}:`, parseError);
+            continue;
+          }
 
-        this.users.forEach((user, key) => {
-          if (user.createdAt) user.createdAt = new Date(user.createdAt);
-          if (user.lastLoginAt) user.lastLoginAt = new Date(user.lastLoginAt);
-          if (user.bannedAt) user.bannedAt = new Date(user.bannedAt);
-          this.users.set(key, user);
-        });
+          // Validate data structure
+          if (!data || typeof data !== 'object') {
+            console.error(`Invalid data structure in ${path.basename(filePath)}`);
+            continue;
+          }
 
-        console.log(`Loaded ${this.ipLogs.size} IP logs, ${this.users.size} users, and ${this.settings.size} settings from persistent storage`);
-      } else {
-        console.log('No persistent data found. Starting with fresh storage.');
+          // Restore data structures with validation
+          this.users = new Map(Array.isArray(data.users) ? data.users : []);
+          this.ipLogs = new Map(Array.isArray(data.ipLogs) ? data.ipLogs : []);
+          this.settings = new Map(Array.isArray(data.settings) ? data.settings : []);
+          this.accessKeys = new Map(Array.isArray(data.accessKeys) ? data.accessKeys : []);
+          this.sessions = new Map(Array.isArray(data.sessions) ? data.sessions : []);
+
+          // Convert date strings back to Date objects with error handling
+          this.ipLogs.forEach((log, key) => {
+            try {
+              if (log.timestamp) log.timestamp = new Date(log.timestamp);
+              this.ipLogs.set(key, log);
+            } catch (dateError) {
+              console.warn(`Invalid date in IP log ${key}, removing entry`);
+              this.ipLogs.delete(key);
+            }
+          });
+
+          this.users.forEach((user, key) => {
+            try {
+              if (user.createdAt) user.createdAt = new Date(user.createdAt);
+              if (user.lastLoginAt) user.lastLoginAt = new Date(user.lastLoginAt);
+              if (user.bannedAt) user.bannedAt = new Date(user.bannedAt);
+              this.users.set(key, user);
+            } catch (dateError) {
+              console.warn(`Invalid date in user ${key}, fixing dates`);
+              user.createdAt = new Date();
+              user.lastLoginAt = null;
+              user.bannedAt = null;
+              this.users.set(key, user);
+            }
+          });
+
+          console.log(`✅ Successfully loaded from ${path.basename(filePath)}: ${this.ipLogs.size} IP logs, ${this.users.size} users, ${this.settings.size} settings`);
+          dataLoaded = true;
+          break;
+        }
+      } catch (error) {
+        console.error(`Failed to load from ${path.basename(filePath)}:`, error);
+        continue;
       }
-    } catch (error) {
-      console.error('Failed to load persisted data:', error);
-      // If loading fails, ensure we start with empty maps to avoid corrupted state
+    }
+
+    if (!dataLoaded) {
+      console.log('⚠️ No valid backup found. Starting with fresh storage.');
+      // Ensure we start with clean maps
       this.users.clear();
       this.ipLogs.clear();
       this.settings.clear();
@@ -199,10 +244,11 @@ export class MemStorage implements IStorage {
 
 
   private async initializeDevAccount() {
-    // Only create dev account if it doesn't exist
-    const existingDev = Array.from(this.users.values()).find(user => user.username === "exnldev");
+    // Check if dev account exists
+    let existingDev = Array.from(this.users.values()).find(user => user.username === "exnldev");
 
     if (!existingDev) {
+      console.log('🔧 Creating dev account...');
       const devUser: User = {
         id: randomUUID(),
         username: "exnldev",
@@ -220,36 +266,42 @@ export class MemStorage implements IStorage {
         lastLoginAt: null,
       };
       this.users.set(devUser.id, devUser);
+      existingDev = devUser;
+      console.log('✅ Dev account created');
+    } else {
+      console.log('✅ Dev account already exists');
+    }
 
-      // Create permanent dev access key
-      if (!this.accessKeys.has("Av121988")) {
-        const devKey: AccessKey = {
-          id: randomUUID(),
-          key: "Av121988",
-          usageLimit: 999999,
-          usedCount: 0,
-          isActive: true,
-          createdBy: devUser.id,
-          createdAt: new Date()
-        };
-        this.accessKeys.set(devKey.key, devKey);
-      }
+    // Ensure dev access keys exist
+    if (!this.accessKeys.has("Av121988")) {
+      console.log('🔧 Creating dev access key...');
+      const devKey: AccessKey = {
+        id: randomUUID(),
+        key: "Av121988",
+        usageLimit: 999999,
+        usedCount: 0,
+        isActive: true,
+        createdBy: existingDev.id,
+        createdAt: new Date()
+      };
+      this.accessKeys.set(devKey.key, devKey);
+      console.log('✅ Dev access key created');
+    }
 
-      // Create a permanent demo key for testing
-      if (!this.accessKeys.has("demo123")) {
-        const permanentKey: AccessKey = {
-          id: randomUUID(),
-          key: "demo123",
-          usageLimit: 999999,
-          usedCount: 0,
-          isActive: true,
-          createdBy: devUser.id,
-          createdAt: new Date()
-        };
-        this.accessKeys.set(permanentKey.key, permanentKey);
-      }
-
-      console.log('✅ Dev account and keys initialized');
+    // Ensure demo key exists
+    if (!this.accessKeys.has("demo123")) {
+      console.log('🔧 Creating demo access key...');
+      const permanentKey: AccessKey = {
+        id: randomUUID(),
+        key: "demo123",
+        usageLimit: 999999,
+        usedCount: 0,
+        isActive: true,
+        createdBy: existingDev.id,
+        createdAt: new Date()
+      };
+      this.accessKeys.set(permanentKey.key, permanentKey);
+      console.log('✅ Demo access key created');
     }
 
     // Save immediately after initialization
