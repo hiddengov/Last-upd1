@@ -193,24 +193,24 @@ export default function LogEntries() {
           {/* Log Table */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
                 <CardTitle className="flex items-center space-x-2">
                   <Eye className="h-5 w-5" />
                   <span>Access Log Details</span>
                 </CardTitle>
-                <div className="flex items-center space-x-3">
-                  <div className="relative">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
+                  <div className="relative flex-1 sm:flex-none">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       type="text"
-                      placeholder="Search IP, user agent, or location..."
+                      placeholder="Search logs..."
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      className="pl-10 w-80 bg-input border-border text-foreground placeholder-muted-foreground"
+                      className="pl-10 w-full sm:w-80 bg-input border-border text-foreground placeholder-muted-foreground"
                       data-testid="input-search-logs"
                     />
                   </div>
-                  <Button variant="secondary" className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                  <Button variant="secondary" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 sm:flex-shrink-0">
                     <Filter className="mr-2 h-4 w-4" />
                     Filter
                   </Button>
@@ -222,15 +222,15 @@ export default function LogEntries() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[700px]">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Timestamp</th>
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">IP Address</th>
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Location</th>
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">User Agent</th>
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Referrer</th>
-                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Status</th>
+                      <th className="text-left p-3 sm:p-4 text-sm font-medium text-muted-foreground">Time</th>
+                      <th className="text-left p-3 sm:p-4 text-sm font-medium text-muted-foreground">IP Address</th>
+                      <th className="text-left p-3 sm:p-4 text-sm font-medium text-muted-foreground">Location</th>
+                      <th className="text-left p-3 sm:p-4 text-sm font-medium text-muted-foreground hidden md:table-cell">User Agent</th>
+                      <th className="text-left p-3 sm:p-4 text-sm font-medium text-muted-foreground hidden lg:table-cell">Referrer</th>
+                      <th className="text-left p-3 sm:p-4 text-sm font-medium text-muted-foreground">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -243,16 +243,19 @@ export default function LogEntries() {
                     ) : (
                       filteredLogs.map((log) => (
                         <tr key={log.id} className="hover:bg-muted/20 transition-colors" data-testid={`row-log-${log.id}`}>
-                          <td className="p-4 text-sm text-foreground" data-testid={`text-timestamp-${log.id}`}>
-                            {formatTimestamp(log.timestamp)}
+                          <td className="p-2 sm:p-4 text-xs sm:text-sm text-foreground" data-testid={`text-timestamp-${log.id}`}>
+                            <div className="flex flex-col">
+                              <span className="font-mono">{new Date(log.timestamp).toLocaleDateString()}</span>
+                              <span className="text-xs text-muted-foreground">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                            </div>
                           </td>
-                          <td className="p-4 text-sm font-mono text-foreground" data-testid={`text-ip-${log.id}`}>
-                            <div className="flex items-center space-x-2">
-                              <span className="font-medium">{log.ipAddress}</span>
+                          <td className="p-2 sm:p-4 text-xs sm:text-sm font-mono text-foreground" data-testid={`text-ip-${log.id}`}>
+                            <div className="flex flex-col space-y-1">
+                              <span className="font-medium break-all">{log.ipAddress}</span>
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-6 px-2 text-xs"
+                                className="h-6 px-2 text-xs w-fit"
                                 onClick={() => {
                                   navigator.clipboard.writeText(log.ipAddress);
                                   toast({ title: "Copied!", description: "IP address copied to clipboard" });
@@ -262,21 +265,31 @@ export default function LogEntries() {
                               </Button>
                             </div>
                           </td>
-                          <td className="p-4 text-sm text-foreground" data-testid={`text-location-${log.id}`}>
-                            {log.location}
+                          <td className="p-2 sm:p-4 text-xs sm:text-sm text-foreground" data-testid={`text-location-${log.id}`}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{log.location}</span>
+                              <div className="md:hidden space-y-1 pt-1">
+                                <div className="text-xs text-muted-foreground truncate max-w-[200px]" title={log.userAgent}>
+                                  {truncateUserAgent(log.userAgent, 40)}
+                                </div>
+                                <div className="lg:hidden text-xs text-muted-foreground">
+                                  {log.referrer && log.referrer !== '-' ? `Ref: ${log.referrer.length > 20 ? log.referrer.substring(0, 20) + '...' : log.referrer}` : 'Direct'}
+                                </div>
+                              </div>
+                            </div>
                           </td>
-                          <td className="p-4 text-sm max-w-xs text-foreground" data-testid={`text-user-agent-${log.id}`}>
+                          <td className="p-2 sm:p-4 text-xs sm:text-sm max-w-xs text-foreground hidden md:table-cell" data-testid={`text-user-agent-${log.id}`}>
                             <span title={log.userAgent}>{truncateUserAgent(log.userAgent)}</span>
                           </td>
-                          <td className="p-4 text-sm text-foreground" data-testid={`text-referrer-${log.id}`}>
-                            {log.referrer || '-'}
+                          <td className="p-2 sm:p-4 text-xs sm:text-sm text-foreground hidden lg:table-cell" data-testid={`text-referrer-${log.id}`}>
+                            {log.referrer || 'Direct'}
                           </td>
-                          <td className="p-4" data-testid={`status-${log.id}`}>
+                          <td className="p-2 sm:p-4" data-testid={`status-${log.id}`}>
                             <Badge 
                               variant={log.status === 'success' ? 'default' : 'destructive'}
                               className={log.status === 'success' 
-                                ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20' 
-                                : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
+                                ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20 text-xs' 
+                                : 'bg-red-500/10 text-red-500 hover:bg-red-500/20 text-xs'
                               }
                             >
                               {log.status}
@@ -290,11 +303,11 @@ export default function LogEntries() {
               </div>
 
               {/* Pagination */}
-              <div className="p-4 border-t border-border flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
+              <div className="p-3 sm:p-4 border-t border-border flex flex-col sm:flex-row items-center justify-between space-y-3 sm:space-y-0">
+                <p className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
                   Showing {Math.min((currentPage - 1) * logsPerPage + 1, data?.total || 0)}-{Math.min(currentPage * logsPerPage, data?.total || 0)} of {data?.total || 0} entries
                 </p>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1 sm:space-x-2">
                   <Button
                     variant="outline"
                     size="sm"
