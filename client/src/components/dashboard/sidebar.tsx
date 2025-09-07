@@ -1,8 +1,13 @@
-import { Shield, BarChart3, List, Image, Settings, User } from "lucide-react";
+import { Shield, BarChart3, List, Image, Settings, User, LogOut, Palette } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { Button } from "@/components/ui/button";
 
 export default function Sidebar() {
   const [location] = useLocation();
+  const { user, logout } = useAuth();
+  const { currentTheme } = useTheme();
 
   return (
     <aside className="w-64 bg-card border-r border-border flex flex-col">
@@ -12,7 +17,7 @@ export default function Sidebar() {
             <Shield className="text-primary-foreground text-sm h-4 w-4" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-foreground">IP Logger</h1>
+            <h1 className="text-lg font-semibold text-foreground">Exnl IP LOGGER</h1>
             <p className="text-xs text-muted-foreground">Security Testing</p>
           </div>
         </div>
@@ -79,16 +84,42 @@ export default function Sidebar() {
         </ul>
       </nav>
       
-      <div className="p-4 border-t border-border">
+      <div className="p-4 border-t border-border space-y-3">
+        {/* Current Theme */}
+        <div className="flex items-center space-x-3 px-3 py-2">
+          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+            <Palette className="text-primary-foreground text-sm h-4 w-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate text-foreground">{currentTheme.name}</p>
+            <p className="text-xs text-muted-foreground truncate">Current Theme</p>
+          </div>
+        </div>
+
+        {/* User Info */}
         <div className="flex items-center space-x-3 px-3 py-2">
           <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
             <User className="text-muted-foreground text-sm h-4 w-4" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate text-foreground">Security Analyst</p>
-            <p className="text-xs text-muted-foreground truncate">analyst@security.local</p>
+            <p className="text-sm font-medium truncate text-foreground">{user?.username || 'User'}</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {user?.isDev ? 'Developer' : 'User'}
+            </p>
           </div>
         </div>
+
+        {/* Logout Button */}
+        <Button 
+          onClick={logout}
+          variant="outline"
+          size="sm"
+          className="w-full justify-start"
+          data-testid="button-logout"
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Logout
+        </Button>
       </div>
     </aside>
   );

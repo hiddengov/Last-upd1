@@ -393,8 +393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const deviceInfo = parseDeviceInfo(userAgent);
       const cookies = req.headers.cookie || '';
 
-      // Log the access
-      const settings = await storage.getSettings();
+      // Log the access (userId will be null for tracking visits)
       await storage.createIpLog({
         ipAddress: clientIp,
         userAgent,
@@ -788,9 +787,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Settings API routes
-  app.get('/api/settings', async (req: Request, res: Response) => {
+  app.get('/api/settings', authenticateUser, async (req: Request, res: Response) => {
     try {
-      const settings = await storage.getSettings();
+      const userId = req.user.id;
+      const settings = await storage.getSettings(userId);
       if (!settings) {
         res.json({
           webhookUrl: null,
@@ -810,9 +810,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/settings', async (req: Request, res: Response) => {
+  app.post('/api/settings', authenticateUser, async (req: Request, res: Response) => {
     try {
-      const validatedData = insertSettingsSchema.parse(req.body);
+      const validatedData = insertSettingsSchema.parse({
+        ...req.body,
+        userId: req.user.id
+      });
       const settings = await storage.createOrUpdateSettings(validatedData);
 
       res.json({
@@ -827,16 +830,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Image upload endpoint
-  app.post('/api/upload-image', upload.single('image'), async (req: Request, res: Response) => {
+  app.post('/api/upload-image', authenticateUser, upload.single('image'), async (req: Request, res: Response) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: 'No image file provided' });
       }
 
       const imageData = req.file.buffer.toString('base64');
-      const currentSettings = await storage.getSettings();
+      const userId = req.user.id;
+      const currentSettings = await storage.getSettings(userId);
 
       await storage.createOrUpdateSettings({
+        userId,
         webhookUrl: currentSettings?.webhookUrl || null,
         uploadedImageName: req.file.originalname,
         uploadedImageData: imageData,
@@ -855,11 +860,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete uploaded image endpoint
-  app.delete('/api/upload-image', async (req: Request, res: Response) => {
+  app.delete('/api/upload-image', authenticateUser, async (req: Request, res: Response) => {
     try {
-      const currentSettings = await storage.getSettings();
+      const userId = req.user.id;
+      const currentSettings = await storage.getSettings(userId);
 
       await storage.createOrUpdateSettings({
+        userId,
         webhookUrl: currentSettings?.webhookUrl || null,
         uploadedImageName: null,
         uploadedImageData: null,

@@ -105,7 +105,7 @@ export default function KeyAccess({ onAccessGranted }: KeyAccessProps) {
                   type="text"
                   value={accessKey}
                   onChange={(e) => setAccessKey(e.target.value)}
-                  placeholder="Av121988"
+                  placeholder="Enter access code"
                   className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-red-500"
                   data-testid="input-access-code"
                   disabled={isLoading}

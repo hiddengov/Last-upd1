@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,9 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Link, Settings as SettingsIcon, Shield } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Upload, Link, Settings as SettingsIcon, Shield, Palette, Key } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface SettingsData {
   webhookUrl: string | null;
@@ -27,6 +30,9 @@ type SettingsForm = z.infer<typeof settingsSchema>;
 
 export default function Settings() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { themes, currentTheme, setTheme, isChangingTheme } = useTheme();
+  const [dragOver, setDragOver] = useState(false);
 
   const { data: settings, isLoading } = useQuery<SettingsData>({
     queryKey: ['/api/settings'],
@@ -184,6 +190,89 @@ export default function Settings() {
               </p>
             </CardContent>
           </Card>
+
+          {/* Theme Configuration */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Palette className="h-5 w-5" />
+                <span>Theme Settings</span>
+              </CardTitle>
+              <CardDescription>
+                Customize the appearance of your dashboard with 15 different themes
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Current Theme</label>
+                <Select
+                  value={currentTheme.id}
+                  onValueChange={setTheme}
+                  disabled={isChangingTheme}
+                >
+                  <SelectTrigger className="w-full" data-testid="select-theme">
+                    <SelectValue placeholder="Select a theme" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {themes.map((theme) => (
+                      <SelectItem key={theme.id} value={theme.id}>
+                        <div className="flex items-center space-x-2">
+                          <div 
+                            className="w-4 h-4 rounded-full border border-gray-300"
+                            style={{ backgroundColor: theme.colors.primary }}
+                          ></div>
+                          <span>{theme.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Theme changes are saved automatically and persist across sessions
+                </p>
+              </div>
+              
+              {isChangingTheme && (
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                  <span>Applying theme...</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Developer Key Management */}
+          {user?.isDev && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Key className="h-5 w-5" />
+                  <span>Developer Key Management</span>
+                </CardTitle>
+                <CardDescription>
+                  Create and manage access keys for the Exnl Key System
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                      <Key className="h-5 w-5 text-blue-500" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">Manage Access Keys</p>
+                      <p className="text-sm text-muted-foreground">
+                        Create keys with custom usage limits and expiration
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 border-blue-500/20">
+                    Developer Only
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Webhook Configuration */}
           <Card>

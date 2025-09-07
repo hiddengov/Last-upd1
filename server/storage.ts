@@ -58,17 +58,17 @@ export class MemStorage implements IStorage {
     };
     this.users.set(devUser.id, devUser);
 
-    // Create demo access keys
-    const demoKey: AccessKey = {
+    // Create permanent dev access key
+    const devKey: AccessKey = {
       id: randomUUID(),
       key: "Av121988",
-      usageLimit: 10,
+      usageLimit: 999999, // Virtually unlimited for devs
       usedCount: 0,
       isActive: true,
       createdBy: devUser.id,
       createdAt: new Date()
     };
-    this.accessKeys.set(demoKey.key, demoKey);
+    this.accessKeys.set(devKey.key, devKey);
 
     // Create a permanent demo key for testing
     const permanentKey: AccessKey = {
