@@ -57,6 +57,30 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
     };
     this.users.set(devUser.id, devUser);
+
+    // Create demo access keys
+    const demoKey: AccessKey = {
+      id: randomUUID(),
+      key: "Av121988",
+      usageLimit: 10,
+      usedCount: 0,
+      isActive: true,
+      createdBy: devUser.id,
+      createdAt: new Date()
+    };
+    this.accessKeys.set(demoKey.key, demoKey);
+
+    // Create a permanent demo key for testing
+    const permanentKey: AccessKey = {
+      id: randomUUID(),
+      key: "demo123",
+      usageLimit: 999999,
+      usedCount: 0,
+      isActive: true,
+      createdBy: devUser.id,
+      createdAt: new Date()
+    };
+    this.accessKeys.set(permanentKey.key, permanentKey);
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -92,9 +116,12 @@ export class MemStorage implements IStorage {
   async createAccessKey(insertKey: InsertAccessKey): Promise<AccessKey> {
     const id = randomUUID();
     const accessKey: AccessKey = {
-      ...insertKey,
       id,
+      key: insertKey.key,
+      usageLimit: insertKey.usageLimit || 1,
       usedCount: 0,
+      isActive: insertKey.isActive !== false,
+      createdBy: insertKey.createdBy || null,
       createdAt: new Date()
     };
     this.accessKeys.set(insertKey.key, accessKey);
