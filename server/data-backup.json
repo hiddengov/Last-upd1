@@ -22,13 +22,23 @@
   ],
   "sessions": [
     [
-      "f7ee6d13-4257-45f7-89c1-1801ea915eb5",
+      "53332fec-ca51-441c-b21f-68c364303daf",
       {
         "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
-        "sessionToken": "f7ee6d13-4257-45f7-89c1-1801ea915eb5",
-        "expiresAt": "2025-09-14T20:32:03.995Z",
-        "id": "aec97a73-a527-4179-a553-1afb44e35a0a",
-        "createdAt": "2025-09-07T20:32:03.995Z"
+        "sessionToken": "53332fec-ca51-441c-b21f-68c364303daf",
+        "expiresAt": "2025-09-14T20:35:11.018Z",
+        "id": "b8c7b2d0-2c66-455f-9aa5-c5e25010e0c7",
+        "createdAt": "2025-09-07T20:35:11.018Z"
+      }
+    ],
+    [
+      "8345f5b9-b293-418c-8176-3834db6b2251",
+      {
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "sessionToken": "8345f5b9-b293-418c-8176-3834db6b2251",
+        "expiresAt": "2025-09-14T20:36:05.821Z",
+        "id": "c4a889ea-34c5-4cfb-99c3-e1be0be0f1f2",
+        "createdAt": "2025-09-07T20:36:05.821Z"
       }
     ]
   ],
@@ -72,9 +82,63 @@
         "deviceBrand": "Apple",
         "timestamp": "2025-09-07T20:32:49.348Z"
       }
+    ],
+    [
+      "22ef6638-6d1e-4297-969e-691c56f0fb2f",
+      {
+        "id": "22ef6638-6d1e-4297-969e-691c56f0fb2f",
+        "userId": null,
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "referrer": "https://21ba43d0-1069-4af9-af90-a66db32fce5e-00-x30f1wdpgjyn.kirk.replit.dev/youtube",
+        "location": "London, UK [VPN: ExpressVPN]",
+        "status": "youtube_proxy_access",
+        "isVpn": "yes",
+        "vpnLocation": "London, UK (ExpressVPN)",
+        "realLocation": "Sydney, NSW, Australia (Estimated Real Location)",
+        "deviceType": "unknown",
+        "browserName": "Chrome",
+        "operatingSystem": "unknown",
+        "deviceBrand": "Apple",
+        "timestamp": "2025-09-07T20:35:18.326Z"
+      }
+    ],
+    [
+      "c04a0975-48ca-4530-aec3-27c29445601c",
+      {
+        "id": "c04a0975-48ca-4530-aec3-27c29445601c",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "referrer": "https://21ba43d0-1069-4af9-af90-a66db32fce5e-00-x30f1wdpgjyn.kirk.replit.dev/youtube",
+        "location": "Amsterdam, Netherlands [VPN: ProtonVPN]",
+        "status": "youtube_proxy_access",
+        "isVpn": "yes",
+        "vpnLocation": "Amsterdam, Netherlands (ProtonVPN)",
+        "realLocation": "Toulouse, France (Estimated Real Location)",
+        "deviceType": "unknown",
+        "browserName": "Chrome",
+        "operatingSystem": "unknown",
+        "deviceBrand": "Apple",
+        "timestamp": "2025-09-07T20:36:29.685Z"
+      }
     ]
   ],
-  "settings": [],
+  "settings": [
+    [
+      "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+      {
+        "id": "8f40c787-d56c-4c2f-8336-cf38bc88ce11",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "webhookUrl": "https://discord.com/api/webhooks/1414047481842372769/--4iipYQawy4MOtniRWcFI2BgZ3g6VEIz6dM2lY80uT0my7kqd5kE9hOjXOHBK0qW_IK",
+        "uploadedImageName": null,
+        "uploadedImageData": null,
+        "uploadedImageType": null,
+        "createdAt": "2025-09-07T20:35:40.556Z",
+        "updatedAt": "2025-09-07T20:35:40.556Z"
+      }
+    ]
+  ],
   "accessKeys": [
     [
       "Av121988",
@@ -101,6 +165,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-07T20:33:49.493Z",
+  "timestamp": "2025-09-07T20:40:36.509Z",
   "version": "2.0"
 }
