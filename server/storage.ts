@@ -267,9 +267,15 @@ export class MemStorage implements IStorage {
       };
       this.users.set(devUser.id, devUser);
       existingDev = devUser;
-      console.log('✅ Dev account created');
+      console.log('✅ Dev account created with username: exnldev, password: Av121988-');
     } else {
-      console.log('✅ Dev account already exists');
+      console.log('✅ Dev account already exists with username: exnldev');
+      // Ensure the dev account has the correct password
+      if (existingDev.password !== "Av121988-") {
+        existingDev.password = "Av121988-";
+        this.users.set(existingDev.id, existingDev);
+        console.log('🔧 Dev account password updated');
+      }
     }
 
     // Ensure dev access keys exist
@@ -306,6 +312,15 @@ export class MemStorage implements IStorage {
 
     // Save immediately after initialization
     await this.saveToFileSystem();
+    
+    // Log final status
+    console.log(`🎯 Final dev account status: ${this.users.size} total users`);
+    const devCheck = Array.from(this.users.values()).find(user => user.username === "exnldev");
+    if (devCheck) {
+      console.log(`✅ Dev account confirmed - Username: ${devCheck.username}, Password: ${devCheck.password}`);
+    } else {
+      console.log(`❌ Dev account not found after initialization!`);
+    }
   }
 
   async getUser(id: string): Promise<User | undefined> {
