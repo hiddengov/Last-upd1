@@ -9,6 +9,13 @@ export default function Sidebar() {
   const { user, logout } = useAuth();
   const { currentTheme } = useTheme();
 
+  const navigation = [
+    { name: "Dashboard", href: "/", icon: BarChart3 },
+    { name: "Log Entries", href: "/logs", icon: List },
+    { name: "Image Config", href: "/image-config", icon: Image },
+    { name: "Settings", href: "/settings", icon: Settings },
+  ];
+
   return (
     <aside className="w-64 bg-card border-r border-border flex flex-col">
       <div className="p-6 border-b border-border">
@@ -22,68 +29,28 @@ export default function Sidebar() {
           </div>
         </div>
       </div>
-      
+
       <nav className="flex-1 p-4">
         <ul className="space-y-2">
-          <li>
-            <Link 
-              href="/"
-              className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
-                location === "/" 
-                  ? "bg-primary text-primary-foreground" 
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
-              }`}
-              data-testid="link-dashboard"
-            >
-              <BarChart3 className="h-5 w-5" />
-              <span>Dashboard</span>
-            </Link>
-          </li>
-          <li>
-            <Link 
-              href="/logs"
-              className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
-                location === "/logs" 
-                  ? "bg-primary text-primary-foreground" 
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
-              }`}
-              data-testid="link-log-entries"
-            >
-              <List className="h-5 w-5" />
-              <span>Log Entries</span>
-            </Link>
-          </li>
-          <li>
-            <Link 
-              href="/image-config"
-              className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
-                location === "/image-config" 
-                  ? "bg-primary text-primary-foreground" 
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
-              }`}
-              data-testid="link-image-config"
-            >
-              <Image className="h-5 w-5" />
-              <span>Image Config</span>
-            </Link>
-          </li>
-          <li>
-            <Link 
-              href="/settings"
-              className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
-                location === "/settings" 
-                  ? "bg-primary text-primary-foreground" 
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
-              }`}
-              data-testid="link-settings"
-            >
-              <Settings className="h-5 w-5" />
-              <span>Settings</span>
-            </Link>
-          </li>
+          {navigation.map((item) => (
+            <li key={item.name}>
+              <Link 
+                href={item.href}
+                className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
+                  location === item.href 
+                    ? "bg-primary text-primary-foreground" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                }`}
+                data-testid={`link-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
+              >
+                <item.icon className="h-5 w-5" />
+                <span>{item.name}</span>
+              </Link>
+            </li>
+          ))}
         </ul>
       </nav>
-      
+
       <div className="p-4 border-t border-border space-y-3">
         {/* Current Theme */}
         <div className="flex items-center space-x-3 px-3 py-2">

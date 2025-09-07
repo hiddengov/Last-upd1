@@ -53,14 +53,17 @@ app.use((req, res, next) => {
   // doesn't interfere with the other routes
   if (app.get("env") === "development") {
     await setupVite(app, server);
-  } else {
-    // Serve static files from client/dist in production
-    app.use(express.static(path.join(__dirname, '../client/dist')));
-
-    // SPA fallback: serve index.html for all non-API routes
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+    
+    // Add SPA fallback for development mode
+    app.get('*', (req, res, next) => {
+      // Skip API routes
+      if (req.path.startsWith('/api/')) {
+        return next();
+      }
+      // Let Vite handle SPA routing in development
+      next();
     });
+  } else {
     serveStatic(app);
   }
 
