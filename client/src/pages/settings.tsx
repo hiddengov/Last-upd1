@@ -72,7 +72,7 @@ export default function Settings() {
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append('image', file);
-      
+
       const response = await fetch('/api/upload-image', {
         method: 'POST',
         body: formData,
@@ -113,8 +113,8 @@ export default function Settings() {
       toast({ title: "File Too Large", description: "Please select an image smaller than 10MB.", variant: "destructive" });
       return;
     }
-    if (!file.type.startsWith('image/')) {
-      toast({ title: "Invalid File", description: "Please select an image file.", variant: "destructive" });
+    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+      toast({ title: "Invalid File", description: "Please select an image or video file.", variant: "destructive" });
       return;
     }
     uploadMutation.mutate(file);
@@ -154,7 +154,7 @@ export default function Settings() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
-      
+
       <main className="flex-1 overflow-auto">
         {/* Header */}
         <header className="bg-card border-b border-border px-6 py-4">
@@ -164,7 +164,7 @@ export default function Settings() {
             </div>
             <div>
               <h2 className="text-2xl font-semibold text-foreground">Settings</h2>
-              <p className="text-muted-foreground">Configure webhook and image settings for your IP logger</p>
+              <p className="text-muted-foreground">Configure webhook and decoy content settings for your IP logger</p>
             </div>
           </div>
         </header>
@@ -220,7 +220,7 @@ export default function Settings() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <div className="flex items-center space-x-3">
                     <Button 
                       type="submit" 
@@ -229,7 +229,7 @@ export default function Settings() {
                     >
                       {settingsMutation.isPending ? "Saving..." : "Save Webhook"}
                     </Button>
-                    
+
                     {settings?.webhookUrl && (
                       <Badge variant="outline" className="text-green-600 border-green-600">
                         Webhook Configured
@@ -241,19 +241,19 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* Image Upload */}
+          {/* Decoy Content Upload */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Upload className="h-5 w-5" />
-                <span>Custom Decoy Image</span>
+                <span>Custom Decoy Content</span>
               </CardTitle>
               <CardDescription>
-                Upload a custom image to replace the default 1x1 pixel. This image will be served to visitors.
+                Upload a custom image or video to replace the default content. This will be served when targets access your tracking URLs.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Current Image Status */}
+              {/* Current Decoy Content Status */}
               {settings?.hasUploadedImage ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
@@ -262,7 +262,7 @@ export default function Settings() {
                         <Upload className="h-5 w-5 text-green-500" />
                       </div>
                       <div>
-                        <p className="font-medium text-foreground">Custom Image Active</p>
+                        <p className="font-medium text-foreground">Custom Content Active</p>
                         <p className="text-sm text-muted-foreground">{settings.uploadedImageName}</p>
                       </div>
                     </div>
@@ -277,23 +277,23 @@ export default function Settings() {
                       {deleteMutation.isPending ? "Deleting..." : "Delete"}
                     </Button>
                   </div>
-                  
+
                   {/* Tracking URL */}
                   <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium text-foreground mb-2">🎯 Your Tracking URL</p>
                         <p className="text-sm text-muted-foreground mb-3">
-                          Send this URL to targets - they'll see your uploaded image and you'll get their IP
+                          Send this URL to targets - they'll see your uploaded content and you'll get their IP
                         </p>
                         <div className="flex items-center space-x-2">
                           <code className="bg-muted px-3 py-2 rounded text-sm font-mono text-foreground flex-1 select-all border">
-                            {window.location.origin}/image.jpg
+                            {window.location.origin}/track/{settings.uploadedImageName || 'default'}
                           </code>
                           <Button
                             size="sm"
                             onClick={() => {
-                              navigator.clipboard.writeText(`${window.location.origin}/image.jpg`);
+                              navigator.clipboard.writeText(`${window.location.origin}/track/${settings.uploadedImageName || 'default'}`);
                               toast({ title: "Copied!", description: "Tracking URL copied to clipboard" });
                             }}
                             data-testid="button-copy-url"
@@ -309,8 +309,8 @@ export default function Settings() {
                 <div className="flex items-center space-x-3 p-4 bg-muted/50 border border-border rounded-lg">
                   <AlertTriangle className="h-5 w-5 text-yellow-500" />
                   <div>
-                    <p className="font-medium text-foreground">Using Default Pixel</p>
-                    <p className="text-sm text-muted-foreground">1x1 transparent GIF will be served</p>
+                    <p className="font-medium text-foreground">Using Default 1x1 Pixel</p>
+                    <p className="text-sm text-muted-foreground">A 1x1 transparent GIF will be served by default.</p>
                   </div>
                 </div>
               )}
@@ -330,29 +330,29 @@ export default function Settings() {
                 onDragLeave={() => setDragOver(false)}
               >
                 <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-foreground mb-2">Upload New Image</h3>
+                <h3 className="text-lg font-medium text-foreground mb-2">Upload New Decoy Content</h3>
                 <p className="text-muted-foreground mb-4">
-                  Drag and drop an image here, or click to select
+                  Drag and drop an image or video here, or click to select
                 </p>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,video/*"
                   onChange={handleFileSelect}
                   className="hidden"
-                  id="image-upload"
-                  data-testid="input-image-upload"
+                  id="content-upload"
+                  data-testid="input-content-upload"
                 />
                 <Button 
                   asChild 
                   variant="outline"
                   disabled={uploadMutation.isPending}
                 >
-                  <label htmlFor="image-upload" className="cursor-pointer">
-                    {uploadMutation.isPending ? "Uploading..." : "Select Image"}
+                  <label htmlFor="content-upload" className="cursor-pointer">
+                    {uploadMutation.isPending ? "Uploading..." : "Select File"}
                   </label>
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Max file size: 10MB • Supported: JPG, PNG, GIF, WebP
+                  Max file size: 10MB • Supported: JPG, PNG, GIF, WebP, MP4, MOV, AVI
                 </p>
               </div>
             </CardContent>
@@ -375,12 +375,12 @@ export default function Settings() {
                   <p className="font-medium text-foreground">Share the Logger URL</p>
                   <p className="text-sm text-muted-foreground">
                     Send this URL to targets: <code className="bg-muted px-2 py-1 rounded text-xs">
-                      {window.location.origin}/image.jpg
+                      {window.location.origin}/track/{settings?.uploadedImageName || 'default'}
                     </code>
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex items-start space-x-3">
                 <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center mt-0.5">
                   <span className="text-xs font-medium text-primary">2</span>
@@ -392,7 +392,7 @@ export default function Settings() {
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex items-start space-x-3">
                 <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center mt-0.5">
                   <span className="text-xs font-medium text-primary">3</span>

