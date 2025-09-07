@@ -1,9 +1,23 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertIpLogSchema } from "@shared/schema";
+import { insertIpLogSchema, insertSettingsSchema } from "@shared/schema";
 import path from "path";
 import fs from "fs";
+import multer from "multer";
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 // Get real client IP address
 function getClientIp(req: Request): string {
@@ -24,6 +38,38 @@ function getLocationFromIp(ip: string): string {
   return locations[Math.floor(Math.random() * locations.length)];
 }
 
+// Send data to Discord webhook
+async function sendToWebhook(webhookUrl: string, data: any): Promise<void> {
+  try {
+    const webhookData = {
+      embeds: [{
+        title: "🚨 IP Logger Alert",
+        color: 0xff0000,
+        fields: [
+          { name: "IP Address", value: data.ipAddress, inline: true },
+          { name: "Location", value: data.location || "Unknown", inline: true },
+          { name: "User Agent", value: data.userAgent ? data.userAgent.substring(0, 100) + (data.userAgent.length > 100 ? "..." : "") : "Unknown", inline: false },
+          { name: "Referrer", value: data.referrer || "Direct Access", inline: true },
+          { name: "Timestamp", value: new Date().toISOString(), inline: true }
+        ],
+        footer: { text: "FBI Security Testing Tool" }
+      }]
+    };
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(webhookData)
+    });
+
+    if (!response.ok) {
+      console.error('Failed to send webhook:', response.statusText);
+    }
+  } catch (error) {
+    console.error('Error sending webhook:', error);
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Serve the decoy image and log the request
   app.get('/image.jpg', async (req: Request, res: Response) => {
@@ -34,6 +80,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const referrer = Array.isArray(referrerHeader) ? referrerHeader[0] : referrerHeader || '';
       const location = getLocationFromIp(clientIp);
 
+      // Get settings to check for webhook URL and custom image
+      const settings = await storage.getSettings();
+
       // Log the IP access
       await storage.createIpLog({
         ipAddress: clientIp,
@@ -43,22 +92,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'success'
       });
 
-      // Serve a 1x1 transparent pixel as the decoy image
-      const pixel = Buffer.from([
-        0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x21, 0xF9, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2C, 0x00, 0x00, 0x00, 0x00,
-        0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x04, 0x01, 0x00, 0x3B
-      ]);
+      // Send to webhook if configured
+      if (settings?.webhookUrl) {
+        await sendToWebhook(settings.webhookUrl, {
+          ipAddress: clientIp,
+          userAgent,
+          referrer,
+          location
+        });
+      }
 
-      res.set({
-        'Content-Type': 'image/gif',
-        'Content-Length': pixel.length,
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      });
+      // Serve uploaded image if available, otherwise default pixel
+      if (settings?.uploadedImageData && settings?.uploadedImageType) {
+        const imageBuffer = Buffer.from(settings.uploadedImageData, 'base64');
+        res.set({
+          'Content-Type': settings.uploadedImageType,
+          'Content-Length': imageBuffer.length,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        });
+        res.send(imageBuffer);
+      } else {
+        // Serve default 1x1 transparent pixel
+        const pixel = Buffer.from([
+          0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x21, 0xF9, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2C, 0x00, 0x00, 0x00, 0x00,
+          0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x04, 0x01, 0x00, 0x3B
+        ]);
 
-      res.send(pixel);
+        res.set({
+          'Content-Type': 'image/gif',
+          'Content-Length': pixel.length,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        });
+        res.send(pixel);
+      }
     } catch (error) {
       console.error('Error serving image:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -122,6 +193,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error exporting logs:', error);
       res.status(500).json({ error: 'Failed to export logs' });
+    }
+  });
+
+  // Settings API routes
+  app.get('/api/settings', async (req: Request, res: Response) => {
+    try {
+      const settings = await storage.getSettings();
+      if (!settings) {
+        res.json({
+          webhookUrl: null,
+          uploadedImageName: null,
+          hasUploadedImage: false
+        });
+      } else {
+        res.json({
+          webhookUrl: settings.webhookUrl,
+          uploadedImageName: settings.uploadedImageName,
+          hasUploadedImage: !!settings.uploadedImageData
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+      res.status(500).json({ error: 'Failed to fetch settings' });
+    }
+  });
+
+  app.post('/api/settings', async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertSettingsSchema.parse(req.body);
+      const settings = await storage.createOrUpdateSettings(validatedData);
+      
+      res.json({
+        webhookUrl: settings.webhookUrl,
+        uploadedImageName: settings.uploadedImageName,
+        hasUploadedImage: !!settings.uploadedImageData
+      });
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      res.status(500).json({ error: 'Failed to update settings' });
+    }
+  });
+
+  // Image upload endpoint
+  app.post('/api/upload-image', upload.single('image'), async (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No image file provided' });
+      }
+
+      const imageData = req.file.buffer.toString('base64');
+      const currentSettings = await storage.getSettings();
+      
+      await storage.createOrUpdateSettings({
+        webhookUrl: currentSettings?.webhookUrl || null,
+        uploadedImageName: req.file.originalname,
+        uploadedImageData: imageData,
+        uploadedImageType: req.file.mimetype
+      });
+
+      res.json({ 
+        message: 'Image uploaded successfully',
+        filename: req.file.originalname,
+        size: req.file.size
+      });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      res.status(500).json({ error: 'Failed to upload image' });
+    }
+  });
+
+  // Delete uploaded image endpoint
+  app.delete('/api/upload-image', async (req: Request, res: Response) => {
+    try {
+      const currentSettings = await storage.getSettings();
+      
+      await storage.createOrUpdateSettings({
+        webhookUrl: currentSettings?.webhookUrl || null,
+        uploadedImageName: null,
+        uploadedImageData: null,
+        uploadedImageType: null
+      });
+
+      res.json({ message: 'Image deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      res.status(500).json({ error: 'Failed to delete image' });
     }
   });
 

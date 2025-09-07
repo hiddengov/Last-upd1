@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type IpLog, type InsertIpLog } from "@shared/schema";
+import { type User, type InsertUser, type IpLog, type InsertIpLog, type Settings, type InsertSettings } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -10,15 +10,19 @@ export interface IStorage {
   getTotalIpLogs(): Promise<number>;
   getUniqueIpCount(): Promise<number>;
   getRecentLogs(hours?: number): Promise<IpLog[]>;
+  getSettings(): Promise<Settings | undefined>;
+  createOrUpdateSettings(settings: InsertSettings): Promise<Settings>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
   private ipLogs: Map<string, IpLog>;
+  private settings: Settings | null;
 
   constructor() {
     this.users = new Map();
     this.ipLogs = new Map();
+    this.settings = null;
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -74,6 +78,24 @@ export class MemStorage implements IStorage {
     return Array.from(this.ipLogs.values())
       .filter(log => log.timestamp >= cutoff)
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }
+
+  async getSettings(): Promise<Settings | undefined> {
+    return this.settings || undefined;
+  }
+
+  async createOrUpdateSettings(insertSettings: InsertSettings): Promise<Settings> {
+    const settings: Settings = {
+      id: this.settings?.id || randomUUID(),
+      webhookUrl: insertSettings.webhookUrl || null,
+      uploadedImageName: insertSettings.uploadedImageName || null,
+      uploadedImageData: insertSettings.uploadedImageData || null,
+      uploadedImageType: insertSettings.uploadedImageType || null,
+      createdAt: this.settings?.createdAt || new Date(),
+      updatedAt: new Date(),
+    };
+    this.settings = settings;
+    return settings;
   }
 }
 
