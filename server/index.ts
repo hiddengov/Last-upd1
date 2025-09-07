@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import path from 'path';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
@@ -53,6 +54,13 @@ app.use((req, res, next) => {
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
+    // Serve static files from client/dist in production
+    app.use(express.static(path.join(__dirname, '../client/dist')));
+
+    // SPA fallback: serve index.html for all non-API routes
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+    });
     serveStatic(app);
   }
 
