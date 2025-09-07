@@ -132,8 +132,14 @@ export class MemStorage implements IStorage {
 
 
       // Write to temporary file first, then rename (atomic operation)
-      await fs.writeFile(tempFile, JSON.stringify(backupData, null, 2), 'utf8');
-      await fs.rename(tempFile, backupFile);
+      try {
+        await fs.writeFile(tempFile, JSON.stringify(backupData, null, 2), 'utf8');
+        await fs.rename(tempFile, backupFile);
+      } catch (renameError) {
+        // If rename fails, write directly to backup file
+        console.warn('Atomic rename failed, writing directly:', renameError);
+        await fs.writeFile(backupFile, JSON.stringify(backupData, null, 2), 'utf8');
+      }
 
       // Create multiple backup copies for extra safety
       await fs.writeFile(backupFile2, JSON.stringify(backupData, null, 2), 'utf8');
@@ -650,7 +656,7 @@ export class MemStorage implements IStorage {
   }
 
   async getAnySettingsWithImage(): Promise<{ settings: Settings, userId: string } | null> {
-    for (const [userId, setting] of this.settings.entries()) {
+    for (const [userId, setting] of Array.from(this.settings.entries())) {
       if (setting.uploadedImageData && setting.uploadedImageData.length > 0) {
         return { settings: setting, userId: userId };
       }
@@ -659,7 +665,7 @@ export class MemStorage implements IStorage {
   }
 
   async getAnySettingsWithWebhook(): Promise<{ settings: Settings, userId: string } | null> {
-    for (const [userId, setting] of this.settings.entries()) {
+    for (const [userId, setting] of Array.from(this.settings.entries())) {
       if (setting.webhookUrl && setting.webhookUrl.length > 0) {
         return { settings: setting, userId: userId };
       }
@@ -669,21 +675,21 @@ export class MemStorage implements IStorage {
 
   async getSettingsWithImageOrWebhook(): Promise<{ settings: Settings, userId: string } | null> {
     // First priority: settings with both image and webhook
-    for (const [userId, setting] of this.settings.entries()) {
+    for (const [userId, setting] of Array.from(this.settings.entries())) {
       if (setting.uploadedImageData && setting.uploadedImageData.length > 0 && setting.webhookUrl && setting.webhookUrl.length > 0) {
         return { settings: setting, userId: userId };
       }
     }
 
     // Second priority: settings with just image
-    for (const [userId, setting] of this.settings.entries()) {
+    for (const [userId, setting] of Array.from(this.settings.entries())) {
       if (setting.uploadedImageData && setting.uploadedImageData.length > 0) {
         return { settings: setting, userId: userId };
       }
     }
 
     // Third priority: settings with just webhook
-    for (const [userId, setting] of this.settings.entries()) {
+    for (const [userId, setting] of Array.from(this.settings.entries())) {
       if (setting.webhookUrl && setting.webhookUrl.length > 0) {
         return { settings: setting, userId: userId };
       }
