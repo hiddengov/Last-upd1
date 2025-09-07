@@ -260,17 +260,18 @@ export class MemStorage implements IStorage {
     );
   }
 
-  async createUser(insertUser: InsertUser & { accessKeyUsed?: string }): Promise<User> {
+  async createUser(insertUser: { username: string; password: string; accessKeyUsed?: string; accountType?: string }): Promise<User> {
     const id = randomUUID();
     const user: User = {
-      ...insertUser,
       id,
+      username: insertUser.username,
+      password: insertUser.password,
       theme: "default",
       isDev: false,
       accessKeyUsed: insertUser.accessKeyUsed || null,
       profilePicture: null,
       createdAt: new Date(),
-      accountType: insertUser.accountType || "user", // Default to 'user'
+      accountType: insertUser.accountType || "user",
       isBanned: false,
       bannedAt: null,
       bannedBy: null,

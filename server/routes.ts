@@ -513,7 +513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Profile update error:', error);
-      if (error.message === 'Username already exists') {
+      if ((error as Error).message === 'Username already exists') {
         return res.status(400).json({ error: 'Username already exists' });
       }
       res.status(500).json({ error: 'Internal server error' });
@@ -527,7 +527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       console.error('Password update error:', error);
-      if (error.message === 'Current password is incorrect') {
+      if ((error as Error).message === 'Current password is incorrect') {
         return res.status(400).json({ error: 'Current password is incorrect' });
       }
       res.status(500).json({ error: 'Internal server error' });

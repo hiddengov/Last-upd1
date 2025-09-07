@@ -84,10 +84,9 @@ export const updateProfileSchema = createInsertSchema(users).pick({
   profilePicture: true,
 });
 
-export const updatePasswordSchema = createInsertSchema(users).pick({
-  password: true,
-}).extend({
+export const updatePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string().min(1, "Confirm password is required"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
