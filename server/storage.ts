@@ -54,10 +54,10 @@ export class MemStorage implements IStorage {
   private sessions: Map<string, UserSession>;
 
   // File-based persistence for critical data
-  private dataFilePath = path.join(__dirname, 'data-backup.json');
-  private dataFilePath2 = path.join(__dirname, 'data-backup-secondary.json');
-  private dataFilePath3 = path.join(__dirname, 'data-backup-tertiary.json');
-  private tempFilePath = path.join(__dirname, 'data-backup.tmp');
+  private dataFilePath = path.join(import.meta.dirname, 'data-backup.json');
+  private dataFilePath2 = path.join(import.meta.dirname, 'data-backup-secondary.json');
+  private dataFilePath3 = path.join(import.meta.dirname, 'data-backup-tertiary.json');
+  private tempFilePath = path.join(import.meta.dirname, 'data-backup.tmp');
 
 
   // Dummy database interaction placeholders
