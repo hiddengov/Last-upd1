@@ -82,8 +82,9 @@ export default function Settings() {
     },
     onSuccess: (data) => {
       toast({ 
-        title: "Image Uploaded", 
-        description: `${data.filename} has been uploaded successfully.` 
+        title: "Image Uploaded Successfully!", 
+        description: `${data.filename} is now active. Your tracking URL is ready to use.`,
+        duration: 5000,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
     },
@@ -254,26 +255,55 @@ export default function Settings() {
             <CardContent className="space-y-4">
               {/* Current Image Status */}
               {settings?.hasUploadedImage ? (
-                <div className="flex items-center justify-between p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
-                      <Upload className="h-5 w-5 text-green-500" />
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                        <Upload className="h-5 w-5 text-green-500" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">Custom Image Active</p>
+                        <p className="text-sm text-muted-foreground">{settings.uploadedImageName}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-foreground">Custom Image Active</p>
-                      <p className="text-sm text-muted-foreground">{settings.uploadedImageName}</p>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => deleteMutation.mutate()}
+                      disabled={deleteMutation.isPending}
+                      data-testid="button-delete-image"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                    </Button>
+                  </div>
+                  
+                  {/* Tracking URL */}
+                  <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-foreground mb-2">🎯 Your Tracking URL</p>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Send this URL to targets - they'll see your uploaded image and you'll get their IP
+                        </p>
+                        <div className="flex items-center space-x-2">
+                          <code className="bg-muted px-3 py-2 rounded text-sm font-mono text-foreground flex-1 select-all border">
+                            {window.location.origin}/image.jpg
+                          </code>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              navigator.clipboard.writeText(`${window.location.origin}/image.jpg`);
+                              toast({ title: "Copied!", description: "Tracking URL copied to clipboard" });
+                            }}
+                            data-testid="button-copy-url"
+                          >
+                            Copy URL
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => deleteMutation.mutate()}
-                    disabled={deleteMutation.isPending}
-                    data-testid="button-delete-image"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    {deleteMutation.isPending ? "Deleting..." : "Delete"}
-                  </Button>
                 </div>
               ) : (
                 <div className="flex items-center space-x-3 p-4 bg-muted/50 border border-border rounded-lg">
