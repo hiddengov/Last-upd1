@@ -70,7 +70,7 @@ export const settings = pgTable("settings", {
 export const robloxLinks = pgTable("roblox_links", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
-  originalUrl: text("original_url").notNull(),
+  originalUrl: text("original_url"), // Allow null for phishing links
   linkType: text("link_type").notNull(), // 'private_server', 'profile', 'group', 'phishing'
   trackingId: text("tracking_id").notNull().unique(),
   title: text("title"), // Optional title for the link
@@ -167,7 +167,7 @@ export const createRobloxLinkSchema = createInsertSchema(robloxLinks).omit({
   clickCount: true,
   isActive: true,
 }).extend({
-  originalUrl: z.string().url("Please enter a valid URL").optional().nullable(),
+  originalUrl: z.string().url("Please enter a valid URL").optional().or(z.literal("")).or(z.null()),
   linkType: z.enum(["private_server", "profile", "group", "phishing"], {
     required_error: "Please select a link type",
   }),
@@ -175,7 +175,7 @@ export const createRobloxLinkSchema = createInsertSchema(robloxLinks).omit({
   description: z.string().max(500, "Description must be 500 characters or less").optional(),
 }).refine((data) => {
   // Only require originalUrl for non-phishing links
-  if (data.linkType !== 'phishing' && !data.originalUrl) {
+  if (data.linkType !== 'phishing' && (!data.originalUrl || data.originalUrl === "")) {
     return false;
   }
   return true;
