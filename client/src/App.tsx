@@ -14,6 +14,7 @@ import ImageConfig from "@/pages/image-config";
 import Settings from "@/pages/settings";
 import Profile from "@/pages/profile";
 import YoutubeProxy from "@/pages/youtube-proxy";
+import RobloxTracking from "@/pages/roblox-tracking";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -57,8 +58,9 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/image-config" component={ImageConfig} />
-        <Route path="/youtube" component={YoutubeProxy} />
-        <Route path="/logs" component={LogEntries} />
+      <Route path="/youtube" component={YoutubeProxy} />
+      <Route path="/logs" component={LogEntries} />
+      <Route path="/roblox" component={RobloxTracking} />
       <Route path="/settings" component={Settings} />
       <Route path="/profile" component={Profile} />
       <Route component={NotFound} />
