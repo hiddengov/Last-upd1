@@ -30,8 +30,12 @@ export default function ImageConfig() {
       const formData = new FormData();
       formData.append('image', file);
 
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/upload-image', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         body: formData,
       });
       if (!response.ok) throw new Error('Failed to upload image');
@@ -52,7 +56,13 @@ export default function ImageConfig() {
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/upload-image', { method: 'DELETE' });
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/upload-image', { 
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (!response.ok) throw new Error('Failed to delete image');
       return response.json();
     },
