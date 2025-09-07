@@ -3,7 +3,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { User, ArrowLeft, Camera, Lock, Save } from "lucide-react";
+import { User, ArrowLeft, Camera, Lock, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -160,7 +160,7 @@ export default function Profile() {
   return (
     <div className="min-h-screen flex bg-background">
       <Sidebar />
-      
+
       <div className="flex-1 overflow-hidden">
         <div className="h-full flex flex-col">
           {/* Header */}
@@ -189,7 +189,7 @@ export default function Profile() {
           {/* Content */}
           <div className="flex-1 overflow-auto p-6">
             <div className="max-w-4xl mx-auto space-y-8">
-              
+
               {/* Profile Information Card */}
               <Card data-testid="card-profile-info">
                 <CardHeader>
@@ -204,7 +204,7 @@ export default function Profile() {
                 <CardContent>
                   <Form {...profileForm}>
                     <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
-                      
+
                       {/* Profile Picture */}
                       <div className="flex items-center gap-6">
                         <div className="relative">
@@ -266,6 +266,7 @@ export default function Profile() {
                       <Button 
                         type="submit" 
                         disabled={profileMutation.isPending}
+                        className="animate-button animate-pulse-subtle"
                         data-testid="button-save-profile"
                       >
                         <Save className="h-4 w-4 mr-2" />
@@ -290,7 +291,7 @@ export default function Profile() {
                 <CardContent>
                   <Form {...passwordForm}>
                     <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
-                      
+
                       <FormField
                         control={passwordForm.control}
                         name="currentPassword"
@@ -351,6 +352,7 @@ export default function Profile() {
                       <Button 
                         type="submit" 
                         disabled={passwordMutation.isPending}
+                        className="animate-button animate-pulse-subtle"
                         data-testid="button-save-password"
                       >
                         <Lock className="h-4 w-4 mr-2" />

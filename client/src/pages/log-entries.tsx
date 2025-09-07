@@ -144,7 +144,7 @@ export default function LogEntries() {
               </div>
               <Button 
                 onClick={handleExportLogs}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 self-start sm:self-auto min-h-[44px]"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 self-start sm:self-auto min-h-[44px] animate-button"
                 data-testid="button-export-logs"
               >
                 <Download className="mr-2 h-4 w-4" />
@@ -160,7 +160,7 @@ export default function LogEntries() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Total Entries</CardTitle>
-              </CardHeader>
+              </header>
               <CardContent>
                 <div className="text-2xl font-bold text-foreground">{data?.total || 0}</div>
                 <p className="text-sm text-muted-foreground">All access attempts</p>
@@ -170,7 +170,7 @@ export default function LogEntries() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Unique IPs</CardTitle>
-              </CardHeader>
+              </header>
               <CardContent>
                 <div className="text-2xl font-bold text-foreground">{getUniqueIPs().length}</div>
                 <p className="text-sm text-muted-foreground">Different visitors</p>
@@ -180,7 +180,7 @@ export default function LogEntries() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Recent Activity</CardTitle>
-              </CardHeader>
+              </header>
               <CardContent>
                 <div className="text-2xl font-bold text-foreground">
                   {data?.logs.filter(log => 
@@ -212,7 +212,7 @@ export default function LogEntries() {
                       data-testid="input-search-logs"
                     />
                   </div>
-                  <Button variant="secondary" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 sm:flex-shrink-0">
+                  <Button variant="secondary" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 sm:flex-shrink-0 animate-button">
                     <Filter className="mr-2 h-4 w-4" />
                     Filter
                   </Button>
@@ -257,7 +257,7 @@ export default function LogEntries() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-6 px-2 text-xs w-fit"
+                                className="h-6 px-2 text-xs w-fit animate-button"
                                 onClick={() => {
                                   navigator.clipboard.writeText(log.ipAddress);
                                   toast({ title: "Copied!", description: "IP address copied to clipboard" });
@@ -315,7 +315,7 @@ export default function LogEntries() {
                     size="sm"
                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
-                    className="border-border"
+                    className="border-border animate-button"
                     data-testid="button-previous-page"
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -348,7 +348,7 @@ export default function LogEntries() {
                     size="sm"
                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                     disabled={currentPage === totalPages}
-                    className="border-border"
+                    className="border-border animate-button"
                     data-testid="button-next-page"
                   >
                     Next

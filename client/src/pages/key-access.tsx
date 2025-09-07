@@ -111,10 +111,10 @@ export default function KeyAccess({ onAccessGranted }: KeyAccessProps) {
                   disabled={isLoading}
                 />
               </div>
-              
+
               <Button 
                 type="submit"
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3"
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 animate-button"
                 disabled={isLoading}
                 data-testid="button-verify-access"
               >

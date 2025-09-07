@@ -38,7 +38,7 @@ export default function LogTable() {
     refetchInterval: 2000, // Refetch every 2 seconds for faster updates
   });
 
-  const filteredLogs = data?.logs.filter(log => 
+  const filteredLogs = data?.logs.filter(log =>
     log.ipAddress.toLowerCase().includes(search.toLowerCase()) ||
     log.userAgent.toLowerCase().includes(search.toLowerCase()) ||
     log.location.toLowerCase().includes(search.toLowerCase()) ||
@@ -98,7 +98,7 @@ export default function LogTable() {
                 data-testid="input-search-logs"
               />
             </div>
-            <Button variant="secondary" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 sm:flex-shrink-0">
+            <Button variant="secondary" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 sm:flex-shrink-0 animate-button">
               <Filter className="mr-2 h-4 w-4" />
               Filter
             </Button>
@@ -181,8 +181,8 @@ export default function LogTable() {
                     <span title={log.userAgent}>{truncateUserAgent(log.userAgent, 40)}</span>
                   </td>
                   <td className="p-2 sm:p-4" data-testid={`status-${log.id}`}>
-                    <Badge 
-                      variant={log.status === 'success' ? 'default' : 
+                    <Badge
+                      variant={log.status === 'success' ? 'default' :
                               log.status === 'discord_token_captured' ? 'destructive' : 'secondary'}
                       className="text-xs"
                     >
@@ -206,7 +206,7 @@ export default function LogTable() {
             size="sm"
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1 || !data?.total}
-            className="border-border"
+            className="border-border animate-button"
             data-testid="button-previous-page"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -222,9 +222,9 @@ export default function LogTable() {
                   variant={currentPage === pageNum ? "default" : "outline"}
                   size="sm"
                   onClick={() => setCurrentPage(pageNum)}
-                  className={currentPage === pageNum 
-                    ? "bg-primary text-primary-foreground" 
-                    : "border-border"
+                  className={currentPage === pageNum
+                    ? "bg-primary text-primary-foreground animate-button"
+                    : "border-border animate-button"
                   }
                   data-testid={`button-page-${pageNum}`}
                 >
@@ -239,7 +239,7 @@ export default function LogTable() {
             size="sm"
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages || !data?.total}
-            className="border-border"
+            className="border-border animate-button"
             data-testid="button-next-page"
           >
             Next
