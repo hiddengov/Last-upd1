@@ -258,6 +258,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 
+      if (user.isBanned) {
+        return res.status(403).json({ error: 'Account has been banned. Contact an administrator.' });
+      }
+
       const sessionToken = randomUUID();
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
       
@@ -401,6 +405,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, message: 'Key deleted successfully' });
     } catch (error) {
       console.error('Key deletion error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // User management routes (dev only)
+  app.get('/api/dev/users', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      if (!req.user.isDev) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const users = await storage.getAllUsers(req.user.id);
+      res.json(users);
+    } catch (error) {
+      console.error('Users fetch error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/dev/users', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      if (!req.user.isDev) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const { username, password, accountType, isDev } = req.body;
+      if (!username || !password || !accountType) {
+        return res.status(400).json({ error: 'Username, password, and account type are required' });
+      }
+
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ error: 'Username already exists' });
+      }
+
+      const newUser = await storage.createUserByDev({
+        username,
+        password,
+        accountType,
+        isDev: isDev || false
+      }, req.user.id);
+
+      res.json({
+        id: newUser.id,
+        username: newUser.username,
+        accountType: newUser.accountType,
+        isDev: newUser.isDev,
+        createdAt: newUser.createdAt
+      });
+    } catch (error) {
+      console.error('User creation error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/dev/users/:userId/ban', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      if (!req.user.isDev) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const { userId } = req.params;
+      const { reason } = req.body;
+
+      if (!reason) {
+        return res.status(400).json({ error: 'Ban reason is required' });
+      }
+
+      await storage.banUser(userId, reason, req.user.id);
+      res.json({ success: true, message: 'User banned successfully' });
+    } catch (error) {
+      console.error('User ban error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/dev/users/:userId/unban', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      if (!req.user.isDev) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const { userId } = req.params;
+      await storage.unbanUser(userId, req.user.id);
+      res.json({ success: true, message: 'User unbanned successfully' });
+    } catch (error) {
+      console.error('User unban error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.delete('/api/dev/users/:userId', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      if (!req.user.isDev) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const { userId } = req.params;
+      await storage.deleteUser(userId, req.user.id);
+      res.json({ success: true, message: 'User deleted successfully' });
+    } catch (error) {
+      console.error('User deletion error:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });

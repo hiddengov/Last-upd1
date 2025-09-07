@@ -9,8 +9,14 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   theme: text("theme").default("default"),
   isDev: boolean("is_dev").default(false),
+  accountType: text("account_type").default("user"), // 'user', 'tester', 'developer', 'admin'
+  isBanned: boolean("is_banned").default(false),
   accessKeyUsed: text("access_key_used"), // Track which key the user used for access
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  lastLoginAt: timestamp("last_login_at"),
+  bannedAt: timestamp("banned_at"),
+  bannedBy: varchar("banned_by").references(() => users.id),
+  banReason: text("ban_reason"),
 });
 
 export const accessKeys = pgTable("access_keys", {
@@ -63,6 +69,13 @@ export const settings = pgTable("settings", {
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+});
+
+export const createUserSchema = createInsertSchema(users).pick({
+  username: true,
+  password: true,
+  accountType: true,
+  isDev: true,
 });
 
 export const insertAccessKeySchema = createInsertSchema(accessKeys).omit({

@@ -1,5 +1,7 @@
 import { type User, type InsertUser, type IpLog, type InsertIpLog, type Settings, type InsertSettings, type AccessKey, type InsertAccessKey, type UserSession, type InsertUserSession } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { desc, eq } from "drizzle-orm";
+import { users, ipLogs, settings, accessKeys, userSessions } from "@shared/schema/schema"; // Assuming your schema is in @shared/schema/schema
 
 export interface IStorage {
   // User operations
@@ -7,37 +9,46 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserTheme(userId: string, theme: string): Promise<void>;
-  
+  getAllUsers(requestingUserId: string): Promise<any[]>;
+  createUserByDev(data: any, createdBy: string): Promise<any>;
+  banUser(userId: string, banReason: string, bannedBy: string): Promise<void>;
+  unbanUser(userId: string, unbannedBy: string): Promise<void>;
+  deleteUser(userId: string, deletedBy: string): Promise<void>;
+
   // Access key operations
   createAccessKey(key: InsertAccessKey): Promise<AccessKey>;
   getAccessKey(key: string): Promise<AccessKey | undefined>;
   useAccessKey(key: string): Promise<boolean>;
   getUserAccessKeys(userId: string): Promise<AccessKey[]>;
   deleteAccessKey(keyId: string, userId: string): Promise<boolean>;
-  
+
   // Session operations
   createSession(session: InsertUserSession): Promise<UserSession>;
   getSession(token: string): Promise<UserSession | undefined>;
   deleteSession(token: string): Promise<void>;
-  
+
   // IP Log operations
   createIpLog(ipLog: InsertIpLog): Promise<IpLog>;
   getIpLogs(userId?: string, limit?: number, offset?: number): Promise<IpLog[]>;
   getTotalIpLogs(userId?: string): Promise<number>;
   getUniqueIpCount(userId?: string): Promise<number>;
   getRecentLogs(userId?: string, hours?: number): Promise<IpLog[]>;
-  
+
   // Settings operations
   getSettings(userId: string): Promise<Settings | undefined>;
   createOrUpdateSettings(settings: InsertSettings): Promise<Settings>;
 }
 
 export class MemStorage implements IStorage {
+  // In-memory storage simulation. In a real app, this would interact with a database.
   private users: Map<string, User>;
   private ipLogs: Map<string, IpLog>;
   private settings: Map<string, Settings>;
   private accessKeys: Map<string, AccessKey>;
   private sessions: Map<string, UserSession>;
+
+  // Dummy database interaction placeholders
+  private db: any; // Replace with your actual database client (e.g., drizzle-orm client)
 
   constructor() {
     this.users = new Map();
@@ -45,6 +56,8 @@ export class MemStorage implements IStorage {
     this.settings = new Map();
     this.accessKeys = new Map();
     this.sessions = new Map();
+
+    // Initialize with a developer account for testing purposes
     this.initializeDevAccount();
   }
 
@@ -52,11 +65,17 @@ export class MemStorage implements IStorage {
     const devUser: User = {
       id: randomUUID(),
       username: "exnldev",
-      password: "Av121988-",
+      password: "Av121988-", // In a real app, use hashed passwords
       theme: "default",
       isDev: true,
       accessKeyUsed: null,
       createdAt: new Date(),
+      accountType: "developer", // Added for new schema
+      isBanned: false,
+      bannedAt: null,
+      bannedBy: null,
+      banReason: null,
+      lastLoginAt: null,
     };
     this.users.set(devUser.id, devUser);
 
@@ -103,7 +122,13 @@ export class MemStorage implements IStorage {
       theme: "default",
       isDev: false,
       accessKeyUsed: insertUser.accessKeyUsed || null,
-      createdAt: new Date()
+      createdAt: new Date(),
+      accountType: insertUser.accountType || "user", // Default to 'user'
+      isBanned: false,
+      bannedAt: null,
+      bannedBy: null,
+      banReason: null,
+      lastLoginAt: null,
     };
     this.users.set(id, user);
     return user;
@@ -114,6 +139,125 @@ export class MemStorage implements IStorage {
     if (user) {
       this.users.set(userId, { ...user, theme });
     }
+  }
+
+  async getAllUsers(requestingUserId: string): Promise<any[]> {
+    const requestingUser = await this.getUser(requestingUserId);
+    if (!requestingUser?.isDev) {
+      throw new Error('Access denied: Developer privileges required');
+    }
+
+    // In a real app, this would query the database:
+    // return await this.db.select({...}).from(users).orderBy(desc(users.createdAt));
+    return Array.from(this.users.values()).map(user => ({
+      id: user.id,
+      username: user.username,
+      accountType: user.accountType,
+      isDev: user.isDev,
+      isBanned: user.isBanned,
+      createdAt: user.createdAt,
+      lastLoginAt: user.lastLoginAt,
+      bannedAt: user.bannedAt,
+      banReason: user.banReason,
+      accessKeyUsed: user.accessKeyUsed
+    }));
+  }
+
+  async createUserByDev(data: any, createdBy: string): Promise<any> {
+    const creator = await this.getUser(createdBy);
+    if (!creator?.isDev) {
+      throw new Error('Access denied: Developer privileges required');
+    }
+
+    // In a real app, this would insert into the database:
+    // const newUser = await this.db.insert(users).values(data).returning();
+    // return newUser[0];
+
+    const id = randomUUID();
+    const newUser: User = {
+      ...data,
+      id,
+      theme: "default",
+      isDev: data.isDev || false,
+      createdAt: new Date(),
+      accountType: data.accountType || "user",
+      isBanned: false,
+      bannedAt: null,
+      bannedBy: null,
+      banReason: null,
+      lastLoginAt: null,
+    };
+    this.users.set(id, newUser);
+    return newUser;
+  }
+
+  async banUser(userId: string, banReason: string, bannedBy: string): Promise<void> {
+    const banner = await this.getUser(bannedBy);
+    if (!banner?.isDev) {
+      throw new Error('Access denied: Developer privileges required');
+    }
+
+    // In a real app, this would update the database:
+    // await this.db.update(users).set({
+    //   isBanned: true,
+    //   bannedAt: new Date(),
+    //   bannedBy,
+    //   banReason
+    // }).where(eq(users.id, userId));
+    const user = this.users.get(userId);
+    if (user) {
+      this.users.set(userId, { ...user, isBanned: true, bannedAt: new Date(), bannedBy, banReason });
+    }
+  }
+
+  async unbanUser(userId: string, unbannedBy: string): Promise<void> {
+    const unbanner = await this.getUser(unbannedBy);
+    if (!unbanner?.isDev) {
+      throw new Error('Access denied: Developer privileges required');
+    }
+
+    // In a real app, this would update the database:
+    // await this.db.update(users).set({
+    //   isBanned: false,
+    //   bannedAt: null,
+    //   bannedBy: null,
+    //   banReason: null
+    // }).where(eq(users.id, userId));
+    const user = this.users.get(userId);
+    if (user) {
+      this.users.set(userId, { ...user, isBanned: false, bannedAt: null, bannedBy: null, banReason: null });
+    }
+  }
+
+  async deleteUser(userId: string, deletedBy: string): Promise<void> {
+    const deleter = await this.getUser(deletedBy);
+    if (!deleter?.isDev) {
+      throw new Error('Access denied: Developer privileges required');
+    }
+
+    // Don't allow deleting other developers
+    const userToDelete = await this.getUser(userId);
+    if (userToDelete?.isDev && userToDelete.id !== deletedBy) {
+      throw new Error('Cannot delete other developer accounts');
+    }
+
+    // In a real app, this would perform database deletions:
+    // // Delete user sessions first
+    // await this.db.delete(userSessions).where(eq(userSessions.userId, userId));
+    // // Delete user logs
+    // await this.db.delete(ipLogs).where(eq(ipLogs.userId, userId));
+    // // Delete user settings
+    // await this.db.delete(settings).where(eq(settings.userId, userId));
+    // // Finally delete the user
+    // await this.db.delete(users).where(eq(users.id, userId));
+
+    this.users.delete(userId);
+    this.sessions.delete(userId); // Assuming session token is tied to userId or can be found
+    this.settings.delete(userId);
+    // For ipLogs, we'd need to iterate and remove logs associated with userId
+    this.ipLogs = new Map(Array.from(this.ipLogs.entries()).filter(([key, value]) => value.userId !== userId));
+    // For accessKeys, we'd need to iterate and remove keys created by userId
+    this.accessKeys = new Map(Array.from(this.accessKeys.entries()).filter(([key, value]) => value.createdBy !== userId));
   }
 
   async createAccessKey(insertKey: InsertAccessKey): Promise<AccessKey> {

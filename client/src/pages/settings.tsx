@@ -11,7 +11,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, Link, Settings as SettingsIcon, Shield, Palette, Key, Trash2, Plus } from "lucide-react";
+import { Settings as SettingsIcon, Webhook, Upload, Image as ImageIcon, Key, Trash2, Plus, User, UserPlus, Ban, Shield, UserX } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,6 +32,16 @@ interface AccessKey {
   createdAt: string;
 }
 
+// Dummy interfaces for user management (replace with actual types if available)
+interface UserData {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
+  isBanned: boolean;
+  createdAt: string;
+}
+
 const settingsSchema = z.object({
   webhookUrl: z.string().url("Please enter a valid webhook URL").optional().or(z.literal("")),
 });
@@ -41,8 +51,16 @@ const createKeySchema = z.object({
   usageLimit: z.number().min(1, "Usage limit must be at least 1"),
 });
 
+// Schema for creating new accounts (example)
+const createAccountSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  role: z.string().min(1, "Role cannot be empty"), // e.g., 'user', 'tester'
+});
+
 type SettingsForm = z.infer<typeof settingsSchema>;
 type CreateKeyForm = z.infer<typeof createKeySchema>;
+type CreateAccountForm = z.infer<typeof createAccountSchema>;
 
 export default function Settings() {
   const { toast } = useToast();
@@ -61,6 +79,12 @@ export default function Settings() {
     enabled: user?.isDev,
   });
 
+  // User management queries
+  const { data: allUsers, isLoading: usersLoading } = useQuery<UserData[]>({
+    queryKey: ['/api/dev/users'],
+    enabled: user?.isDev,
+  });
+
   const form = useForm<SettingsForm>({
     resolver: zodResolver(settingsSchema),
     defaultValues: {
@@ -73,6 +97,15 @@ export default function Settings() {
     defaultValues: {
       key: "",
       usageLimit: 10,
+    },
+  });
+
+  const createAccountForm = useForm<CreateAccountForm>({
+    resolver: zodResolver(createAccountSchema),
+    defaultValues: {
+      username: "",
+      email: "",
+      role: "user",
     },
   });
 
@@ -220,6 +253,66 @@ export default function Settings() {
     },
   });
 
+  // User management mutations (ban/unban/delete)
+  const updateUserStatusMutation = useMutation({
+    mutationFn: async ({ userId, status }: { userId: string; status: 'ban' | 'unban' | 'delete' }) => {
+      const response = await fetch(`/api/dev/users/${userId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ status }),
+      });
+      if (!response.ok) throw new Error(`Failed to ${status} user`);
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/dev/users'] });
+      toast({
+        title: "Success",
+        description: `User ${variables.status}d successfully`,
+      });
+    },
+    onError: (error: any, variables) => {
+      toast({
+        title: "Error",
+        description: error.message || `Failed to ${variables.status} user`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createAccountMutation = useMutation({
+    mutationFn: async (data: CreateAccountForm) => {
+      const response = await fetch('/api/dev/accounts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error('Failed to create account');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/dev/users'] });
+      createAccountForm.reset();
+      toast({
+        title: "Success",
+        description: "Account created successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create account",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleFileUpload = (file: File) => {
     if (file.size > 10 * 1024 * 1024) {
       toast({ title: "File Too Large", description: "Please select an image smaller than 10MB.", variant: "destructive" });
@@ -300,12 +393,25 @@ export default function Settings() {
 
           {/* Tabbed Settings Interface */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className={`grid w-full ${user?.isDev ? 'grid-cols-4' : 'grid-cols-3'}`}>
+            <TabsList className={`grid w-full ${user?.isDev ? 'grid-cols-6' : 'grid-cols-3'}`}>
               <TabsTrigger value="general" data-testid="tab-general">General</TabsTrigger>
               <TabsTrigger value="themes" data-testid="tab-themes">Themes</TabsTrigger>
               <TabsTrigger value="webhook" data-testid="tab-webhook">Webhook</TabsTrigger>
               {user?.isDev && (
-                <TabsTrigger value="keys" data-testid="tab-keys">Key Management</TabsTrigger>
+                <>
+                  <TabsTrigger value="dev-keys" className="flex items-center space-x-2">
+                    <Key className="h-4 w-4" />
+                    <span>Access Keys</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="dev-users" className="flex items-center space-x-2">
+                    <User className="h-4 w-4" />
+                    <span>User Management</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="dev-accounts" className="flex items-center space-x-2">
+                    <UserPlus className="h-4 w-4" />
+                    <span>Create Accounts</span>
+                  </TabsTrigger>
+                </>
               )}
             </TabsList>
 
@@ -378,7 +484,7 @@ export default function Settings() {
                         </p>
                       </div>
                     )}
-                    
+
                     {uploadMutation.isPending && (
                       <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
@@ -431,7 +537,7 @@ export default function Settings() {
                       Theme changes are saved automatically and persist across sessions
                     </p>
                   </div>
-                  
+
                   {isChangingTheme && (
                     <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
@@ -486,7 +592,7 @@ export default function Settings() {
                         >
                           {settingsMutation.isPending ? "Saving..." : "Save Settings"}
                         </Button>
-                        
+
                         {settings?.webhookUrl && (
                           <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-green-500/20">
                             Webhook Active
@@ -499,151 +605,323 @@ export default function Settings() {
               </Card>
             </TabsContent>
 
-            {/* Key Management Tab */}
+            {/* Developer Tabs */}
             {user?.isDev && (
-              <TabsContent value="keys" className="space-y-4">
-                {/* Create New Key */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Plus className="h-5 w-5" />
-                      <span>Create New Access Key</span>
-                    </CardTitle>
-                    <CardDescription>
-                      Generate new access keys with custom usage limits for the Exnl Key System
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Form {...createKeyForm}>
-                      <form 
-                        onSubmit={createKeyForm.handleSubmit((data) => createKeyMutation.mutate(data))} 
-                        className="space-y-4"
-                      >
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <FormField
-                            control={createKeyForm.control}
-                            name="key"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Access Key</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    {...field}
-                                    placeholder="Enter key name (e.g., demo123)"
-                                    data-testid="input-key-name"
-                                  />
-                                </FormControl>
-                                <FormDescription>
-                                  Unique identifier for the access key
-                                </FormDescription>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={createKeyForm.control}
-                            name="usageLimit"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Usage Limit</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    {...field}
-                                    type="number"
-                                    min={1}
-                                    onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
-                                    data-testid="input-usage-limit"
-                                  />
-                                </FormControl>
-                                <FormDescription>
-                                  Maximum number of times this key can be used
-                                </FormDescription>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        <Button 
-                          type="submit" 
-                          disabled={createKeyMutation.isPending}
-                          data-testid="button-create-key"
+              <>
+                {/* Key Management Tab */}
+                <TabsContent value="dev-keys" className="space-y-4">
+                  {/* Create New Key */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2">
+                        <Plus className="h-5 w-5" />
+                        <span>Create New Access Key</span>
+                      </CardTitle>
+                      <CardDescription>
+                        Generate new access keys with custom usage limits for the Exnl Key System
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Form {...createKeyForm}>
+                        <form 
+                          onSubmit={createKeyForm.handleSubmit((data) => createKeyMutation.mutate(data))} 
+                          className="space-y-4"
                         >
-                          {createKeyMutation.isPending ? "Creating..." : "Create Key"}
-                        </Button>
-                      </form>
-                    </Form>
-                  </CardContent>
-                </Card>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                              control={createKeyForm.control}
+                              name="key"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Access Key</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      {...field}
+                                      placeholder="Enter key name (e.g., demo123)"
+                                      data-testid="input-key-name"
+                                    />
+                                  </FormControl>
+                                  <FormDescription>
+                                    Unique identifier for the access key
+                                  </FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
 
-                {/* Existing Keys List */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Key className="h-5 w-5" />
-                      <span>Active Access Keys</span>
-                    </CardTitle>
-                    <CardDescription>
-                      Manage and monitor existing access keys
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {keysLoading ? (
-                      <div className="space-y-3">
-                        {[...Array(3)].map((_, i) => (
-                          <div key={i} className="animate-pulse bg-muted rounded h-16"></div>
-                        ))}
-                      </div>
-                    ) : !keys || keys.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Key className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>No access keys created yet</p>
-                        <p className="text-sm">Create your first key above to get started</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {keys.map((key) => (
-                          <div
-                            key={key.id}
-                            className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border"
+                            <FormField
+                              control={createKeyForm.control}
+                              name="usageLimit"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Usage Limit</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      {...field}
+                                      type="number"
+                                      min={1}
+                                      onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                                      data-testid="input-usage-limit"
+                                    />
+                                  </FormControl>
+                                  <FormDescription>
+                                    Maximum number of times this key can be used
+                                  </FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <Button 
+                            type="submit" 
+                            disabled={createKeyMutation.isPending}
+                            data-testid="button-create-key"
                           >
-                            <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                                <Key className="h-5 w-5 text-primary" />
-                              </div>
-                              <div>
-                                <p className="font-medium text-foreground">{key.key}</p>
-                                <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                                  <span>Uses: {key.usedCount}/{key.usageLimit}</span>
-                                  <span>•</span>
-                                  <span>Created: {new Date(key.createdAt).toLocaleDateString()}</span>
-                                  <span>•</span>
-                                  <Badge 
-                                    variant={key.isActive && key.usedCount < key.usageLimit ? "default" : "secondary"}
-                                    className="text-xs"
-                                  >
-                                    {key.isActive && key.usedCount < key.usageLimit ? "Active" : "Inactive"}
-                                  </Badge>
+                            {createKeyMutation.isPending ? "Creating..." : "Create Key"}
+                          </Button>
+                        </form>
+                      </Form>
+                    </CardContent>
+                  </Card>
+
+                  {/* Existing Keys List */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2">
+                        <Key className="h-5 w-5" />
+                        <span>Active Access Keys</span>
+                      </CardTitle>
+                      <CardDescription>
+                        Manage and monitor existing access keys
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {keysLoading ? (
+                        <div className="space-y-3">
+                          {[...Array(3)].map((_, i) => (
+                            <div key={i} className="animate-pulse bg-muted rounded h-16"></div>
+                          ))}
+                        </div>
+                      ) : !keys || keys.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Key className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p>No access keys created yet</p>
+                          <p className="text-sm">Create your first key above to get started</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {keys.map((key) => (
+                            <div
+                              key={key.id}
+                              className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border"
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                                  <Key className="h-5 w-5 text-primary" />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-foreground">{key.key}</p>
+                                  <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                                    <span>Uses: {key.usedCount}/{key.usageLimit}</span>
+                                    <span>•</span>
+                                    <span>Created: {new Date(key.createdAt).toLocaleDateString()}</span>
+                                    <span>•</span>
+                                    <Badge 
+                                      variant={key.isActive && key.usedCount < key.usageLimit ? "default" : "secondary"}
+                                      className="text-xs"
+                                    >
+                                      {key.isActive && key.usedCount < key.usageLimit ? "Active" : "Inactive"}
+                                    </Badge>
+                                  </div>
                                 </div>
                               </div>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => deleteKeyMutation.mutate(key.id)}
+                                disabled={deleteKeyMutation.isPending}
+                                data-testid={`button-delete-key-${key.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => deleteKeyMutation.mutate(key.id)}
-                              disabled={deleteKeyMutation.isPending}
-                              data-testid={`button-delete-key-${key.id}`}
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* User Management Tab */}
+                <TabsContent value="dev-users" className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2">
+                        <User className="h-5 w-5" />
+                        <span>User Management</span>
+                      </CardTitle>
+                      <CardDescription>
+                        View, ban, unban, and delete registered users
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {usersLoading ? (
+                        <div className="space-y-3">
+                          {[...Array(5)].map((_, i) => (
+                            <div key={i} className="animate-pulse bg-muted rounded h-20"></div>
+                          ))}
+                        </div>
+                      ) : !allUsers || allUsers.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p>No users registered yet</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {allUsers.map((usr) => (
+                            <div
+                              key={usr.id}
+                              className="flex items-center justify-between p-4 bg-background rounded-lg border"
                             >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                              <div className="flex items-center space-x-3 overflow-hidden">
+                                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                                  {usr.isBanned ? (
+                                    <UserX className="h-5 w-5 text-red-500" />
+                                  ) : (
+                                    <User className="h-5 w-5 text-primary" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-foreground truncate">{usr.username}</p>
+                                  <p className="text-sm text-muted-foreground truncate">{usr.email}</p>
+                                  <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                                    <span>Role: {usr.role}</span>
+                                    <span>•</span>
+                                    <span>Joined: {new Date(usr.createdAt).toLocaleDateString()}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  variant={usr.isBanned ? "outline" : "destructive"}
+                                  size="sm"
+                                  onClick={() => updateUserStatusMutation.mutate({ userId: usr.id, status: usr.isBanned ? 'unban' : 'ban' })}
+                                  disabled={updateUserStatusMutation.isPending}
+                                  data-testid={`button-ban-unban-user-${usr.id}`}
+                                >
+                                  {usr.isBanned ? <><User className="h-4 w-4 mr-1" /> Unban</> : <><Ban className="h-4 w-4 mr-1" /> Ban</>}
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => updateUserStatusMutation.mutate({ userId: usr.id, status: 'delete' })}
+                                  disabled={updateUserStatusMutation.isPending}
+                                  data-testid={`button-delete-user-${usr.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* Create Accounts Tab */}
+                <TabsContent value="dev-accounts" className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2">
+                        <UserPlus className="h-5 w-5" />
+                        <span>Create New Account</span>
+                      </CardTitle>
+                      <CardDescription>
+                        Create new user accounts with specific roles for testing purposes
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Form {...createAccountForm}>
+                        <form 
+                          onSubmit={createAccountForm.handleSubmit((data) => createAccountMutation.mutate(data))} 
+                          className="space-y-4"
+                        >
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                              control={createAccountForm.control}
+                              name="username"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Username</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      {...field}
+                                      placeholder="Enter username"
+                                      data-testid="input-account-username"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={createAccountForm.control}
+                              name="email"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Email</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      {...field}
+                                      placeholder="Enter email"
+                                      data-testid="input-account-email"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={createAccountForm.control}
+                              name="role"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Role</FormLabel>
+                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                      <SelectTrigger data-testid="select-account-role">
+                                        <SelectValue placeholder="Select role" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="user">User</SelectItem>
+                                      <SelectItem value="tester">Tester</SelectItem>
+                                      <SelectItem value="developer">Developer</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
+
+                          <Button 
+                            type="submit" 
+                            disabled={createAccountMutation.isPending}
+                            data-testid="button-create-account"
+                          >
+                            {createAccountMutation.isPending ? "Creating..." : "Create Account"}
+                          </Button>
+                        </form>
+                      </Form>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </>
             )}
           </Tabs>
         </div>
