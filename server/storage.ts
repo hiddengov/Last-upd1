@@ -9,6 +9,8 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserTheme(userId: string, theme: string): Promise<void>;
+  updateUserProfile(userId: string, profileData: { username?: string; profilePicture?: string }): Promise<User>;
+  updateUserPassword(userId: string, currentPassword: string, newPassword: string): Promise<void>;
   getAllUsers(requestingUserId: string): Promise<any[]>;
   createUserByDev(data: any, createdBy: string): Promise<any>;
   banUser(userId: string, banReason: string, bannedBy: string): Promise<void>;
@@ -69,6 +71,7 @@ export class MemStorage implements IStorage {
       theme: "default",
       isDev: true,
       accessKeyUsed: null,
+      profilePicture: null,
       createdAt: new Date(),
       accountType: "developer", // Added for new schema
       isBanned: false,
@@ -122,6 +125,7 @@ export class MemStorage implements IStorage {
       theme: "default",
       isDev: false,
       accessKeyUsed: insertUser.accessKeyUsed || null,
+      profilePicture: null,
       createdAt: new Date(),
       accountType: insertUser.accountType || "user", // Default to 'user'
       isBanned: false,
@@ -139,6 +143,42 @@ export class MemStorage implements IStorage {
     if (user) {
       this.users.set(userId, { ...user, theme });
     }
+  }
+
+  async updateUserProfile(userId: string, profileData: { username?: string; profilePicture?: string }): Promise<User> {
+    const user = this.users.get(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    
+    // Check if username is being changed and if it's already taken
+    if (profileData.username && profileData.username !== user.username) {
+      const existingUser = await this.getUserByUsername(profileData.username);
+      if (existingUser) {
+        throw new Error('Username already exists');
+      }
+    }
+    
+    const updatedUser: User = {
+      ...user,
+      ...profileData,
+    };
+    
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+
+  async updateUserPassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    const user = this.users.get(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    
+    if (user.password !== currentPassword) {
+      throw new Error('Current password is incorrect');
+    }
+    
+    this.users.set(userId, { ...user, password: newPassword });
   }
 
   async getAllUsers(requestingUserId: string): Promise<any[]> {
@@ -179,6 +219,7 @@ export class MemStorage implements IStorage {
       id,
       theme: "default",
       isDev: data.isDev || false,
+      profilePicture: data.profilePicture || null,
       createdAt: new Date(),
       accountType: data.accountType || "user",
       isBanned: false,

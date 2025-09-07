@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertIpLogSchema, insertSettingsSchema, insertUserSchema, insertAccessKeySchema } from "@shared/schema";
+import { insertIpLogSchema, insertSettingsSchema, insertUserSchema, insertAccessKeySchema, updateProfileSchema, updatePasswordSchema } from "@shared/schema";
 import path from "path";
 import fs from "fs";
 import multer from "multer";
@@ -331,7 +331,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       id: req.user.id,
       username: req.user.username,
       theme: req.user.theme,
-      isDev: req.user.isDev
+      isDev: req.user.isDev,
+      profilePicture: req.user.profilePicture
     });
   });
 
@@ -345,6 +346,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       console.error('Theme update error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.put('/api/user/profile', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const validatedData = updateProfileSchema.parse(req.body);
+      const updatedUser = await storage.updateUserProfile(req.user.id, validatedData);
+      res.json({
+        success: true,
+        user: {
+          id: updatedUser.id,
+          username: updatedUser.username,
+          theme: updatedUser.theme,
+          isDev: updatedUser.isDev,
+          profilePicture: updatedUser.profilePicture
+        }
+      });
+    } catch (error) {
+      console.error('Profile update error:', error);
+      if (error.message === 'Username already exists') {
+        return res.status(400).json({ error: 'Username already exists' });
+      }
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.put('/api/user/password', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const validatedData = updatePasswordSchema.parse(req.body);
+      await storage.updateUserPassword(req.user.id, validatedData.currentPassword, validatedData.password);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Password update error:', error);
+      if (error.message === 'Current password is incorrect') {
+        return res.status(400).json({ error: 'Current password is incorrect' });
+      }
       res.status(500).json({ error: 'Internal server error' });
     }
   });
