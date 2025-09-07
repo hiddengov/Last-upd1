@@ -26,7 +26,7 @@ export default function Dashboard() {
     try {
       const response = await fetch('/api/export');
       if (!response.ok) throw new Error('Export failed');
-      
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -36,7 +36,7 @@ export default function Dashboard() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
       toast({
         title: "Export Successful",
         description: "IP logs have been exported to CSV file.",
@@ -53,23 +53,24 @@ export default function Dashboard() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
-      
+
       <main className="flex-1 overflow-auto">
         {/* Header */}
         <header className="bg-card border-b border-border px-4 sm:px-6 py-4">
           <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-            <div>
+            <div className="animate-slide-in-up">
               <h2 className="text-xl sm:text-2xl font-semibold text-foreground">Dashboard</h2>
               <p className="text-sm sm:text-base text-muted-foreground">Monitor IP logging activity and system status</p>
             </div>
             <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
-              <div className="flex items-center space-x-2 text-sm">
+              <div className="flex items-center space-x-2 text-sm animate-slide-in-up" style={{ animationDelay: '100ms' }}>
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span className="text-muted-foreground">System Active</span>
               </div>
               <Button 
                 onClick={handleExportLogs}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 self-start sm:self-auto min-h-[44px]"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 self-start sm:self-auto min-h-[44px] animate-slide-in-up"
+                style={{ animationDelay: '150ms' }}
                 data-testid="button-export-logs"
               >
                 <Download className="mr-2 h-4 w-4" />
@@ -81,11 +82,13 @@ export default function Dashboard() {
 
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Metrics Grid */}
-          <MetricsGrid metrics={metrics} isLoading={metricsLoading} />
+          <div className="animate-slide-in-up" style={{ animationDelay: '200ms' }}>
+            <MetricsGrid metrics={metrics} isLoading={metricsLoading} />
+          </div>
 
           {/* Activity Section */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-            <div className="lg:col-span-2 bg-card rounded-lg border border-border">
+            <div className="lg:col-span-2 bg-card rounded-lg border border-border animate-slide-in-up" style={{ animationDelay: '300ms' }}>
               <div className="p-4 sm:p-6 border-b border-border">
                 <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
                   <h3 className="text-lg font-semibold text-foreground">Recent Activity</h3>
@@ -107,7 +110,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="bg-card rounded-lg border border-border">
+            <div className="bg-card rounded-lg border border-border animate-slide-in-up" style={{ animationDelay: '400ms' }}>
               <div className="p-4 sm:p-6 border-b border-border">
                 <h3 className="text-lg font-semibold text-foreground">Image Status</h3>
               </div>
@@ -128,15 +131,15 @@ export default function Dashboard() {
                   <span className="text-sm text-muted-foreground">Status</span>
                   <span className="text-sm font-medium text-green-500">Active</span>
                 </div>
-                
+
                 <div className="mt-4">
                   <p className="text-sm text-muted-foreground mb-2">Preview</p>
                   <div className="w-full h-24 bg-muted/50 rounded-md flex items-center justify-center border border-border">
                     <span className="text-xs text-muted-foreground">1x1 Transparent Pixel</span>
                   </div>
                 </div>
-                
-                <Button className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90 min-h-[44px]">
+
+                <Button className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90 min-h-[44px] animate-slide-in-up" style={{ animationDelay: '500ms' }}>
                   Change Image
                 </Button>
               </div>

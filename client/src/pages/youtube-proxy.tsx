@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Youtube, Link2, Copy, Eye, ArrowLeft, Play, Shield } from "lucide-react";
@@ -21,7 +20,7 @@ export default function YoutubeProxy() {
       /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([^&\n?#]+)/,
       /youtube\.com\/watch\?.*v=([^&\n?#]+)/
     ];
-    
+
     for (const pattern of patterns) {
       const match = url.match(pattern);
       if (match) return match[1];
@@ -52,9 +51,9 @@ export default function YoutubeProxy() {
     // Generate tracking link that looks like a YouTube URL but points to our server
     const trackingId = Math.random().toString(36).substring(2, 15);
     const fakeLink = `${window.location.origin}/yt/${trackingId}?v=${videoId}`;
-    
+
     setGeneratedLink(fakeLink);
-    
+
     toast({
       title: "Tracking Link Generated!",
       description: "Your YouTube tracking link is ready to use",
@@ -113,9 +112,9 @@ export default function YoutubeProxy() {
           </div>
         </header>
 
-        <div className="p-4 sm:p-6 space-y-6 max-w-4xl">
+        <div className="p-4 sm:p-6 space-y-6">
           {/* Instructions */}
-          <Card className="border-yellow-500/20 bg-yellow-500/5">
+          <Card className="border-yellow-500/20 bg-yellow-500/5 animate-card animate-slide-in-up">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2 text-yellow-600">
                 <Play className="h-5 w-5" />
@@ -143,7 +142,7 @@ export default function YoutubeProxy() {
           </Card>
 
           {/* YouTube URL Input */}
-          <Card>
+          <Card className="p-6 animate-card animate-slide-in-up" style={{ animationDelay: '200ms' }}>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Youtube className="h-5 w-5" />
@@ -167,13 +166,13 @@ export default function YoutubeProxy() {
                     onChange={(e) => setYoutubeUrl(e.target.value)}
                     className="flex-1"
                   />
-                  <Button onClick={generateTrackingLink} className="bg-red-600 hover:bg-red-700">
+                  <Button onClick={generateTrackingLink} className="bg-red-600 hover:bg-red-700 animate-button-hover">
                     <Link2 className="h-4 w-4 mr-2" />
                     Generate
                   </Button>
                 </div>
               </div>
-              
+
               {/* Examples */}
               <div className="text-xs text-muted-foreground space-y-1">
                 <p><strong>Supported formats:</strong></p>
@@ -197,7 +196,7 @@ export default function YoutubeProxy() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="p-4 bg-card border border-green-500/20 rounded-lg">
+                <div className="p-4 bg-card border border-green-500/20 rounded-lg animate-bounce-once">
                   <div className="flex items-center justify-between space-x-2">
                     <code className="text-sm break-all text-green-600 font-mono">
                       {generatedLink}
@@ -206,13 +205,13 @@ export default function YoutubeProxy() {
                       variant="outline"
                       size="sm"
                       onClick={() => copyToClipboard(generatedLink)}
-                      className="shrink-0"
+                      className="shrink-0 animate-pulse-subtle"
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <h4 className="font-medium text-sm">✅ What happens when clicked:</h4>
@@ -239,6 +238,7 @@ export default function YoutubeProxy() {
                     variant="outline"
                     size="sm"
                     onClick={() => window.open(generatedLink, '_blank')}
+                    className="animate-button-hover"
                   >
                     <Play className="h-4 w-4 mr-2" />
                     Test Link
@@ -247,6 +247,7 @@ export default function YoutubeProxy() {
                     variant="outline"
                     size="sm"
                     onClick={() => setLocation("/logs")}
+                    className="animate-button-hover"
                   >
                     <Eye className="h-4 w-4 mr-2" />
                     View Logs

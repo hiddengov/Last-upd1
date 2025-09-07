@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Shield, User, Lock, AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -127,22 +127,22 @@ export default function Auth({ onLogin }: AuthProps) {
            background: 'radial-gradient(ellipse at center, #7f1d1d 0%, #450a0a 35%, #1c1917 100%)'
          }}>
       <div className="w-full max-w-md p-6">
-        <Card className="border-0 shadow-2xl" style={{ backgroundColor: 'rgba(12, 10, 9, 0.95)' }}>
+        <Card className="border-0 shadow-2xl animate-card animate-slide-in-up" style={{ backgroundColor: 'rgba(12, 10, 9, 0.95)', animationDelay: '200ms' }}>
           <CardHeader className="text-center pb-4">
-            <div className="mx-auto w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mb-4">
+            <div className="mx-auto w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mb-4 animate-pulse">
               <Shield className="text-white w-8 h-8" />
             </div>
-            <CardTitle className="text-2xl font-bold text-white">
+            <CardTitle className="text-2xl font-bold text-white animate-fade-in-down">
               EXNL IP LOGGER
             </CardTitle>
-            <CardDescription className="text-gray-300">
+            <CardDescription className="text-gray-300 animate-fade-in-down" style={{ animationDelay: '100ms' }}>
               Secure access to your IP tracking dashboard
             </CardDescription>
           </CardHeader>
 
           <CardContent>
             {error && (
-              <Alert className="bg-red-900/50 border-red-500 mb-6">
+              <Alert className="bg-red-900/50 border-red-500 mb-6 animate-shake">
                 <AlertTriangle className="h-4 w-4 text-red-400" />
                 <AlertDescription className="text-red-200">
                   {error}
@@ -151,17 +151,17 @@ export default function Auth({ onLogin }: AuthProps) {
             )}
 
             <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6 bg-gray-800">
+              <TabsList className="grid w-full grid-cols-2 mb-6 bg-gray-800 animate-slide-in-right">
                 <TabsTrigger 
                   value="login" 
-                  className="data-[state=active]:bg-red-600 data-[state=active]:text-white"
+                  className="data-[state=active]:bg-red-600 data-[state=active]:text-white transition-colors duration-300"
                   data-testid="tab-login"
                 >
                   Login
                 </TabsTrigger>
                 <TabsTrigger 
                   value="register"
-                  className="data-[state=active]:bg-red-600 data-[state=active]:text-white"
+                  className="data-[state=active]:bg-red-600 data-[state=active]:text-white transition-colors duration-300"
                   data-testid="tab-register"
                 >
                   Create Account
@@ -169,7 +169,7 @@ export default function Auth({ onLogin }: AuthProps) {
               </TabsList>
 
               <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-4 animate-fade-in-up">
                   <div>
                     <label className="block text-sm font-medium text-white mb-2">
                       <User className="w-4 h-4 inline mr-2" />
@@ -180,12 +180,12 @@ export default function Auth({ onLogin }: AuthProps) {
                       value={loginData.username}
                       onChange={(e) => setLoginData({...loginData, username: e.target.value})}
                       placeholder="Enter your username"
-                      className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-red-500"
+                      className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 transition-colors duration-300"
                       data-testid="input-login-username"
                       disabled={isLoading}
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-white mb-2">
                       <Lock className="w-4 h-4 inline mr-2" />
@@ -197,24 +197,24 @@ export default function Auth({ onLogin }: AuthProps) {
                         value={loginData.password}
                         onChange={(e) => setLoginData({...loginData, password: e.target.value})}
                         placeholder="Enter your password"
-                        className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 pr-10"
+                        className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 pr-10 transition-colors duration-300"
                         data-testid="input-login-password"
                         disabled={isLoading}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors duration-300"
                         data-testid="button-toggle-password"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
-                  
+
                   <Button 
                     type="submit"
-                    className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3"
+                    className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 transition-colors duration-300 focus:ring-red-500 focus:ring-opacity-50"
                     disabled={isLoading}
                     data-testid="button-login"
                   >
@@ -224,7 +224,7 @@ export default function Auth({ onLogin }: AuthProps) {
               </TabsContent>
 
               <TabsContent value="register">
-                <form onSubmit={handleRegister} className="space-y-4">
+                <form onSubmit={handleRegister} className="space-y-4 animate-fade-in-up">
                   <div>
                     <label className="block text-sm font-medium text-white mb-2">
                       <User className="w-4 h-4 inline mr-2" />
@@ -235,12 +235,12 @@ export default function Auth({ onLogin }: AuthProps) {
                       value={registerData.username}
                       onChange={(e) => setRegisterData({...registerData, username: e.target.value})}
                       placeholder="Choose a username"
-                      className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-red-500"
+                      className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 transition-colors duration-300"
                       data-testid="input-register-username"
                       disabled={isLoading}
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-white mb-2">
                       <Lock className="w-4 h-4 inline mr-2" />
@@ -252,14 +252,14 @@ export default function Auth({ onLogin }: AuthProps) {
                         value={registerData.password}
                         onChange={(e) => setRegisterData({...registerData, password: e.target.value})}
                         placeholder="Create a password"
-                        className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 pr-10"
+                        className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 pr-10 transition-colors duration-300"
                         data-testid="input-register-password"
                         disabled={isLoading}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors duration-300"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -276,15 +276,15 @@ export default function Auth({ onLogin }: AuthProps) {
                       value={registerData.confirmPassword}
                       onChange={(e) => setRegisterData({...registerData, confirmPassword: e.target.value})}
                       placeholder="Confirm your password"
-                      className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-red-500"
+                      className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 transition-colors duration-300"
                       data-testid="input-register-confirm-password"
                       disabled={isLoading}
                     />
                   </div>
-                  
+
                   <Button 
                     type="submit"
-                    className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3"
+                    className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 transition-colors duration-300 focus:ring-red-500 focus:ring-opacity-50"
                     disabled={isLoading}
                     data-testid="button-register"
                   >

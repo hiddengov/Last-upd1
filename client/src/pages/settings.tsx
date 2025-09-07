@@ -409,17 +409,17 @@ export default function SettingsPage() {
           variant="ghost"
           size="sm"
           onClick={() => setLocation("/")}
-          className="mr-2"
+          className="mr-2 animate-fade-in"
         >
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back
         </Button>
-        <Settings className="h-8 w-8 text-primary" />
-        <h1 className="text-3xl font-bold">Settings</h1>
+        <Settings className="h-8 w-8 text-primary animate-spin-slow" />
+        <h1 className="text-3xl font-bold animate-fade-in-down">Settings</h1>
       </div>
 
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className={`grid w-full ${user?.isDev ? 'grid-cols-5' : 'grid-cols-3'}`}>
+        <TabsList className={`grid w-full ${user?.isDev ? 'grid-cols-5' : 'grid-cols-3'} animate-fade-in-up`}>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="theme">Theme</TabsTrigger>
           <TabsTrigger value="webhook">Webhook</TabsTrigger>
@@ -428,7 +428,7 @@ export default function SettingsPage() {
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
-          <Card>
+          <Card className="animate-card animate-slide-in-up" style={{ animationDelay: '100ms' }}>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <User className="h-5 w-5" />
@@ -454,7 +454,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="theme" className="space-y-6">
-          <Card>
+          <Card className="animate-card animate-slide-in-up" style={{ animationDelay: '100ms' }}>
             <CardHeader>
               <CardTitle>Theme Settings</CardTitle>
             </CardHeader>
@@ -462,15 +462,15 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <label className="text-sm font-medium">Choose Theme</label>
                 <Select value={currentTheme.id} onValueChange={setTheme}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full animate-fade-in">
                     <SelectValue placeholder="Select a theme" />
                   </SelectTrigger>
                   <SelectContent>
                     {themes.map((theme) => (
-                      <SelectItem key={theme.id} value={theme.id}>
+                      <SelectItem key={theme.id} value={theme.id} className="animate-fade-in">
                         <div className="flex items-center space-x-3">
                           <div
-                            className="w-4 h-4 rounded-full border"
+                            className="w-4 h-4 rounded-full border animate-pulse"
                             style={{ backgroundColor: theme.colors?.primary || '#000' }}
                           ></div>
                           <span>{theme.name}</span>
@@ -479,7 +479,7 @@ export default function SettingsPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-sm text-muted-foreground mt-2">
+                <p className="text-sm text-muted-foreground mt-2 animate-fade-in">
                   Theme changes are saved automatically and persist across sessions
                 </p>
               </div>
@@ -488,7 +488,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="webhook" className="space-y-6">
-          <Card>
+          <Card className="p-6 animate-card animate-slide-in-up" style={{ animationDelay: '100ms' }}>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Webhook className="h-5 w-5" />
@@ -512,10 +512,11 @@ export default function SettingsPage() {
                             placeholder="https://discord.com/api/webhooks/..."
                             {...field}
                             data-testid="input-webhook-url"
+                            className="animate-fade-in"
                           />
                         </FormControl>
                         <FormMessage />
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-sm text-muted-foreground animate-fade-in">
                           <p>How to get your Discord webhook URL:</p>
                           <ol className="list-decimal list-inside mt-2 space-y-1">
                             <li>Go to your Discord server settings</li>
@@ -533,13 +534,14 @@ export default function SettingsPage() {
                       type="submit"
                       disabled={isLoading}
                       data-testid="button-save-webhook"
+                      className="animate-fade-in-up"
                     >
                       {isLoading ? "Saving..." : "Save Webhook URL"}
                     </Button>
 
                     {currentWebhookUrl && (
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <div className="flex items-center space-x-2 animate-fade-in">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
                         <span className="text-sm text-muted-foreground">Webhook configured</span>
                       </div>
                     )}
@@ -549,7 +551,7 @@ export default function SettingsPage() {
 
               {/* Test webhook functionality */}
               {currentWebhookUrl && (
-                <div className="mt-6 p-4 bg-muted/50 border border-border rounded-lg">
+                <div className="mt-6 p-4 bg-muted/50 border border-border rounded-lg animate-fade-in-left">
                   <h4 className="font-medium mb-2">Webhook Features</h4>
                   <div className="text-sm text-muted-foreground space-y-1">
                     <p>• Real-time IP address and location tracking</p>
@@ -566,7 +568,7 @@ export default function SettingsPage() {
 
         {user?.isDev && (
           <TabsContent value="dev-users" className="space-y-6">
-            <Card>
+            <Card className="animate-card animate-slide-in-up" style={{ animationDelay: '100ms' }}>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <UserPlus className="h-5 w-5" />
@@ -584,7 +586,7 @@ export default function SettingsPage() {
                           <FormItem>
                             <FormLabel>Username</FormLabel>
                             <FormControl>
-                              <Input placeholder="Enter username" {...field} />
+                              <Input placeholder="Enter username" {...field} className="animate-fade-in"/>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -597,7 +599,7 @@ export default function SettingsPage() {
                           <FormItem>
                             <FormLabel>Password</FormLabel>
                             <FormControl>
-                              <Input type="password" placeholder="Enter password" {...field} />
+                              <Input type="password" placeholder="Enter password" {...field} className="animate-fade-in"/>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -613,14 +615,14 @@ export default function SettingsPage() {
                             <FormLabel>Account Type</FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
-                                <SelectTrigger>
+                                <SelectTrigger className="animate-fade-in">
                                   <SelectValue placeholder="Select account type" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="user">Regular User</SelectItem>
-                                <SelectItem value="testing">Testing Account</SelectItem>
-                                <SelectItem value="developer">Developer Account</SelectItem>
+                                <SelectItem value="user" className="animate-fade-in">Regular User</SelectItem>
+                                <SelectItem value="testing" className="animate-fade-in">Testing Account</SelectItem>
+                                <SelectItem value="developer" className="animate-fade-in">Developer Account</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -631,7 +633,7 @@ export default function SettingsPage() {
                         control={createUserForm.control}
                         name="isDev"
                         render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm animate-fade-in">
                             <div className="space-y-0.5">
                               <FormLabel className="text-base">Developer Privileges</FormLabel>
                               <div className="text-sm text-muted-foreground">
@@ -648,7 +650,7 @@ export default function SettingsPage() {
                         )}
                       />
                     </div>
-                    <Button type="submit" disabled={isLoading} className="w-full">
+                    <Button type="submit" disabled={isLoading} className="w-full animate-fade-in-up">
                       {isLoading ? "Creating..." : "Create Account"}
                     </Button>
                   </form>
@@ -656,7 +658,7 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="animate-card animate-slide-in-up" style={{ animationDelay: '200ms' }}>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Eye className="h-5 w-5" />
@@ -665,9 +667,9 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent>
                 {isLoadingUsers ? (
-                  <div className="text-center py-4">Loading users...</div>
+                  <div className="text-center py-4 animate-pulse">Loading users...</div>
                 ) : (
-                  <Table>
+                  <Table className="animate-fade-in">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Username</TableHead>
@@ -678,8 +680,8 @@ export default function SettingsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {devUsers.map((devUser: any) => (
-                        <TableRow key={devUser.id}>
+                      {devUsers.map((devUser: any, index) => (
+                        <TableRow key={devUser.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 50}ms` }}>
                           <TableCell className="font-medium">{devUser.username}</TableCell>
                           <TableCell>
                             <Badge variant={devUser.isDev ? "default" : "secondary"}>
@@ -700,17 +702,18 @@ export default function SettingsPage() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleUnbanUser(devUser.id)}
+                                className="animate-fade-in"
                               >
                                 <UserCheck className="h-4 w-4" />
                               </Button>
                             ) : (
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                  <Button size="sm" variant="outline">
+                                  <Button size="sm" variant="outline" className="animate-fade-in">
                                     <Ban className="h-4 w-4" />
                                   </Button>
                                 </AlertDialogTrigger>
-                                <AlertDialogContent>
+                                <AlertDialogContent className="animate-scale-in">
                                   <AlertDialogHeader>
                                     <AlertDialogTitle>Ban User</AlertDialogTitle>
                                     <AlertDialogDescription>
@@ -725,6 +728,7 @@ export default function SettingsPage() {
                                                 <Textarea
                                                   placeholder="Enter reason for ban..."
                                                   {...field}
+                                                  className="animate-fade-in"
                                                 />
                                               </FormControl>
                                               <FormMessage />
@@ -735,7 +739,7 @@ export default function SettingsPage() {
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogCancel className="animate-fade-in">Cancel</AlertDialogCancel>
                                     <AlertDialogAction
                                       onClick={() => {
                                         const reason = banUserForm.getValues().reason;
@@ -743,6 +747,7 @@ export default function SettingsPage() {
                                           handleBanUser(devUser.id, reason);
                                         }
                                       }}
+                                      className="animate-fade-in"
                                     >
                                       Ban User
                                     </AlertDialogAction>
@@ -753,11 +758,11 @@ export default function SettingsPage() {
                             {!devUser.isDev && (
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                  <Button size="sm" variant="destructive">
+                                  <Button size="sm" variant="destructive" className="animate-fade-in">
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </AlertDialogTrigger>
-                                <AlertDialogContent>
+                                <AlertDialogContent className="animate-scale-in">
                                   <AlertDialogHeader>
                                     <AlertDialogTitle>Delete User</AlertDialogTitle>
                                     <AlertDialogDescription>
@@ -765,9 +770,10 @@ export default function SettingsPage() {
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogCancel className="animate-fade-in">Cancel</AlertDialogCancel>
                                     <AlertDialogAction
                                       onClick={() => handleDeleteUser(devUser.id)}
+                                      className="animate-fade-in"
                                     >
                                       Delete
                                     </AlertDialogAction>
@@ -788,7 +794,7 @@ export default function SettingsPage() {
 
         {user?.isDev && (
           <TabsContent value="dev-keys" className="space-y-6">
-            <Card>
+            <Card className="animate-card animate-slide-in-up" style={{ animationDelay: '100ms' }}>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Key className="h-5 w-5" />
@@ -806,7 +812,7 @@ export default function SettingsPage() {
                           <FormItem>
                             <FormLabel>Access Key</FormLabel>
                             <FormControl>
-                              <Input placeholder="Enter access key" {...field} />
+                              <Input placeholder="Enter access key" {...field} className="animate-fade-in"/>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -819,14 +825,14 @@ export default function SettingsPage() {
                           <FormItem>
                             <FormLabel>Usage Limit</FormLabel>
                             <FormControl>
-                              <Input type="number" placeholder="Enter usage limit" {...field} />
+                              <Input type="number" placeholder="Enter usage limit" {...field} className="animate-fade-in"/>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
                     </div>
-                    <Button type="submit" disabled={isLoading} className="w-full">
+                    <Button type="submit" disabled={isLoading} className="w-full animate-fade-in-up">
                       {isLoading ? "Creating..." : "Create Access Key"}
                     </Button>
                   </form>
@@ -834,15 +840,15 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="animate-card animate-slide-in-up" style={{ animationDelay: '200ms' }}>
               <CardHeader>
                 <CardTitle>Your Access Keys</CardTitle>
               </CardHeader>
               <CardContent>
                 {isLoadingKeys ? (
-                  <div className="text-center py-4">Loading keys...</div>
+                  <div className="text-center py-4 animate-pulse">Loading keys...</div>
                 ) : (
-                  <Table>
+                  <Table className="animate-fade-in">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Key</TableHead>
@@ -853,8 +859,8 @@ export default function SettingsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {devKeys.map((key: any) => (
-                        <TableRow key={key.id}>
+                      {devKeys.map((key: any, index) => (
+                        <TableRow key={key.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 50}ms` }}>
                           <TableCell className="font-mono">{key.key}</TableCell>
                           <TableCell>
                             {key.usedCount} / {key.usageLimit}
@@ -870,11 +876,11 @@ export default function SettingsPage() {
                           <TableCell>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button size="sm" variant="destructive">
+                                <Button size="sm" variant="destructive" className="animate-fade-in">
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </AlertDialogTrigger>
-                              <AlertDialogContent>
+                              <AlertDialogContent className="animate-scale-in">
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Delete Access Key</AlertDialogTitle>
                                   <AlertDialogDescription>
@@ -882,9 +888,10 @@ export default function SettingsPage() {
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogCancel className="animate-fade-in">Cancel</AlertDialogCancel>
                                   <AlertDialogAction
                                     onClick={() => handleDeleteKey(key.id)}
+                                    className="animate-fade-in"
                                   >
                                     Delete
                                   </AlertDialogAction>
