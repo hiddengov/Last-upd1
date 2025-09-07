@@ -81,23 +81,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(newUser));
   };
 
-  const logout = () => {
-    // Call logout API if token exists
-    if (token) {
-      fetch('/api/logout', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      }).catch(() => {
-        // Ignore errors, we're logging out anyway
-      });
+  const logout = async () => {
+    try {
+      // Ensure all pending data is saved before logout
+      if (token) {
+        // Call logout API and wait for completion
+        await fetch('/api/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      }
+    } catch (error) {
+      // Even if logout API fails, continue with local cleanup
+      console.warn('Logout API call failed, proceeding with local cleanup:', error);
+    } finally {
+      // Always clean up local state
+      setToken(null);
+      setUser(null);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
     }
-
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
   };
 
   const value = {

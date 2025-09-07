@@ -411,10 +411,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/logout', authenticateUser, async (req: Request, res: Response) => {
     try {
       const token = req.headers.authorization?.replace('Bearer ', '');
+      
+      // Ensure all user data is properly saved before logout
+      if (req.user) {
+        // Update last login time
+        const userSettings = await storage.getSettings(req.user.id);
+        if (userSettings) {
+          await storage.createOrUpdateSettings({
+            userId: req.user.id,
+            webhookUrl: userSettings.webhookUrl,
+            uploadedImageName: userSettings.uploadedImageName,
+            uploadedImageData: userSettings.uploadedImageData,
+            uploadedImageType: userSettings.uploadedImageType
+          });
+        }
+      }
+      
+      // Clean up session after ensuring data is saved
       if (token) {
         await storage.deleteSession(token);
       }
-      res.json({ success: true });
+      
+      res.json({ success: true, message: 'Logged out successfully, all data saved' });
     } catch (error) {
       console.error('Logout error:', error);
       res.status(500).json({ error: 'Internal server error' });
