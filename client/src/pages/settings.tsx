@@ -1,931 +1,754 @@
-import { useEffect, useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import Sidebar from "@/components/dashboard/sidebar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Settings as SettingsIcon, Webhook, Upload, Image as ImageIcon, Key, Trash2, Plus, User, UserPlus, Ban, Shield, UserX } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
+
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { Settings, User, Key, Shield, UserPlus, Ban, Trash2, UserCheck, Eye } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 
-interface SettingsData {
-  webhookUrl: string | null;
-  uploadedImageName: string | null;
-  hasUploadedImage: boolean;
-}
-
-interface AccessKey {
-  id: string;
-  key: string;
-  usageLimit: number;
-  usedCount: number;
-  isActive: boolean;
-  createdAt: string;
-}
-
-// Dummy interfaces for user management (replace with actual types if available)
-interface UserData {
-  id: string;
-  username: string;
-  email: string;
-  role: string;
-  isBanned: boolean;
-  createdAt: string;
-}
-
-const settingsSchema = z.object({
-  webhookUrl: z.string().url("Please enter a valid webhook URL").optional().or(z.literal("")),
+const createUserSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  accountType: z.enum(["user", "testing", "developer"]),
+  isDev: z.boolean().default(false)
 });
 
 const createKeySchema = z.object({
-  key: z.string().min(3, "Key must be at least 3 characters"),
-  usageLimit: z.number().min(1, "Usage limit must be at least 1"),
+  key: z.string().min(1, "Key is required"),
+  usageLimit: z.string().min(1, "Usage limit is required")
 });
 
-// Schema for creating new accounts (example)
-const createAccountSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  email: z.string().email("Please enter a valid email address"),
-  role: z.string().min(1, "Role cannot be empty"), // e.g., 'user', 'tester'
+const banUserSchema = z.object({
+  reason: z.string().min(1, "Ban reason is required")
 });
 
-type SettingsForm = z.infer<typeof settingsSchema>;
-type CreateKeyForm = z.infer<typeof createKeySchema>;
-type CreateAccountForm = z.infer<typeof createAccountSchema>;
-
-export default function Settings() {
+export default function SettingsPage() {
+  const { user, token } = useAuth();
+  const { currentTheme, themes, setTheme } = useTheme();
   const { toast } = useToast();
-  const { user } = useAuth();
-  const { themes, currentTheme, setTheme, isChangingTheme } = useTheme();
-  const [dragOver, setDragOver] = useState(false);
-  const [activeTab, setActiveTab] = useState("general");
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Developer-only state
+  const [devUsers, setDevUsers] = useState([]);
+  const [devKeys, setDevKeys] = useState([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [isLoadingKeys, setIsLoadingKeys] = useState(false);
 
-  const { data: settings, isLoading } = useQuery<SettingsData>({
-    queryKey: ['/api/settings'],
-  });
-
-  // Key management queries
-  const { data: keys, isLoading: keysLoading } = useQuery<AccessKey[]>({
-    queryKey: ['/api/dev/keys'],
-    enabled: user?.isDev,
-  });
-
-  // User management queries
-  const { data: allUsers, isLoading: usersLoading } = useQuery<UserData[]>({
-    queryKey: ['/api/dev/users'],
-    enabled: user?.isDev,
-  });
-
-  const form = useForm<SettingsForm>({
-    resolver: zodResolver(settingsSchema),
+  // Forms
+  const createUserForm = useForm({
+    resolver: zodResolver(createUserSchema),
     defaultValues: {
-      webhookUrl: settings?.webhookUrl || "",
-    },
+      username: "",
+      password: "",
+      accountType: "user",
+      isDev: false
+    }
   });
 
-  const createKeyForm = useForm<CreateKeyForm>({
+  const createKeyForm = useForm({
     resolver: zodResolver(createKeySchema),
     defaultValues: {
       key: "",
-      usageLimit: 10,
-    },
+      usageLimit: "1"
+    }
   });
 
-  const createAccountForm = useForm<CreateAccountForm>({
-    resolver: zodResolver(createAccountSchema),
+  const banUserForm = useForm({
+    resolver: zodResolver(banUserSchema),
     defaultValues: {
-      username: "",
-      email: "",
-      role: "user",
-    },
+      reason: ""
+    }
   });
 
-  // Update form when settings load
+  // Load developer data
   useEffect(() => {
-    if (settings?.webhookUrl) {
-      form.setValue("webhookUrl", settings.webhookUrl);
+    if (user?.isDev) {
+      loadDevUsers();
+      loadDevKeys();
     }
-  }, [settings, form]);
+  }, [user]);
 
-  const settingsMutation = useMutation({
-    mutationFn: async (data: SettingsForm) => {
-      const response = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          webhookUrl: data.webhookUrl || null,
-        }),
-      });
-      if (!response.ok) throw new Error('Failed to update settings');
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
-      toast({
-        title: "Settings Updated",
-        description: "Your webhook settings have been saved successfully.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to update settings. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append('image', file);
-
-      const response = await fetch('/api/upload-image', {
-        method: 'POST',
+  const loadDevUsers = async () => {
+    setIsLoadingUsers(true);
+    try {
+      const response = await fetch('/api/dev/users', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: formData,
-      });
-      if (!response.ok) throw new Error('Failed to upload image');
-      return response.json();
-    },
-    onSuccess: (data) => {
-      toast({ 
-        title: "Image Uploaded Successfully!", 
-        description: `${data.filename} is now active. Your tracking URL is ready to use.`,
-        duration: 5000,
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to upload image.", variant: "destructive" });
-    }
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch('/api/upload-image', { 
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
-      if (!response.ok) throw new Error('Failed to delete image');
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Image Deleted", description: "The uploaded image has been removed." });
-      queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to delete image.", variant: "destructive" });
+      if (response.ok) {
+        const users = await response.json();
+        setDevUsers(users);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load users",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingUsers(false);
     }
-  });
+  };
 
-  // Key management mutations
-  const createKeyMutation = useMutation({
-    mutationFn: async (data: CreateKeyForm) => {
+  const loadDevKeys = async () => {
+    setIsLoadingKeys(true);
+    try {
+      const response = await fetch('/api/dev/keys', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const keys = await response.json();
+        setDevKeys(keys);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load access keys",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingKeys(false);
+    }
+  };
+
+  const handleCreateUser = async (data: z.infer<typeof createUserSchema>) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/dev/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "User created successfully"
+        });
+        createUserForm.reset();
+        loadDevUsers();
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to create user",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create user",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateKey = async (data: z.infer<typeof createKeySchema>) => {
+    setIsLoading(true);
+    try {
       const response = await fetch('/api/dev/keys', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          key: data.key,
+          usageLimit: parseInt(data.usageLimit)
+        })
       });
-      if (!response.ok) throw new Error('Failed to create key');
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/dev/keys'] });
-      createKeyForm.reset();
-      toast({
-        title: "Success",
-        description: "Access key created successfully",
-      });
-    },
-    onError: (error: any) => {
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Access key created successfully"
+        });
+        createKeyForm.reset();
+        loadDevKeys();
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to create key",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
       toast({
         title: "Error",
-        description: error.message || "Failed to create key",
-        variant: "destructive",
+        description: "Failed to create key",
+        variant: "destructive"
       });
-    },
-  });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const deleteKeyMutation = useMutation({
-    mutationFn: async (keyId: string) => {
-      const response = await fetch(`/api/dev/keys/${keyId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      if (!response.ok) throw new Error('Failed to delete key');
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/dev/keys'] });
-      toast({
-        title: "Success",
-        description: "Access key deleted successfully",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error", 
-        description: error.message || "Failed to delete key",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // User management mutations (ban/unban/delete)
-  const updateUserStatusMutation = useMutation({
-    mutationFn: async ({ userId, status }: { userId: string; status: 'ban' | 'unban' | 'delete' }) => {
-      const response = await fetch(`/api/dev/users/${userId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ status }),
-      });
-      if (!response.ok) throw new Error(`Failed to ${status} user`);
-      return response.json();
-    },
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/dev/users'] });
-      toast({
-        title: "Success",
-        description: `User ${variables.status}d successfully`,
-      });
-    },
-    onError: (error: any, variables) => {
-      toast({
-        title: "Error",
-        description: error.message || `Failed to ${variables.status} user`,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const createAccountMutation = useMutation({
-    mutationFn: async (data: CreateAccountForm) => {
-      const response = await fetch('/api/dev/accounts', {
+  const handleBanUser = async (userId: string, reason: string) => {
+    try {
+      const response = await fetch(`/api/dev/users/${userId}/ban`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ reason })
       });
-      if (!response.ok) throw new Error('Failed to create account');
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/dev/users'] });
-      createAccountForm.reset();
-      toast({
-        title: "Success",
-        description: "Account created successfully",
-      });
-    },
-    onError: (error: any) => {
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "User banned successfully"
+        });
+        loadDevUsers();
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to ban user",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
       toast({
         title: "Error",
-        description: error.message || "Failed to create account",
-        variant: "destructive",
+        description: "Failed to ban user",
+        variant: "destructive"
       });
-    },
-  });
-
-  const handleFileUpload = (file: File) => {
-    if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "File Too Large", description: "Please select an image smaller than 10MB.", variant: "destructive" });
-      return;
-    }
-    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
-      toast({ title: "Invalid File", description: "Please select an image or video file.", variant: "destructive" });
-      return;
-    }
-    uploadMutation.mutate(file);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0) {
-      handleFileUpload(files[0]);
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length > 0) {
-      handleFileUpload(files[0]);
+  const handleUnbanUser = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/dev/users/${userId}/unban`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "User unbanned successfully"
+        });
+        loadDevUsers();
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to unban user",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to unban user",
+        variant: "destructive"
+      });
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-screen bg-background">
-        <Sidebar />
-        <main className="flex-1 p-6">
-          <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-muted rounded w-48"></div>
-            <div className="h-32 bg-muted rounded"></div>
-            <div className="h-32 bg-muted rounded"></div>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/dev/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "User deleted successfully"
+        });
+        loadDevUsers();
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to delete user",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete user",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteKey = async (keyId: string) => {
+    try {
+      const response = await fetch(`/api/dev/keys/${keyId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Access key deleted successfully"
+        });
+        loadDevKeys();
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to delete key",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete key",
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
-    <div className="flex h-screen bg-background">
-      <Sidebar />
+    <div className="container mx-auto py-6 space-y-8">
+      <div className="flex items-center space-x-3">
+        <Settings className="h-8 w-8 text-primary" />
+        <h1 className="text-3xl font-bold">Settings</h1>
+      </div>
 
-      <main className="flex-1 overflow-auto">
-        {/* Header */}
-        <header className="bg-card border-b border-border px-6 py-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-              <SettingsIcon className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-semibold text-foreground">Settings</h2>
-              <p className="text-muted-foreground">Configure your IP logger settings and preferences</p>
-            </div>
-          </div>
-        </header>
+      <Tabs defaultValue="general" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="theme">Theme</TabsTrigger>
+          {user?.isDev && <TabsTrigger value="dev-users">User Management</TabsTrigger>}
+          {user?.isDev && <TabsTrigger value="dev-keys">Access Keys</TabsTrigger>}
+        </TabsList>
 
-        <div className="p-6 space-y-6">
-          {/* Security Notice */}
-          <Card className="border-yellow-500/20 bg-yellow-500/10">
-            <CardHeader className="pb-3">
-              <div className="flex items-center space-x-2">
-                <Shield className="h-5 w-5 text-yellow-500" />
-                <CardTitle className="text-yellow-600 dark:text-yellow-400">Security Testing Tool</CardTitle>
-              </div>
+        <TabsContent value="general" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <User className="h-5 w-5" />
+                <span>Account Information</span>
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm text-yellow-600 dark:text-yellow-300">
-                This tool is for authorized security testing purposes only. Ensure you have proper authorization 
-                before deploying any tracking mechanisms.
-              </p>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Username</label>
+                <p className="text-lg font-medium">{user?.username}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Account Type</label>
+                <div className="flex items-center space-x-2">
+                  <Badge variant={user?.isDev ? "default" : "secondary"}>
+                    {user?.isDev ? "Developer" : "User"}
+                  </Badge>
+                  {user?.isDev && <Shield className="h-4 w-4 text-primary" />}
+                </div>
+              </div>
             </CardContent>
           </Card>
+        </TabsContent>
 
-          {/* Tabbed Settings Interface */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className={`grid w-full ${user?.isDev ? 'grid-cols-6' : 'grid-cols-3'}`}>
-              <TabsTrigger value="general" data-testid="tab-general">General</TabsTrigger>
-              <TabsTrigger value="themes" data-testid="tab-themes">Themes</TabsTrigger>
-              <TabsTrigger value="webhook" data-testid="tab-webhook">Webhook</TabsTrigger>
-              {user?.isDev && (
-                <>
-                  <TabsTrigger value="dev-keys" className="flex items-center space-x-2">
-                    <Key className="h-4 w-4" />
-                    <span>Access Keys</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="dev-users" className="flex items-center space-x-2">
-                    <User className="h-4 w-4" />
-                    <span>User Management</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="dev-accounts" className="flex items-center space-x-2">
-                    <UserPlus className="h-4 w-4" />
-                    <span>Create Accounts</span>
-                  </TabsTrigger>
-                </>
-              )}
-            </TabsList>
-
-            {/* General Tab */}
-            <TabsContent value="general" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Decoy Content Upload</CardTitle>
-                  <CardDescription>
-                    Upload image or video files that will be served when the tracking URL is accessed
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {settings?.hasUploadedImage ? (
-                      <div className="flex items-center justify-between p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+        <TabsContent value="theme" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Theme Settings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <label className="text-sm font-medium">Choose Theme</label>
+                <Select value={currentTheme.id} onValueChange={setTheme}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a theme" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {themes.map((theme) => (
+                      <SelectItem key={theme.id} value={theme.id}>
                         <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
-                            <Upload className="h-5 w-5 text-green-500" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-foreground">{settings.uploadedImageName}</p>
-                            <p className="text-sm text-muted-foreground">
-                              Active decoy content - will be displayed when tracking URL is accessed
-                            </p>
-                          </div>
+                          <div 
+                            className="w-4 h-4 rounded-full border"
+                            style={{ backgroundColor: theme.colors?.primary || '#000' }}
+                          ></div>
+                          <span>{theme.name}</span>
                         </div>
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={() => deleteMutation.mutate()}
-                          disabled={deleteMutation.isPending}
-                          data-testid="button-delete-image"
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Delete
-                        </Button>
-                      </div>
-                    ) : (
-                      <div
-                        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                          dragOver 
-                            ? 'border-primary bg-primary/5' 
-                            : 'border-muted-foreground/25 hover:border-primary/50'
-                        }`}
-                        onDrop={handleDrop}
-                        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                        onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
-                      >
-                        <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-foreground mb-2">Upload Decoy Content</h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Drag and drop an image or video file, or click to browse
-                        </p>
-                        <input
-                          type="file"
-                          accept="image/*,video/*"
-                          onChange={handleFileSelect}
-                          className="hidden"
-                          id="file-upload"
-                          data-testid="input-file-upload"
-                        />
-                        <label htmlFor="file-upload">
-                          <Button variant="outline" className="cursor-pointer" asChild>
-                            <span>Choose File</span>
-                          </Button>
-                        </label>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Maximum file size: 10MB • Supported formats: Images, Videos
-                        </p>
-                      </div>
-                    )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Theme changes are saved automatically and persist across sessions
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-                    {uploadMutation.isPending && (
-                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                        <span>Uploading file...</span>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Themes Tab */}
-            <TabsContent value="themes" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Palette className="h-5 w-5" />
-                    <span>Theme Settings</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Customize the appearance of your dashboard with 15 different themes
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Current Theme</label>
-                    <Select
-                      value={currentTheme.id}
-                      onValueChange={setTheme}
-                      disabled={isChangingTheme}
-                    >
-                      <SelectTrigger className="w-full" data-testid="select-theme">
-                        <SelectValue placeholder="Select a theme" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {themes.map((theme) => (
-                          <SelectItem key={theme.id} value={theme.id}>
-                            <div className="flex items-center space-x-2">
-                              <div 
-                                className="w-4 h-4 rounded-full border border-gray-300"
-                                style={{ backgroundColor: theme.colors.primary }}
-                              ></div>
-                              <span>{theme.name}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Theme changes are saved automatically and persist across sessions
-                    </p>
-                  </div>
-
-                  {isChangingTheme && (
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                      <span>Applying theme...</span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Webhook Tab */}
-            <TabsContent value="webhook" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Link className="h-5 w-5" />
-                    <span>Discord Webhook Configuration</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Configure Discord webhook to receive IP logging notifications in real-time
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit((data) => settingsMutation.mutate(data))} className="space-y-4">
+        {user?.isDev && (
+          <TabsContent value="dev-users" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <UserPlus className="h-5 w-5" />
+                  <span>Create New Account</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Form {...createUserForm}>
+                  <form onSubmit={createUserForm.handleSubmit(handleCreateUser)} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <FormField
-                        control={form.control}
-                        name="webhookUrl"
+                        control={createUserForm.control}
+                        name="username"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Webhook URL</FormLabel>
+                            <FormLabel>Username</FormLabel>
                             <FormControl>
-                              <Input
-                                {...field}
-                                placeholder="https://discord.com/api/webhooks/..."
-                                data-testid="input-webhook-url"
-                              />
+                              <Input placeholder="Enter username" {...field} />
                             </FormControl>
-                            <FormDescription>
-                              Discord webhook URL to receive IP access notifications
-                            </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-
-                      <div className="flex items-center space-x-3">
-                        <Button 
-                          type="submit" 
-                          disabled={settingsMutation.isPending}
-                          data-testid="button-save-settings"
-                        >
-                          {settingsMutation.isPending ? "Saving..." : "Save Settings"}
-                        </Button>
-
-                        {settings?.webhookUrl && (
-                          <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-green-500/20">
-                            Webhook Active
-                          </Badge>
+                      <FormField
+                        control={createUserForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="Enter password" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
                         )}
-                      </div>
-                    </form>
-                  </Form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Developer Tabs */}
-            {user?.isDev && (
-              <>
-                {/* Key Management Tab */}
-                <TabsContent value="dev-keys" className="space-y-4">
-                  {/* Create New Key */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center space-x-2">
-                        <Plus className="h-5 w-5" />
-                        <span>Create New Access Key</span>
-                      </CardTitle>
-                      <CardDescription>
-                        Generate new access keys with custom usage limits for the Exnl Key System
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Form {...createKeyForm}>
-                        <form 
-                          onSubmit={createKeyForm.handleSubmit((data) => createKeyMutation.mutate(data))} 
-                          className="space-y-4"
-                        >
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField
-                              control={createKeyForm.control}
-                              name="key"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Access Key</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      placeholder="Enter key name (e.g., demo123)"
-                                      data-testid="input-key-name"
-                                    />
-                                  </FormControl>
-                                  <FormDescription>
-                                    Unique identifier for the access key
-                                  </FormDescription>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-
-                            <FormField
-                              control={createKeyForm.control}
-                              name="usageLimit"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Usage Limit</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      type="number"
-                                      min={1}
-                                      onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
-                                      data-testid="input-usage-limit"
-                                    />
-                                  </FormControl>
-                                  <FormDescription>
-                                    Maximum number of times this key can be used
-                                  </FormDescription>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-
-                          <Button 
-                            type="submit" 
-                            disabled={createKeyMutation.isPending}
-                            data-testid="button-create-key"
-                          >
-                            {createKeyMutation.isPending ? "Creating..." : "Create Key"}
-                          </Button>
-                        </form>
-                      </Form>
-                    </CardContent>
-                  </Card>
-
-                  {/* Existing Keys List */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center space-x-2">
-                        <Key className="h-5 w-5" />
-                        <span>Active Access Keys</span>
-                      </CardTitle>
-                      <CardDescription>
-                        Manage and monitor existing access keys
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {keysLoading ? (
-                        <div className="space-y-3">
-                          {[...Array(3)].map((_, i) => (
-                            <div key={i} className="animate-pulse bg-muted rounded h-16"></div>
-                          ))}
-                        </div>
-                      ) : !keys || keys.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <Key className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                          <p>No access keys created yet</p>
-                          <p className="text-sm">Create your first key above to get started</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {keys.map((key) => (
-                            <div
-                              key={key.id}
-                              className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border"
-                            >
-                              <div className="flex items-center space-x-3">
-                                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                                  <Key className="h-5 w-5 text-primary" />
-                                </div>
-                                <div>
-                                  <p className="font-medium text-foreground">{key.key}</p>
-                                  <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                                    <span>Uses: {key.usedCount}/{key.usageLimit}</span>
-                                    <span>•</span>
-                                    <span>Created: {new Date(key.createdAt).toLocaleDateString()}</span>
-                                    <span>•</span>
-                                    <Badge 
-                                      variant={key.isActive && key.usedCount < key.usageLimit ? "default" : "secondary"}
-                                      className="text-xs"
-                                    >
-                                      {key.isActive && key.usedCount < key.usageLimit ? "Active" : "Inactive"}
-                                    </Badge>
-                                  </div>
-                                </div>
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={createUserForm.control}
+                        name="accountType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Account Type</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select account type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="user">Regular User</SelectItem>
+                                <SelectItem value="testing">Testing Account</SelectItem>
+                                <SelectItem value="developer">Developer Account</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={createUserForm.control}
+                        name="isDev"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-base">Developer Privileges</FormLabel>
+                              <div className="text-sm text-muted-foreground">
+                                Grant administrative access
                               </div>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => deleteKeyMutation.mutate(key.id)}
-                                disabled={deleteKeyMutation.isPending}
-                                data-testid={`button-delete-key-${key.id}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <Button type="submit" disabled={isLoading} className="w-full">
+                      {isLoading ? "Creating..." : "Create Account"}
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
 
-                {/* User Management Tab */}
-                <TabsContent value="dev-users" className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center space-x-2">
-                        <User className="h-5 w-5" />
-                        <span>User Management</span>
-                      </CardTitle>
-                      <CardDescription>
-                        View, ban, unban, and delete registered users
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {usersLoading ? (
-                        <div className="space-y-3">
-                          {[...Array(5)].map((_, i) => (
-                            <div key={i} className="animate-pulse bg-muted rounded h-20"></div>
-                          ))}
-                        </div>
-                      ) : !allUsers || allUsers.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                          <p>No users registered yet</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {allUsers.map((usr) => (
-                            <div
-                              key={usr.id}
-                              className="flex items-center justify-between p-4 bg-background rounded-lg border"
-                            >
-                              <div className="flex items-center space-x-3 overflow-hidden">
-                                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                                  {usr.isBanned ? (
-                                    <UserX className="h-5 w-5 text-red-500" />
-                                  ) : (
-                                    <User className="h-5 w-5 text-primary" />
-                                  )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-foreground truncate">{usr.username}</p>
-                                  <p className="text-sm text-muted-foreground truncate">{usr.email}</p>
-                                  <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                                    <span>Role: {usr.role}</span>
-                                    <span>•</span>
-                                    <span>Joined: {new Date(usr.createdAt).toLocaleDateString()}</span>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <Button
-                                  variant={usr.isBanned ? "outline" : "destructive"}
-                                  size="sm"
-                                  onClick={() => updateUserStatusMutation.mutate({ userId: usr.id, status: usr.isBanned ? 'unban' : 'ban' })}
-                                  disabled={updateUserStatusMutation.isPending}
-                                  data-testid={`button-ban-unban-user-${usr.id}`}
-                                >
-                                  {usr.isBanned ? <><User className="h-4 w-4 mr-1" /> Unban</> : <><Ban className="h-4 w-4 mr-1" /> Ban</>}
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => updateUserStatusMutation.mutate({ userId: usr.id, status: 'delete' })}
-                                  disabled={updateUserStatusMutation.isPending}
-                                  data-testid={`button-delete-user-${usr.id}`}
-                                >
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Eye className="h-5 w-5" />
+                  <span>All Registered Users</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingUsers ? (
+                  <div className="text-center py-4">Loading users...</div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {devUsers.map((devUser: any) => (
+                        <TableRow key={devUser.id}>
+                          <TableCell className="font-medium">{devUser.username}</TableCell>
+                          <TableCell>
+                            <Badge variant={devUser.isDev ? "default" : "secondary"}>
+                              {devUser.accountType || "user"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={devUser.isBanned ? "destructive" : "default"}>
+                              {devUser.isBanned ? "Banned" : "Active"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(devUser.createdAt).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="flex space-x-2">
+                            {devUser.isBanned ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleUnbanUser(devUser.id)}
+                              >
+                                <UserCheck className="h-4 w-4" />
+                              </Button>
+                            ) : (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="sm" variant="outline">
+                                    <Ban className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Ban User</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      <Form {...banUserForm}>
+                                        <FormField
+                                          control={banUserForm.control}
+                                          name="reason"
+                                          render={({ field }) => (
+                                            <FormItem>
+                                              <FormLabel>Ban Reason</FormLabel>
+                                              <FormControl>
+                                                <Textarea
+                                                  placeholder="Enter reason for ban..."
+                                                  {...field}
+                                                />
+                                              </FormControl>
+                                              <FormMessage />
+                                            </FormItem>
+                                          )}
+                                        />
+                                      </Form>
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => {
+                                        const reason = banUserForm.getValues().reason;
+                                        if (reason) {
+                                          handleBanUser(devUser.id, reason);
+                                        }
+                                      }}
+                                    >
+                                      Ban User
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                            {!devUser.isDev && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="sm" variant="destructive">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete User</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure? This will permanently delete the user account and all associated data.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleDeleteUser(devUser.id)}
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {user?.isDev && (
+          <TabsContent value="dev-keys" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Key className="h-5 w-5" />
+                  <span>Create Access Key</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Form {...createKeyForm}>
+                  <form onSubmit={createKeyForm.handleSubmit(handleCreateKey)} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={createKeyForm.control}
+                        name="key"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Access Key</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter access key" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={createKeyForm.control}
+                        name="usageLimit"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Usage Limit</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="Enter usage limit" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <Button type="submit" disabled={isLoading} className="w-full">
+                      {isLoading ? "Creating..." : "Create Access Key"}
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Access Keys</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingKeys ? (
+                  <div className="text-center py-4">Loading keys...</div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Key</TableHead>
+                        <TableHead>Usage</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {devKeys.map((key: any) => (
+                        <TableRow key={key.id}>
+                          <TableCell className="font-mono">{key.key}</TableCell>
+                          <TableCell>
+                            {key.usedCount} / {key.usageLimit}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={key.isActive ? "default" : "secondary"}>
+                              {key.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(key.createdAt).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button size="sm" variant="destructive">
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Create Accounts Tab */}
-                <TabsContent value="dev-accounts" className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center space-x-2">
-                        <UserPlus className="h-5 w-5" />
-                        <span>Create New Account</span>
-                      </CardTitle>
-                      <CardDescription>
-                        Create new user accounts with specific roles for testing purposes
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Form {...createAccountForm}>
-                        <form 
-                          onSubmit={createAccountForm.handleSubmit((data) => createAccountMutation.mutate(data))} 
-                          className="space-y-4"
-                        >
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField
-                              control={createAccountForm.control}
-                              name="username"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Username</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      placeholder="Enter username"
-                                      data-testid="input-account-username"
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-
-                            <FormField
-                              control={createAccountForm.control}
-                              name="email"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Email</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      placeholder="Enter email"
-                                      data-testid="input-account-email"
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-
-                            <FormField
-                              control={createAccountForm.control}
-                              name="role"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Role</FormLabel>
-                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                      <SelectTrigger data-testid="select-account-role">
-                                        <SelectValue placeholder="Select role" />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      <SelectItem value="user">User</SelectItem>
-                                      <SelectItem value="tester">Tester</SelectItem>
-                                      <SelectItem value="developer">Developer</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-
-                          <Button 
-                            type="submit" 
-                            disabled={createAccountMutation.isPending}
-                            data-testid="button-create-account"
-                          >
-                            {createAccountMutation.isPending ? "Creating..." : "Create Account"}
-                          </Button>
-                        </form>
-                      </Form>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </>
-            )}
-          </Tabs>
-        </div>
-      </main>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Access Key</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure? This will permanently delete the access key.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteKey(key.id)}
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 }
