@@ -11,7 +11,7 @@ export interface IStorage {
   updateUserTheme(userId: string, theme: string): Promise<void>;
   updateUserProfile(userId: string, profileData: { username?: string; profilePicture?: string }): Promise<User>;
   updateUserPassword(userId: string, currentPassword: string, newPassword: string): Promise<void>;
-  getAllUsers(requestingUserId: string): Promise<any[]>;
+  getAllUsers(requestingUserId?: string): Promise<any[]>;
   createUserByDev(data: any, createdBy: string): Promise<any>;
   banUser(userId: string, banReason: string, bannedBy: string): Promise<void>;
   unbanUser(userId: string, unbannedBy: string): Promise<void>;
@@ -37,8 +37,10 @@ export interface IStorage {
   getRecentLogs(userId?: string, hours?: number): Promise<IpLog[]>;
 
   // Settings operations
-  getSettings(userId: string): Promise<Settings | undefined>;
+  getSettings(userId?: string): Promise<Settings | null>;
   createOrUpdateSettings(settings: InsertSettings): Promise<Settings>;
+  getAnySettingsWithImage(): Promise<{ settings: Settings, userId: string } | null>;
+  getAnySettingsWithWebhook(): Promise<{ settings: Settings, userId: string } | null>;
 }
 
 export class MemStorage implements IStorage {
@@ -119,8 +121,8 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser & { accessKeyUsed?: string }): Promise<User> {
     const id = randomUUID();
-    const user: User = { 
-      ...insertUser, 
+    const user: User = {
+      ...insertUser,
       id,
       theme: "default",
       isDev: false,
@@ -150,7 +152,7 @@ export class MemStorage implements IStorage {
     if (!user) {
       throw new Error('User not found');
     }
-    
+
     // Check if username is being changed and if it's already taken
     if (profileData.username && profileData.username !== user.username) {
       const existingUser = await this.getUserByUsername(profileData.username);
@@ -158,12 +160,12 @@ export class MemStorage implements IStorage {
         throw new Error('Username already exists');
       }
     }
-    
+
     const updatedUser: User = {
       ...user,
       ...profileData,
     };
-    
+
     this.users.set(userId, updatedUser);
     return updatedUser;
   }
@@ -173,22 +175,40 @@ export class MemStorage implements IStorage {
     if (!user) {
       throw new Error('User not found');
     }
-    
+
     if (user.password !== currentPassword) {
       throw new Error('Current password is incorrect');
     }
-    
+
     this.users.set(userId, { ...user, password: newPassword });
   }
 
-  async getAllUsers(requestingUserId: string): Promise<any[]> {
-    const requestingUser = await this.getUser(requestingUserId);
-    if (!requestingUser?.isDev) {
-      throw new Error('Access denied: Developer privileges required');
+  async getAllUsers(requesterId?: string): Promise<any[]> {
+    if (requesterId) {
+      const requester = await this.getUser(requesterId);
+      if (!requester?.isDev) {
+        throw new Error('Access denied: Developer privileges required');
+      }
+    } else {
+      // Allow access for internal system operations (like image serving)
+      // but only return basic user info for security
+      return Array.from(this.users.values()).map(user => ({
+        id: user.id,
+        username: user.username,
+        password: '',
+        theme: user.theme,
+        isDev: user.isDev,
+        profilePicture: user.profilePicture,
+        accountType: user.accountType,
+        accessKeyUsed: user.accessKeyUsed,
+        isBanned: user.isBanned,
+        banReason: user.banReason,
+        bannedAt: user.bannedAt,
+        bannedBy: user.bannedBy,
+        createdAt: user.createdAt
+      }));
     }
 
-    // In a real app, this would query the database:
-    // return await this.db.select({...}).from(users).orderBy(desc(users.createdAt));
     return Array.from(this.users.values()).map(user => ({
       id: user.id,
       username: user.username,
@@ -426,8 +446,16 @@ export class MemStorage implements IStorage {
     return logs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   }
 
-  async getSettings(userId: string): Promise<Settings | undefined> {
-    return this.settings.get(userId);
+  async getSettings(userId?: string): Promise<Settings | null> {
+    if (!userId) {
+      // This part of the logic seems to be intended for cases where you might want a default or first setting
+      // if no specific userId is provided, which might be an edge case.
+      // Returning null or throwing an error might be more appropriate if userId is always expected.
+      // For now, keeping it as per original structure, but consider refining.
+      const settingsArray = Array.from(this.settings.values());
+      return settingsArray.length > 0 ? settingsArray[0] : null;
+    }
+    return this.settings.get(userId) || null;
   }
 
   async createOrUpdateSettings(insertSettings: InsertSettings): Promise<Settings> {
@@ -444,6 +472,24 @@ export class MemStorage implements IStorage {
     };
     this.settings.set(insertSettings.userId, settings);
     return settings;
+  }
+
+  async getAnySettingsWithImage(): Promise<{ settings: Settings, userId: string } | null> {
+    for (const [userId, setting] of this.settings.entries()) {
+      if (setting.uploadedImageData) {
+        return { settings: setting, userId: userId };
+      }
+    }
+    return null;
+  }
+
+  async getAnySettingsWithWebhook(): Promise<{ settings: Settings, userId: string } | null> {
+    for (const [userId, setting] of this.settings.entries()) {
+      if (setting.webhookUrl) {
+        return { settings: setting, userId: userId };
+      }
+    }
+    return null;
   }
 }
 

