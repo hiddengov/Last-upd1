@@ -12,6 +12,7 @@ export const users = pgTable("users", {
   accountType: text("account_type").default("user"), // 'user', 'tester', 'developer', 'admin'
   isBanned: boolean("is_banned").default(false),
   accessKeyUsed: text("access_key_used"), // Track which key the user used for access
+  profilePicture: text("profile_picture"), // Base64 encoded profile picture
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   lastLoginAt: timestamp("last_login_at"),
   bannedAt: timestamp("banned_at"),
@@ -78,6 +79,21 @@ export const createUserSchema = createInsertSchema(users).pick({
   isDev: true,
 });
 
+export const updateProfileSchema = createInsertSchema(users).pick({
+  username: true,
+  profilePicture: true,
+});
+
+export const updatePasswordSchema = createInsertSchema(users).pick({
+  password: true,
+}).extend({
+  currentPassword: z.string().min(1, "Current password is required"),
+  confirmPassword: z.string().min(1, "Confirm password is required"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
 export const insertAccessKeySchema = createInsertSchema(accessKeys).omit({
   id: true,
   createdAt: true,
@@ -102,6 +118,8 @@ export const insertSettingsSchema = createInsertSchema(settings).omit({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+export type UpdateProfile = z.infer<typeof updateProfileSchema>;
+export type UpdatePassword = z.infer<typeof updatePasswordSchema>;
 export type InsertAccessKey = z.infer<typeof insertAccessKeySchema>;
 export type AccessKey = typeof accessKeys.$inferSelect;
 export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
