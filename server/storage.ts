@@ -2,6 +2,8 @@ import { type User, type InsertUser, type IpLog, type InsertIpLog, type Settings
 import { randomUUID } from "crypto";
 import { desc, eq } from "drizzle-orm";
 import { users, ipLogs, settings, accessKeys, userSessions } from "@shared/schema/schema"; // Assuming your schema is in @shared/schema/schema
+import fs from 'fs/promises'; // Use fs.promises for async operations
+import path from 'path'; // Import path module
 
 export interface IStorage {
   // User operations
@@ -52,11 +54,19 @@ export class MemStorage implements IStorage {
   private sessions: Map<string, UserSession>;
 
   // File-based persistence for critical data
-  private dataFilePath = './data-backup.json';
+  private dataFilePath = path.join(__dirname, 'data-backup.json');
+  private dataFilePath2 = path.join(__dirname, 'data-backup-secondary.json');
+  private dataFilePath3 = path.join(__dirname, 'data-backup-tertiary.json');
+  private tempFilePath = path.join(__dirname, 'data-backup.tmp');
+
 
   // Dummy database interaction placeholders
   private db: any; // Replace with your actual database client (e.g., drizzle-orm client)
 
+  // Auto-save interval
+  private autoSaveInterval: NodeJS.Timeout | null = null;
+
+  // Save data on process exit to prevent data loss
   constructor() {
     this.users = new Map();
     this.ipLogs = new Map();
@@ -65,39 +75,87 @@ export class MemStorage implements IStorage {
     this.sessions = new Map();
 
     // Load persisted data first
-    this.loadPersistedData();
+    this.loadFromFileSystem();
 
     // Initialize with a developer account for testing purposes
     this.initializeDevAccount();
 
-    // Auto-save data every 30 seconds
-    setInterval(() => this.saveDataToDisk(), 30000);
+    // Auto-save every 10 seconds for better data persistence
+    this.autoSaveInterval = setInterval(() => this.saveToFileSystem().catch(console.error), 10000);
+
+    // Handle graceful shutdown
+    process.on('SIGINT', () => {
+      console.log('🔄 Saving data before shutdown...');
+      this.saveToFileSystem().then(() => {
+        console.log('✅ Data saved successfully. Exiting...');
+        process.exit(0);
+      }).catch((error) => {
+        console.error('❌ Error saving data on exit:', error);
+        process.exit(1);
+      });
+    });
+
+    process.on('SIGTERM', () => {
+      console.log('🔄 Saving data before termination...');
+      this.saveToFileSystem().then(() => {
+        console.log('✅ Data saved successfully. Terminating...');
+        process.exit(0);
+      }).catch((error) => {
+        console.error('❌ Error saving data on termination:', error);
+        process.exit(1);
+      });
+    });
+
+    process.on('beforeExit', () => {
+      this.saveToFileSystem().catch(console.error);
+    });
   }
 
-  private async saveDataToDisk(): Promise<void> {
+  // Save to file system with enhanced error handling and persistence
+  private async saveToFileSystem(): Promise<void> {
     try {
-      const fs = await import('fs');
-      const data = {
+      const backupData = {
         users: Array.from(this.users.entries()),
+        sessions: Array.from(this.sessions.entries()),
         ipLogs: Array.from(this.ipLogs.entries()),
         settings: Array.from(this.settings.entries()),
         accessKeys: Array.from(this.accessKeys.entries()),
-        sessions: Array.from(this.sessions.entries()),
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        version: '2.0'
       };
 
-      fs.writeFileSync(this.dataFilePath, JSON.stringify(data, null, 2));
+      // Create multiple backup files for extra safety
+      const tempFile = this.tempFilePath;
+      const backupFile = this.dataFilePath;
+      const backupFile2 = this.dataFilePath2;
+      const backupFile3 = this.dataFilePath3;
+
+
+      // Write to temporary file first, then rename (atomic operation)
+      await fs.writeFile(tempFile, JSON.stringify(backupData, null, 2), 'utf8');
+      await fs.rename(tempFile, backupFile);
+
+      // Create multiple backup copies for extra safety
+      await fs.writeFile(backupFile2, JSON.stringify(backupData, null, 2), 'utf8');
+      await fs.writeFile(backupFile3, JSON.stringify(backupData, null, 2), 'utf8');
+
+      // Force file system sync to ensure data is written to disk
+      const fileHandle = await fs.open(backupFile, 'r');
+      await fileHandle.sync();
+      await fileHandle.close();
+
+      console.log(`💾 Data successfully saved to disk with ${backupData.ipLogs.length} IP logs, ${backupData.users.length} users, ${backupData.settings.length} settings - PERMANENT STORAGE CONFIRMED`);
     } catch (error) {
-      console.error('Failed to save data to disk:', error);
+      console.error('❌ Failed to save data to filesystem:', error);
+      throw error;
     }
   }
 
-  private async loadPersistedData(): Promise<void> {
+  private async loadFromFileSystem(): Promise<void> {
     try {
-      const fs = await import('fs');
-      if (fs.existsSync(this.dataFilePath)) {
-        const data = JSON.parse(fs.readFileSync(this.dataFilePath, 'utf8'));
-        
+      if (await fs.access(this.dataFilePath).then(() => true).catch(() => false)) {
+        const data = JSON.parse(await fs.readFile(this.dataFilePath, 'utf8'));
+
         // Restore data structures
         this.users = new Map(data.users || []);
         this.ipLogs = new Map(data.ipLogs || []);
@@ -107,7 +165,7 @@ export class MemStorage implements IStorage {
 
         // Convert date strings back to Date objects
         this.ipLogs.forEach((log, key) => {
-          log.timestamp = new Date(log.timestamp);
+          if (log.timestamp) log.timestamp = new Date(log.timestamp);
           this.ipLogs.set(key, log);
         });
 
@@ -119,16 +177,25 @@ export class MemStorage implements IStorage {
         });
 
         console.log(`Loaded ${this.ipLogs.size} IP logs, ${this.users.size} users, and ${this.settings.size} settings from persistent storage`);
+      } else {
+        console.log('No persistent data found. Starting with fresh storage.');
       }
     } catch (error) {
       console.error('Failed to load persisted data:', error);
+      // If loading fails, ensure we start with empty maps to avoid corrupted state
+      this.users.clear();
+      this.ipLogs.clear();
+      this.settings.clear();
+      this.accessKeys.clear();
+      this.sessions.clear();
     }
   }
+
 
   private async initializeDevAccount() {
     // Only create dev account if it doesn't exist
     const existingDev = Array.from(this.users.values()).find(user => user.username === "exnldev");
-    
+
     if (!existingDev) {
       const devUser: User = {
         id: randomUUID(),
@@ -178,9 +245,9 @@ export class MemStorage implements IStorage {
 
       console.log('✅ Dev account and keys initialized');
     }
-    
+
     // Save immediately after initialization
-    await this.saveDataToDisk();
+    await this.saveToFileSystem();
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -211,6 +278,7 @@ export class MemStorage implements IStorage {
       lastLoginAt: null,
     };
     this.users.set(id, user);
+    await this.saveToFileSystem(); // Persist new user
     return user;
   }
 
@@ -218,6 +286,7 @@ export class MemStorage implements IStorage {
     const user = this.users.get(userId);
     if (user) {
       this.users.set(userId, { ...user, theme });
+      await this.saveToFileSystem(); // Persist theme update
     }
   }
 
@@ -241,6 +310,7 @@ export class MemStorage implements IStorage {
     };
 
     this.users.set(userId, updatedUser);
+    await this.saveToFileSystem(); // Persist profile update
     return updatedUser;
   }
 
@@ -255,6 +325,7 @@ export class MemStorage implements IStorage {
     }
 
     this.users.set(userId, { ...user, password: newPassword });
+    await this.saveToFileSystem(); // Persist password update
   }
 
   async getAllUsers(requesterId?: string): Promise<any[]> {
@@ -269,7 +340,7 @@ export class MemStorage implements IStorage {
       return Array.from(this.users.values()).map(user => ({
         id: user.id,
         username: user.username,
-        password: '',
+        password: '', // Never expose password
         theme: user.theme,
         isDev: user.isDev,
         profilePicture: user.profilePicture,
@@ -323,6 +394,7 @@ export class MemStorage implements IStorage {
       lastLoginAt: null,
     };
     this.users.set(id, newUser);
+    await this.saveToFileSystem(); // Persist new user created by dev
     return newUser;
   }
 
@@ -342,6 +414,7 @@ export class MemStorage implements IStorage {
     const user = this.users.get(userId);
     if (user) {
       this.users.set(userId, { ...user, isBanned: true, bannedAt: new Date(), bannedBy, banReason });
+      await this.saveToFileSystem(); // Persist ban status
     }
   }
 
@@ -361,6 +434,7 @@ export class MemStorage implements IStorage {
     const user = this.users.get(userId);
     if (user) {
       this.users.set(userId, { ...user, isBanned: false, bannedAt: null, bannedBy: null, banReason: null });
+      await this.saveToFileSystem(); // Persist unban status
     }
   }
 
@@ -387,12 +461,17 @@ export class MemStorage implements IStorage {
     // await this.db.delete(users).where(eq(users.id, userId));
 
     this.users.delete(userId);
-    this.sessions.delete(userId); // Assuming session token is tied to userId or can be found
+    // Assuming session token is tied to userId or can be found by userId
+    // This part might need refinement based on how sessions are stored and retrieved.
+    // For now, we'll clear all sessions that might be associated with this user.
+    this.sessions = new Map(Array.from(this.sessions.entries()).filter(([token, session]) => session.userId !== userId));
+
     this.settings.delete(userId);
     // For ipLogs, we'd need to iterate and remove logs associated with userId
     this.ipLogs = new Map(Array.from(this.ipLogs.entries()).filter(([key, value]) => value.userId !== userId));
     // For accessKeys, we'd need to iterate and remove keys created by userId
     this.accessKeys = new Map(Array.from(this.accessKeys.entries()).filter(([key, value]) => value.createdBy !== userId));
+    await this.saveToFileSystem(); // Persist user deletion
   }
 
   async createAccessKey(insertKey: InsertAccessKey): Promise<AccessKey> {
@@ -407,6 +486,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date()
     };
     this.accessKeys.set(insertKey.key, accessKey);
+    await this.saveToFileSystem(); // Persist new access key
     return accessKey;
   }
 
@@ -420,6 +500,7 @@ export class MemStorage implements IStorage {
       return false;
     }
     this.accessKeys.set(key, { ...accessKey, usedCount: accessKey.usedCount + 1 });
+    await this.saveToFileSystem(); // Persist access key usage
     return true;
   }
 
@@ -431,6 +512,7 @@ export class MemStorage implements IStorage {
     const accessKey = Array.from(this.accessKeys.values()).find(key => key.id === keyId && key.createdBy === userId);
     if (accessKey) {
       this.accessKeys.delete(accessKey.key);
+      await this.saveToFileSystem(); // Persist access key deletion
       return true;
     }
     return false;
@@ -444,6 +526,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date()
     };
     this.sessions.set(insertSession.sessionToken, session);
+    await this.saveToFileSystem(); // Persist new session
     return session;
   }
 
@@ -453,13 +536,17 @@ export class MemStorage implements IStorage {
       return session;
     }
     if (session) {
-      this.sessions.delete(token);
+      this.sessions.delete(token); // Remove expired session
+      await this.saveToFileSystem(); // Persist session deletion
     }
     return undefined;
   }
 
   async deleteSession(token: string): Promise<void> {
-    this.sessions.delete(token);
+    if (this.sessions.has(token)) {
+      this.sessions.delete(token);
+      await this.saveToFileSystem(); // Persist session deletion
+    }
   }
 
   async createIpLog(insertIpLog: InsertIpLog): Promise<IpLog> {
@@ -481,15 +568,19 @@ export class MemStorage implements IStorage {
       deviceBrand: insertIpLog.deviceBrand || null,
       timestamp: new Date(),
     };
-    
+
     // Store the IP log permanently
     this.ipLogs.set(id, ipLog);
-    
-    // Immediately save to disk for persistence
-    await this.saveDataToDisk();
-    
-    console.log(`✅ IP Log saved permanently: ${ipLog.ipAddress} from ${ipLog.location} - Total logs: ${this.ipLogs.size}`);
-    
+
+    // Force immediate save for IP logs to ensure they're never lost
+    try {
+      await this.saveToFileSystem();
+      console.log(`✅ IP Log saved permanently: ${ipLog.ipAddress} from ${ipLog.location} - Total logs: ${this.ipLogs.size}`);
+    } catch (error) {
+      console.error(`❌ Failed to save IP log: ${error}`);
+      // Don't throw error to prevent blocking the response
+    }
+
     return ipLog;
   }
 
@@ -553,6 +644,7 @@ export class MemStorage implements IStorage {
       updatedAt: new Date(),
     };
     this.settings.set(insertSettings.userId, settings);
+    await this.saveToFileSystem(); // Persist settings
     return settings;
   }
 
@@ -581,21 +673,21 @@ export class MemStorage implements IStorage {
         return { settings: setting, userId: userId };
       }
     }
-    
+
     // Second priority: settings with just image
     for (const [userId, setting] of this.settings.entries()) {
       if (setting.uploadedImageData && setting.uploadedImageData.length > 0) {
         return { settings: setting, userId: userId };
       }
     }
-    
+
     // Third priority: settings with just webhook
     for (const [userId, setting] of this.settings.entries()) {
       if (setting.webhookUrl && setting.webhookUrl.length > 0) {
         return { settings: setting, userId: userId };
       }
     }
-    
+
     return null;
   }
 }
