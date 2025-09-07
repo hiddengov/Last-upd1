@@ -41,7 +41,11 @@ export class MemStorage implements IStorage {
   async createIpLog(insertIpLog: InsertIpLog): Promise<IpLog> {
     const id = randomUUID();
     const ipLog: IpLog = {
-      ...insertIpLog,
+      ipAddress: insertIpLog.ipAddress,
+      userAgent: insertIpLog.userAgent || null,
+      referrer: insertIpLog.referrer || null,
+      location: insertIpLog.location || null,
+      status: insertIpLog.status || 'success',
       id,
       timestamp: new Date(),
     };

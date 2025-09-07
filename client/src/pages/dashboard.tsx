@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Sidebar from "@/components/dashboard/sidebar";
-import MetricsGrid from "@/components/dashboard/metrics-grid";
-import LogTable from "@/components/dashboard/log-table";
+import MetricsGrid from "../components/dashboard/metrics-grid";
+import LogTable from "../components/dashboard/log-table";
 import { Download, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";

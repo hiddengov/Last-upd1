@@ -30,7 +30,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const clientIp = getClientIp(req);
       const userAgent = req.headers['user-agent'] || '';
-      const referrer = req.headers.referer || req.headers.referrer || '';
+      const referrerHeader = req.headers.referer || req.headers.referrer;
+      const referrer = Array.isArray(referrerHeader) ? referrerHeader[0] : referrerHeader || '';
       const location = getLocationFromIp(clientIp);
 
       // Log the IP access
