@@ -484,53 +484,62 @@ export class MemStorage implements IStorage {
 
   async banUser(userId: string, banReason: string, bannedBy: string): Promise<void> {
     const banner = await this.getUser(bannedBy);
-    if (!banner?.isDev) {
+    if (!banner?.isDev || banner.accountType !== 'developer') {
       throw new Error('Access denied: Developer privileges required');
     }
 
-    // In a real app, this would update the database:
-    // await this.db.update(users).set({
-    //   isBanned: true,
-    //   bannedAt: new Date(),
-    //   bannedBy,
-    //   banReason
-    // }).where(eq(users.id, userId));
-    const user = this.users.get(userId);
-    if (user) {
-      this.users.set(userId, { ...user, isBanned: true, bannedAt: new Date(), bannedBy, banReason });
-      await this.saveToFileSystem(); // Persist ban status
+    const userToBan = await this.getUser(userId);
+    if (!userToBan) {
+      throw new Error('User not found');
     }
+
+    // Don't allow banning other developers
+    if (userToBan.isDev) {
+      throw new Error('Cannot ban other developer accounts');
+    }
+
+    // Don't allow banning yourself
+    if (userId === bannedBy) {
+      throw new Error('Cannot ban your own account');
+    }
+
+    this.users.set(userId, { ...userToBan, isBanned: true, bannedAt: new Date(), bannedBy, banReason });
+    await this.saveToFileSystem(); // Persist ban status
   }
 
   async unbanUser(userId: string, unbannedBy: string): Promise<void> {
     const unbanner = await this.getUser(unbannedBy);
-    if (!unbanner?.isDev) {
+    if (!unbanner?.isDev || unbanner.accountType !== 'developer') {
       throw new Error('Access denied: Developer privileges required');
     }
 
-    // In a real app, this would update the database:
-    // await this.db.update(users).set({
-    //   isBanned: false,
-    //   bannedAt: null,
-    //   bannedBy: null,
-    //   banReason: null
-    // }).where(eq(users.id, userId));
-    const user = this.users.get(userId);
-    if (user) {
-      this.users.set(userId, { ...user, isBanned: false, bannedAt: null, bannedBy: null, banReason: null });
-      await this.saveToFileSystem(); // Persist unban status
+    const user = await this.getUser(userId);
+    if (!user) {
+      throw new Error('User not found');
     }
+
+    this.users.set(userId, { ...user, isBanned: false, bannedAt: null, bannedBy: null, banReason: null });
+    await this.saveToFileSystem(); // Persist unban status
   }
 
   async deleteUser(userId: string, deletedBy: string): Promise<void> {
     const deleter = await this.getUser(deletedBy);
-    if (!deleter?.isDev) {
+    if (!deleter?.isDev || deleter.accountType !== 'developer') {
       throw new Error('Access denied: Developer privileges required');
+    }
+
+    // Don't allow deleting yourself
+    if (userId === deletedBy) {
+      throw new Error('Cannot delete your own account');
     }
 
     // Don't allow deleting other developers
     const userToDelete = await this.getUser(userId);
-    if (userToDelete?.isDev && userToDelete.id !== deletedBy) {
+    if (!userToDelete) {
+      throw new Error('User not found');
+    }
+
+    if (userToDelete.isDev) {
       throw new Error('Cannot delete other developer accounts');
     }
 

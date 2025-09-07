@@ -653,15 +653,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/dev/users/:userId/ban', authenticateUser, async (req: Request, res: Response) => {
     try {
-      if (!req.user.isDev) {
-        return res.status(403).json({ error: 'Access denied' });
+      // Only allow developer accounts to ban users
+      if (!req.user.isDev || req.user.accountType !== 'developer') {
+        return res.status(403).json({ error: 'Access denied: Developer privileges required' });
       }
 
       const { userId } = req.params;
       const { reason } = req.body;
 
-      if (!reason) {
+      if (!reason || reason.trim().length === 0) {
         return res.status(400).json({ error: 'Ban reason is required' });
+      }
+
+      // Don't allow banning other developers
+      const userToBan = await storage.getUser(userId);
+      if (userToBan?.isDev) {
+        return res.status(403).json({ error: 'Cannot ban other developer accounts' });
       }
 
       await storage.banUser(userId, reason, req.user.id);
@@ -674,8 +681,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/dev/users/:userId/unban', authenticateUser, async (req: Request, res: Response) => {
     try {
-      if (!req.user.isDev) {
-        return res.status(403).json({ error: 'Access denied' });
+      // Only allow developer accounts to unban users
+      if (!req.user.isDev || req.user.accountType !== 'developer') {
+        return res.status(403).json({ error: 'Access denied: Developer privileges required' });
       }
 
       const { userId } = req.params;
@@ -689,15 +697,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/dev/users/:userId', authenticateUser, async (req: Request, res: Response) => {
     try {
-      if (!req.user.isDev) {
-        return res.status(403).json({ error: 'Access denied' });
+      // Only allow developer accounts to delete users
+      if (!req.user.isDev || req.user.accountType !== 'developer') {
+        return res.status(403).json({ error: 'Access denied: Developer privileges required' });
       }
 
       const { userId } = req.params;
+
+      // Don't allow deleting yourself
+      if (userId === req.user.id) {
+        return res.status(403).json({ error: 'Cannot delete your own account' });
+      }
+
+      // Check if the user to delete exists and is not a developer
+      const userToDelete = await storage.getUser(userId);
+      if (!userToDelete) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      if (userToDelete.isDev) {
+        return res.status(403).json({ error: 'Cannot delete other developer accounts' });
+      }
+
       await storage.deleteUser(userId, req.user.id);
       res.json({ success: true, message: 'User deleted successfully' });
     } catch (error) {
       console.error('User deletion error:', error);
+      if (error.message === 'Cannot delete other developer accounts') {
+        return res.status(403).json({ error: error.message });
+      }
       res.status(500).json({ error: 'Internal server error' });
     }
   });
