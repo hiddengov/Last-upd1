@@ -12,6 +12,7 @@ import Dashboard from "@/pages/dashboard";
 import LogEntries from "@/pages/log-entries";
 import ImageConfig from "@/pages/image-config";
 import Settings from "@/pages/settings";
+import Profile from "@/pages/profile";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -57,6 +58,7 @@ function Router() {
       <Route path="/logs" component={LogEntries} />
       <Route path="/image-config" component={ImageConfig} />
       <Route path="/settings" component={Settings} />
+      <Route path="/profile" component={Profile} />
       <Route component={NotFound} />
     </Switch>
   );

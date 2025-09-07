@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function Sidebar() {
   const [location] = useLocation();
@@ -64,17 +65,28 @@ export default function Sidebar() {
         </div>
 
         {/* User Info */}
-        <div className="flex items-center space-x-3 px-3 py-2">
-          <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
-            <User className="text-muted-foreground text-sm h-4 w-4" />
-          </div>
+        <Link 
+          href="/profile"
+          className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors hover:bg-accent ${
+            location === '/profile' 
+              ? "bg-primary text-primary-foreground" 
+              : "text-foreground hover:text-foreground"
+          }`}
+          data-testid="link-profile"
+        >
+          <Avatar className="w-8 h-8">
+            <AvatarImage src={user?.profilePicture || undefined} alt="Profile" />
+            <AvatarFallback className="text-sm">
+              {user?.username?.[0]?.toUpperCase() || 'U'}
+            </AvatarFallback>
+          </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate text-foreground">{user?.username || 'User'}</p>
-            <p className="text-xs text-muted-foreground truncate">
+            <p className="text-sm font-medium truncate">{user?.username || 'User'}</p>
+            <p className="text-xs opacity-75 truncate">
               {user?.isDev ? 'Developer' : 'User'}
             </p>
           </div>
-        </div>
+        </Link>
 
         {/* Logout Button */}
         <Button 
