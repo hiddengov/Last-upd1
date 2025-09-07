@@ -14,9 +14,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Settings, User, Key, Shield, UserPlus, Ban, Trash2, UserCheck, Eye } from "lucide-react";
+import { Settings, User, Key, Shield, UserPlus, Ban, Trash2, UserCheck, Eye, ArrowLeft } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useLocation } from "wouter";
 import * as z from "zod";
 
 const createUserSchema = z.object({
@@ -39,6 +40,7 @@ export default function SettingsPage() {
   const { user, token } = useAuth();
   const { currentTheme, themes, setTheme } = useTheme();
   const { toast } = useToast();
+  const [location, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   
   // Developer-only state
@@ -339,6 +341,15 @@ export default function SettingsPage() {
   return (
     <div className="container mx-auto py-6 space-y-8">
       <div className="flex items-center space-x-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setLocation("/dashboard")}
+          className="mr-2"
+        >
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Back
+        </Button>
         <Settings className="h-8 w-8 text-primary" />
         <h1 className="text-3xl font-bold">Settings</h1>
       </div>

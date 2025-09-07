@@ -1,13 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Search, Filter, ChevronLeft, ChevronRight, Download, List, Eye } from "lucide-react";
+import { Search, Filter, ChevronLeft, ChevronRight, Download, List, Eye, ArrowLeft } from "lucide-react";
 import Sidebar from "@/components/dashboard/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 interface IpLog {
   id: string;
@@ -29,6 +30,7 @@ export default function LogEntries() {
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
   const logsPerPage = 25;
+  const [location, setLocation] = useLocation();
 
   const { data, isLoading } = useQuery<LogsResponse>({
     queryKey: ['/api/logs', { limit: logsPerPage, offset: (currentPage - 1) * logsPerPage }],
@@ -63,7 +65,7 @@ export default function LogEntries() {
     try {
       const response = await fetch('/api/export');
       if (!response.ok) throw new Error('Export failed');
-      
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -73,7 +75,7 @@ export default function LogEntries() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
       toast({
         title: "Export Successful",
         description: "IP logs have been exported to CSV file.",
@@ -110,12 +112,21 @@ export default function LogEntries() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
-      
+
       <main className="flex-1 overflow-auto">
         {/* Header */}
         <header className="bg-card border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setLocation("/dashboard")}
+                className="mr-2"
+              >
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Back
+              </Button>
               <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
                 <List className="h-4 w-4 text-primary" />
               </div>
@@ -153,7 +164,7 @@ export default function LogEntries() {
                 <p className="text-sm text-muted-foreground">All access attempts</p>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Unique IPs</CardTitle>
@@ -163,7 +174,7 @@ export default function LogEntries() {
                 <p className="text-sm text-muted-foreground">Different visitors</p>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Recent Activity</CardTitle>
@@ -277,7 +288,7 @@ export default function LogEntries() {
                   </tbody>
                 </table>
               </div>
-              
+
               {/* Pagination */}
               <div className="p-4 border-t border-border flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
@@ -295,7 +306,7 @@ export default function LogEntries() {
                     <ChevronLeft className="h-4 w-4" />
                     Previous
                   </Button>
-                  
+
                   <div className="flex items-center space-x-1">
                     {[...Array(Math.min(5, totalPages))].map((_, i) => {
                       const pageNum = i + 1;
@@ -316,7 +327,7 @@ export default function LogEntries() {
                       );
                     })}
                   </div>
-                  
+
                   <Button
                     variant="outline"
                     size="sm"

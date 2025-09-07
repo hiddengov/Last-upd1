@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Upload, Trash2, Image as ImageIcon, Link2, Copy, ExternalLink, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import { ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
 
 interface SettingsData {
   webhookUrl: string | null;
@@ -17,6 +19,7 @@ interface SettingsData {
 export default function ImageConfig() {
   const { toast } = useToast();
   const [dragOver, setDragOver] = useState(false);
+  const [location, setLocation] = useLocation();
 
   const { data: settings, isLoading } = useQuery<SettingsData>({
     queryKey: ['/api/settings'],
@@ -26,7 +29,7 @@ export default function ImageConfig() {
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append('image', file);
-      
+
       const response = await fetch('/api/upload-image', {
         method: 'POST',
         body: formData,
@@ -118,11 +121,20 @@ export default function ImageConfig() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
-      
+
       <main className="flex-1 overflow-auto">
         {/* Header */}
         <header className="bg-card border-b border-border px-6 py-4">
           <div className="flex items-center space-x-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setLocation("/dashboard")}
+              className="mr-2"
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
             <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
               <ImageIcon className="h-4 w-4 text-primary" />
             </div>
@@ -169,7 +181,7 @@ export default function ImageConfig() {
                       {deleteMutation.isPending ? "Deleting..." : "Delete"}
                     </Button>
                   </div>
-                  
+
                   {/* Image Preview */}
                   <div className="p-4 bg-muted/20 border border-border rounded-lg">
                     <div className="flex items-center justify-between mb-3">
@@ -229,7 +241,7 @@ export default function ImageConfig() {
                         When someone clicks this link, they'll see your uploaded image and you'll capture their IP address, location, and browser information.
                       </p>
                     </div>
-                    
+
                     <div className="flex items-center space-x-2">
                       <code className="bg-muted px-3 py-2 rounded text-sm font-mono text-foreground flex-1 select-all border">
                         {window.location.origin}/image.jpg
@@ -252,7 +264,7 @@ export default function ImageConfig() {
                         Test
                       </Button>
                     </div>
-                    
+
                     <div className="text-xs text-blue-600 dark:text-blue-400">
                       💡 Tip: Test the link yourself first to make sure it works correctly
                     </div>
@@ -337,7 +349,7 @@ export default function ImageConfig() {
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex items-start space-x-3">
                 <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center mt-0.5">
                   <span className="text-xs font-medium text-primary">2</span>
@@ -349,7 +361,7 @@ export default function ImageConfig() {
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex items-start space-x-3">
                 <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center mt-0.5">
                   <span className="text-xs font-medium text-primary">3</span>
