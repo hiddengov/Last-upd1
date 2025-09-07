@@ -13,7 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Settings, User, Key, Shield, UserPlus, Ban, Trash2, UserCheck, Eye, ArrowLeft, Palette } from "lucide-react";
+import { Settings, User, Key, Shield, UserPlus, Ban, Trash2, UserCheck, Eye, ArrowLeft, Palette, Webhook } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocation } from "wouter";
@@ -35,6 +35,10 @@ const banUserSchema = z.object({
   reason: z.string().min(1, "Ban reason is required")
 });
 
+const webhookSchema = z.object({
+  webhookUrl: z.string().url("Please enter a valid Discord webhook URL").optional().or(z.literal(""))
+});
+
 export default function SettingsPage() {
   const { user, token } = useAuth();
   const { currentTheme, themes, setTheme } = useTheme();
@@ -47,6 +51,9 @@ export default function SettingsPage() {
   const [devKeys, setDevKeys] = useState([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [isLoadingKeys, setIsLoadingKeys] = useState(false);
+
+  // Webhook settings state
+  const [currentWebhookUrl, setCurrentWebhookUrl] = useState("");
 
   // Forms
   const createUserForm = useForm({
@@ -74,13 +81,71 @@ export default function SettingsPage() {
     }
   });
 
-  // Load developer data
+  const webhookForm = useForm({
+    resolver: zodResolver(webhookSchema),
+    defaultValues: {
+      webhookUrl: ""
+    }
+  });
+
+  // Load developer data and webhook settings
   useEffect(() => {
     if (user?.isDev) {
       loadDevUsers();
       loadDevKeys();
     }
+    loadWebhookSettings();
   }, [user]);
+
+  const loadWebhookSettings = async () => {
+    try {
+      const response = await fetch('/api/settings', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const settings = await response.json();
+        const webhookUrl = settings.webhookUrl || "";
+        setCurrentWebhookUrl(webhookUrl);
+        webhookForm.setValue('webhookUrl', webhookUrl);
+      }
+    } catch (error) {
+      console.error('Error loading webhook settings:', error);
+    }
+  };
+
+  const handleSaveWebhook = async (data: z.infer<typeof webhookSchema>) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ webhookUrl: data.webhookUrl || null })
+      });
+
+      if (response.ok) {
+        setCurrentWebhookUrl(data.webhookUrl || "");
+        toast({
+          title: "Success",
+          description: "Webhook URL saved successfully"
+        });
+      } else {
+        throw new Error('Failed to save webhook URL');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save webhook URL",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const loadDevUsers = async () => {
     setIsLoadingUsers(true);
@@ -354,9 +419,10 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className={`grid w-full ${user?.isDev ? 'grid-cols-5' : 'grid-cols-3'}`}>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="theme">Theme</TabsTrigger>
+          <TabsTrigger value="webhook">Webhook</TabsTrigger>
           {user?.isDev && <TabsTrigger value="dev-users">User Management</TabsTrigger>}
           {user?.isDev && <TabsTrigger value="dev-keys">Access Keys</TabsTrigger>}
         </TabsList>
@@ -417,6 +483,83 @@ export default function SettingsPage() {
                   Theme changes are saved automatically and persist across sessions
                 </p>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="webhook" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Webhook className="h-5 w-5" />
+                <span>Discord Webhook</span>
+              </CardTitle>
+              <CardDescription>
+                Configure Discord webhook URL to receive real-time IP logging notifications
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...webhookForm}>
+                <form onSubmit={webhookForm.handleSubmit(handleSaveWebhook)} className="space-y-4">
+                  <FormField
+                    control={webhookForm.control}
+                    name="webhookUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Discord Webhook URL</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="https://discord.com/api/webhooks/..." 
+                            {...field} 
+                            data-testid="input-webhook-url"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                        <div className="text-sm text-muted-foreground">
+                          <p>How to get your Discord webhook URL:</p>
+                          <ol className="list-decimal list-inside mt-2 space-y-1">
+                            <li>Go to your Discord server settings</li>
+                            <li>Navigate to Integrations → Webhooks</li>
+                            <li>Create a new webhook or edit an existing one</li>
+                            <li>Copy the webhook URL and paste it here</li>
+                          </ol>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="flex items-center justify-between">
+                    <Button 
+                      type="submit" 
+                      disabled={isLoading}
+                      data-testid="button-save-webhook"
+                    >
+                      {isLoading ? "Saving..." : "Save Webhook URL"}
+                    </Button>
+                    
+                    {currentWebhookUrl && (
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span className="text-sm text-muted-foreground">Webhook configured</span>
+                      </div>
+                    )}
+                  </div>
+                </form>
+              </Form>
+
+              {/* Test webhook functionality */}
+              {currentWebhookUrl && (
+                <div className="mt-6 p-4 bg-muted/50 border border-border rounded-lg">
+                  <h4 className="font-medium mb-2">Webhook Features</h4>
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <p>• Real-time IP address and location tracking</p>
+                    <p>• VPN detection with original IP identification</p>
+                    <p>• Device fingerprinting (browser, OS, device type)</p>
+                    <p>• Security alerts for suspicious activity</p>
+                    <p>• Detailed visitor analytics and timestamps</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
