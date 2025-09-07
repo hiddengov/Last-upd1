@@ -1,9 +1,61 @@
 {
-  "users": [],
-  "sessions": [],
-  "ipLogs": [],
+  "users": [
+    [
+      "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+      {
+        "id": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "username": "exnldev",
+        "password": "Av121988-",
+        "theme": "default",
+        "isDev": false,
+        "accessKeyUsed": null,
+        "profilePicture": null,
+        "createdAt": "2025-09-07T20:21:21.588Z",
+        "accountType": "user",
+        "isBanned": false,
+        "bannedAt": null,
+        "bannedBy": null,
+        "banReason": null,
+        "lastLoginAt": null
+      }
+    ]
+  ],
+  "sessions": [
+    [
+      "5980b6b2-2614-42f3-8a08-f00f0301f9ca",
+      {
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "sessionToken": "5980b6b2-2614-42f3-8a08-f00f0301f9ca",
+        "expiresAt": "2025-09-14T20:21:28.225Z",
+        "id": "85fb82a5-a651-402a-9075-f7fa867d2efe",
+        "createdAt": "2025-09-07T20:21:28.226Z"
+      }
+    ]
+  ],
+  "ipLogs": [
+    [
+      "fef9a87a-2840-4471-a6bc-ca63fb46c221",
+      {
+        "id": "fef9a87a-2840-4471-a6bc-ca63fb46c221",
+        "userId": null,
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "referrer": null,
+        "location": "San Antonio, TX, US",
+        "status": "success",
+        "isVpn": "no",
+        "vpnLocation": null,
+        "realLocation": null,
+        "deviceType": "unknown",
+        "browserName": "Chrome",
+        "operatingSystem": "unknown",
+        "deviceBrand": "Apple",
+        "timestamp": "2025-09-07T20:17:50.686Z"
+      }
+    ]
+  ],
   "settings": [],
   "accessKeys": [],
-  "timestamp": "2025-09-07T20:10:59.601Z",
+  "timestamp": "2025-09-07T20:24:33.984Z",
   "version": "2.0"
 }
