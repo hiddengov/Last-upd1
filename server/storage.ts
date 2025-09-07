@@ -1,7 +1,7 @@
 import { type User, type InsertUser, type IpLog, type InsertIpLog, type Settings, type InsertSettings, type AccessKey, type InsertAccessKey, type UserSession, type InsertUserSession } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { desc, eq } from "drizzle-orm";
-import { users, ipLogs, settings, accessKeys, userSessions } from "@shared/schema/schema"; // Assuming your schema is in @shared/schema/schema
+import { users, ipLogs, settings, accessKeys, userSessions } from "@shared/schema";
 import fs from 'fs/promises'; // Use fs.promises for async operations
 import path from 'path'; // Import path module
 
