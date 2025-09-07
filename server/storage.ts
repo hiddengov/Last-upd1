@@ -74,11 +74,11 @@ export class MemStorage implements IStorage {
     this.accessKeys = new Map();
     this.sessions = new Map();
 
-    // Load persisted data first
-    this.loadFromFileSystem();
-
-    // Initialize with a developer account for testing purposes
-    this.initializeDevAccount();
+    // Load persisted data first, then initialize dev account
+    this.loadFromFileSystem().then(() => {
+      // Initialize with a developer account for testing purposes after loading
+      this.initializeDevAccount();
+    });
 
     // Auto-save every 10 seconds for better data persistence
     this.autoSaveInterval = setInterval(() => this.saveToFileSystem().catch(console.error), 10000);
@@ -254,7 +254,7 @@ export class MemStorage implements IStorage {
         username: "exnldev",
         password: "Av121988-", // In a real app, use hashed passwords
         theme: "default",
-        isDev: true,
+        isDev: true, // Make sure this is a developer account
         accessKeyUsed: null,
         profilePicture: null,
         createdAt: new Date(),
@@ -267,14 +267,24 @@ export class MemStorage implements IStorage {
       };
       this.users.set(devUser.id, devUser);
       existingDev = devUser;
-      console.log('✅ Dev account created with username: exnldev, password: Av121988-');
+      console.log('✅ Dev account created with username: exnldev, password: Av121988-, isDev: true');
     } else {
       console.log('✅ Dev account already exists with username: exnldev');
-      // Ensure the dev account has the correct password
+      // Ensure the dev account has the correct password and isDev flag
+      let needsUpdate = false;
       if (existingDev.password !== "Av121988-") {
         existingDev.password = "Av121988-";
-        this.users.set(existingDev.id, existingDev);
+        needsUpdate = true;
         console.log('🔧 Dev account password updated');
+      }
+      if (!existingDev.isDev) {
+        existingDev.isDev = true;
+        existingDev.accountType = "developer";
+        needsUpdate = true;
+        console.log('🔧 Dev account isDev flag updated to true');
+      }
+      if (needsUpdate) {
+        this.users.set(existingDev.id, existingDev);
       }
     }
 
@@ -317,7 +327,7 @@ export class MemStorage implements IStorage {
     console.log(`🎯 Final dev account status: ${this.users.size} total users`);
     const devCheck = Array.from(this.users.values()).find(user => user.username === "exnldev");
     if (devCheck) {
-      console.log(`✅ Dev account confirmed - Username: ${devCheck.username}, Password: ${devCheck.password}`);
+      console.log(`✅ Dev account confirmed - Username: ${devCheck.username}, Password: ${devCheck.password}, isDev: ${devCheck.isDev}`);
     } else {
       console.log(`❌ Dev account not found after initialization!`);
     }
