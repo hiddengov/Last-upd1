@@ -32,13 +32,23 @@
       }
     ],
     [
-      "8a5eff93-5531-4e1f-962b-35b76da3330b",
+      "071ce641-0933-4f89-ab3c-819f08b4bd41",
       {
         "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
-        "sessionToken": "8a5eff93-5531-4e1f-962b-35b76da3330b",
-        "expiresAt": "2025-09-14T21:57:12.818Z",
-        "id": "30725dbb-cb95-47ad-bc56-091138b03431",
-        "createdAt": "2025-09-07T21:57:12.818Z"
+        "sessionToken": "071ce641-0933-4f89-ab3c-819f08b4bd41",
+        "expiresAt": "2025-09-14T22:01:55.039Z",
+        "id": "44f94964-9dbe-4788-bd0e-75941478b4f1",
+        "createdAt": "2025-09-07T22:01:55.039Z"
+      }
+    ],
+    [
+      "51be52ac-fb3b-445c-a51e-107ba95dbef6",
+      {
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "sessionToken": "51be52ac-fb3b-445c-a51e-107ba95dbef6",
+        "expiresAt": "2025-09-14T22:04:36.380Z",
+        "id": "708a5b2f-cf6f-4eb9-b2d4-c3f016bf4d50",
+        "createdAt": "2025-09-07T22:04:36.380Z"
       }
     ]
   ],
@@ -302,6 +312,26 @@
         "deviceBrand": "Apple",
         "timestamp": "2025-09-07T21:57:46.925Z"
       }
+    ],
+    [
+      "1c00f6db-4c7b-4cb4-868d-8ef9bd636366",
+      {
+        "id": "1c00f6db-4c7b-4cb4-868d-8ef9bd636366",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "referrer": "https://ae8c0453-e7b1-4bd5-bd80-9cea117ae053-00-ilh5cl808jjo.worf.replit.dev/youtube",
+        "location": "Los Angeles, CA, US",
+        "status": "youtube_proxy_access",
+        "isVpn": "no",
+        "vpnLocation": null,
+        "realLocation": null,
+        "deviceType": "unknown",
+        "browserName": "Chrome",
+        "operatingSystem": "unknown",
+        "deviceBrand": "Apple",
+        "timestamp": "2025-09-07T22:05:26.379Z"
+      }
     ]
   ],
   "settings": [
@@ -326,7 +356,7 @@
         "id": "01858b39-ef0f-48f3-971c-01c793a0d6b7",
         "key": "Av121988",
         "usageLimit": 999999,
-        "usedCount": 1,
+        "usedCount": 3,
         "isActive": true,
         "createdBy": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
         "createdAt": "2025-09-07T20:25:45.472Z"
@@ -509,6 +539,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-07T21:59:08.782Z",
+  "timestamp": "2025-09-07T22:11:55.381Z",
   "version": "2.2"
 }
