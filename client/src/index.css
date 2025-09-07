@@ -113,6 +113,8 @@
   /* Enhanced button animations */
   .animate-button {
     @apply transition-all duration-300 ease-in-out transform;
+    position: relative;
+    overflow: hidden;
   }
   
   .animate-button:hover {
@@ -121,6 +123,26 @@
   
   .animate-button:active {
     @apply scale-95;
+    transition-duration: 150ms;
+  }
+  
+  /* Ripple effect for buttons */
+  .animate-button:before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+  }
+  
+  .animate-button:active:before {
+    width: 300px;
+    height: 300px;
   }
   
   /* Pulse animation for important buttons */
@@ -137,6 +159,52 @@
       opacity: 0.9;
       transform: scale(1.02);
     }
+  }
+  
+  /* Shimmer effect for primary buttons */
+  .animate-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .animate-shimmer:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+  }
+  
+  .animate-shimmer:hover:before {
+    left: 100%;
+  }
+  
+  /* Wobble animation for interactive elements */
+  .animate-wobble {
+    animation: wobble 0.6s ease-in-out;
+  }
+  
+  @keyframes wobble {
+    0% { transform: translateX(0%); }
+    15% { transform: translateX(-25px) rotate(-5deg); }
+    30% { transform: translateX(20px) rotate(3deg); }
+    45% { transform: translateX(-15px) rotate(-3deg); }
+    60% { transform: translateX(10px) rotate(2deg); }
+    75% { transform: translateX(-5px) rotate(-1deg); }
+    100% { transform: translateX(0%); }
+  }
+  
+  /* Gradient hover effect */
+  .animate-gradient-hover {
+    background-size: 200% 200%;
+    transition: background-position 0.3s ease;
+  }
+  
+  .animate-gradient-hover:hover {
+    background-position: right center;
   }
   
   /* Slide in animations */

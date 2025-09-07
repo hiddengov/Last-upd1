@@ -22,16 +22,6 @@
   ],
   "sessions": [
     [
-      "8345f5b9-b293-418c-8176-3834db6b2251",
-      {
-        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
-        "sessionToken": "8345f5b9-b293-418c-8176-3834db6b2251",
-        "expiresAt": "2025-09-14T20:36:05.821Z",
-        "id": "c4a889ea-34c5-4cfb-99c3-e1be0be0f1f2",
-        "createdAt": "2025-09-07T20:36:05.821Z"
-      }
-    ],
-    [
       "1d2c7dd6-3f99-4c91-ad5b-ada57ad3f354",
       {
         "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
@@ -205,6 +195,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-07T20:44:06.972Z",
+  "timestamp": "2025-09-07T20:49:06.986Z",
   "version": "2.0"
 }

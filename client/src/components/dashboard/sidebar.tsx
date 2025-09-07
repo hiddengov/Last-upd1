@@ -27,10 +27,10 @@ export default function Sidebar() {
           </div>
           <div>
             <h1 className="text-lg font-semibold text-foreground">Exnl IP LOGGER</h1>
-            <a 
-              href="https://discord.gg/TrgmgtByzt" 
-              target="_blank" 
-              rel="noopener noreferrer" 
+            <a
+              href="https://discord.gg/TrgmgtByzt"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-xs text-muted-foreground hover:text-foreground underline transition-colors"
             >
               Discord Server
@@ -43,11 +43,11 @@ export default function Sidebar() {
         <ul className="space-y-2">
           {navigation.map((item) => (
             <li key={item.name}>
-              <Link 
+              <Link
                 href={item.href}
                 className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
-                  location === item.href 
-                    ? "bg-primary text-primary-foreground" 
+                  location === item.href
+                    ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-accent"
                 }`}
                 data-testid={`link-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
@@ -73,11 +73,11 @@ export default function Sidebar() {
         </div>
 
         {/* User Info */}
-        <Link 
+        <Link
           href="/profile"
           className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors hover:bg-accent ${
-            location === '/profile' 
-              ? "bg-primary text-primary-foreground" 
+            location === '/profile'
+              ? "bg-primary text-primary-foreground"
               : "text-foreground hover:text-foreground"
           }`}
           data-testid="link-profile"
@@ -97,11 +97,11 @@ export default function Sidebar() {
         </Link>
 
         {/* Logout Button */}
-        <Button 
+        <Button
           onClick={logout}
           variant="outline"
           size="sm"
-          className="w-full justify-start"
+          className="w-full justify-start animate-slide-in-left hover:animate-pulse-subtle transition-all duration-300 hover:bg-sidebar-accent/80"
           data-testid="button-logout"
         >
           <LogOut className="h-4 w-4 mr-2" />

@@ -534,7 +534,7 @@ export default function SettingsPage() {
                       type="submit"
                       disabled={isLoading}
                       data-testid="button-save-webhook"
-                      className="animate-fade-in-up"
+                      className="animate-fade-in-up animate-shimmer"
                     >
                       {isLoading ? "Saving..." : "Save Webhook URL"}
                     </Button>
@@ -650,7 +650,11 @@ export default function SettingsPage() {
                         )}
                       />
                     </div>
-                    <Button type="submit" disabled={isLoading} className="w-full animate-fade-in-up">
+                    <Button
+                      type="submit"
+                      disabled={isLoading}
+                      className="animate-pulse-subtle animate-shimmer"
+                    >
                       {isLoading ? "Creating..." : "Create Account"}
                     </Button>
                   </form>
@@ -832,7 +836,11 @@ export default function SettingsPage() {
                         )}
                       />
                     </div>
-                    <Button type="submit" disabled={isLoading} className="w-full animate-fade-in-up">
+                    <Button
+                      type="submit"
+                      disabled={isLoading}
+                      className="animate-pulse-subtle animate-shimmer"
+                    >
                       {isLoading ? "Creating..." : "Create Access Key"}
                     </Button>
                   </form>

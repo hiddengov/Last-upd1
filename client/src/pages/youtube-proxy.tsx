@@ -166,7 +166,7 @@ export default function YoutubeProxy() {
                     onChange={(e) => setYoutubeUrl(e.target.value)}
                     className="flex-1"
                   />
-                  <Button onClick={generateTrackingLink} className="bg-red-600 hover:bg-red-700 animate-button-hover">
+                  <Button onClick={generateTrackingLink} className="bg-red-600 hover:bg-red-700 animate-button-hover animate-shimmer">
                     <Link2 className="h-4 w-4 mr-2" />
                     Generate
                   </Button>
@@ -202,10 +202,10 @@ export default function YoutubeProxy() {
                       {generatedLink}
                     </code>
                     <Button
+                      onClick={copyToClipboard}
                       variant="outline"
                       size="sm"
-                      onClick={() => copyToClipboard(generatedLink)}
-                      className="shrink-0 animate-pulse-subtle"
+                      className="animate-button animate-wobble hover:animate-pulse-subtle"
                     >
                       <Copy className="h-4 w-4" />
                     </Button>

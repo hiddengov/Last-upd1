@@ -214,8 +214,8 @@ export default function Auth({ onLogin }: AuthProps) {
 
                   <Button 
                     type="submit"
-                    className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 transition-colors duration-300 focus:ring-red-500 focus:ring-opacity-50"
                     disabled={isLoading}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 transition-colors duration-300 focus:ring-red-500 focus:ring-opacity-50 animate-pulse-subtle animate-shimmer"
                     data-testid="button-login"
                   >
                     {isLoading ? "LOGGING IN..." : "LOGIN"}
@@ -284,8 +284,8 @@ export default function Auth({ onLogin }: AuthProps) {
 
                   <Button 
                     type="submit"
-                    className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 transition-colors duration-300 focus:ring-red-500 focus:ring-opacity-50"
                     disabled={isLoading}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 transition-colors duration-300 focus:ring-red-500 focus:ring-opacity-50 animate-pulse-subtle animate-shimmer"
                     data-testid="button-register"
                   >
                     {isLoading ? "CREATING ACCOUNT..." : "CREATE ACCOUNT"}
