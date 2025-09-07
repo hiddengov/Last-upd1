@@ -1,6 +1,9 @@
 import { Shield, BarChart3, List, Image, Settings, User } from "lucide-react";
+import { Link, useLocation } from "wouter";
 
 export default function Sidebar() {
+  const [location] = useLocation();
+
   return (
     <aside className="w-64 bg-card border-r border-border flex flex-col">
       <div className="p-6 border-b border-border">
@@ -18,14 +21,18 @@ export default function Sidebar() {
       <nav className="flex-1 p-4">
         <ul className="space-y-2">
           <li>
-            <a 
-              href="#" 
-              className="flex items-center space-x-3 px-3 py-2 rounded-md bg-primary text-primary-foreground transition-colors"
+            <Link 
+              href="/"
+              className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
+                location === "/" 
+                  ? "bg-primary text-primary-foreground" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
+              }`}
               data-testid="link-dashboard"
             >
               <BarChart3 className="h-5 w-5" />
               <span>Dashboard</span>
-            </a>
+            </Link>
           </li>
           <li>
             <a 
@@ -48,14 +55,18 @@ export default function Sidebar() {
             </a>
           </li>
           <li>
-            <a 
-              href="#" 
-              className="flex items-center space-x-3 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            <Link 
+              href="/settings"
+              className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
+                location === "/settings" 
+                  ? "bg-primary text-primary-foreground" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
+              }`}
               data-testid="link-settings"
             >
               <Settings className="h-5 w-5" />
               <span>Settings</span>
-            </a>
+            </Link>
           </li>
         </ul>
       </nav>
