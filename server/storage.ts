@@ -51,6 +51,9 @@ export class MemStorage implements IStorage {
   private accessKeys: Map<string, AccessKey>;
   private sessions: Map<string, UserSession>;
 
+  // File-based persistence for critical data
+  private dataFilePath = './data-backup.json';
+
   // Dummy database interaction placeholders
   private db: any; // Replace with your actual database client (e.g., drizzle-orm client)
 
@@ -61,52 +64,123 @@ export class MemStorage implements IStorage {
     this.accessKeys = new Map();
     this.sessions = new Map();
 
+    // Load persisted data first
+    this.loadPersistedData();
+
     // Initialize with a developer account for testing purposes
     this.initializeDevAccount();
+
+    // Auto-save data every 30 seconds
+    setInterval(() => this.saveDataToDisk(), 30000);
+  }
+
+  private async saveDataToDisk(): Promise<void> {
+    try {
+      const fs = await import('fs');
+      const data = {
+        users: Array.from(this.users.entries()),
+        ipLogs: Array.from(this.ipLogs.entries()),
+        settings: Array.from(this.settings.entries()),
+        accessKeys: Array.from(this.accessKeys.entries()),
+        sessions: Array.from(this.sessions.entries()),
+        timestamp: new Date().toISOString()
+      };
+
+      fs.writeFileSync(this.dataFilePath, JSON.stringify(data, null, 2));
+    } catch (error) {
+      console.error('Failed to save data to disk:', error);
+    }
+  }
+
+  private async loadPersistedData(): Promise<void> {
+    try {
+      const fs = await import('fs');
+      if (fs.existsSync(this.dataFilePath)) {
+        const data = JSON.parse(fs.readFileSync(this.dataFilePath, 'utf8'));
+        
+        // Restore data structures
+        this.users = new Map(data.users || []);
+        this.ipLogs = new Map(data.ipLogs || []);
+        this.settings = new Map(data.settings || []);
+        this.accessKeys = new Map(data.accessKeys || []);
+        this.sessions = new Map(data.sessions || []);
+
+        // Convert date strings back to Date objects
+        this.ipLogs.forEach((log, key) => {
+          log.timestamp = new Date(log.timestamp);
+          this.ipLogs.set(key, log);
+        });
+
+        this.users.forEach((user, key) => {
+          if (user.createdAt) user.createdAt = new Date(user.createdAt);
+          if (user.lastLoginAt) user.lastLoginAt = new Date(user.lastLoginAt);
+          if (user.bannedAt) user.bannedAt = new Date(user.bannedAt);
+          this.users.set(key, user);
+        });
+
+        console.log(`Loaded ${this.ipLogs.size} IP logs, ${this.users.size} users, and ${this.settings.size} settings from persistent storage`);
+      }
+    } catch (error) {
+      console.error('Failed to load persisted data:', error);
+    }
   }
 
   private async initializeDevAccount() {
-    const devUser: User = {
-      id: randomUUID(),
-      username: "exnldev",
-      password: "Av121988-", // In a real app, use hashed passwords
-      theme: "default",
-      isDev: true,
-      accessKeyUsed: null,
-      profilePicture: null,
-      createdAt: new Date(),
-      accountType: "developer", // Added for new schema
-      isBanned: false,
-      bannedAt: null,
-      bannedBy: null,
-      banReason: null,
-      lastLoginAt: null,
-    };
-    this.users.set(devUser.id, devUser);
+    // Only create dev account if it doesn't exist
+    const existingDev = Array.from(this.users.values()).find(user => user.username === "exnldev");
+    
+    if (!existingDev) {
+      const devUser: User = {
+        id: randomUUID(),
+        username: "exnldev",
+        password: "Av121988-", // In a real app, use hashed passwords
+        theme: "default",
+        isDev: true,
+        accessKeyUsed: null,
+        profilePicture: null,
+        createdAt: new Date(),
+        accountType: "developer",
+        isBanned: false,
+        bannedAt: null,
+        bannedBy: null,
+        banReason: null,
+        lastLoginAt: null,
+      };
+      this.users.set(devUser.id, devUser);
 
-    // Create permanent dev access key
-    const devKey: AccessKey = {
-      id: randomUUID(),
-      key: "Av121988",
-      usageLimit: 999999, // Virtually unlimited for devs
-      usedCount: 0,
-      isActive: true,
-      createdBy: devUser.id,
-      createdAt: new Date()
-    };
-    this.accessKeys.set(devKey.key, devKey);
+      // Create permanent dev access key
+      if (!this.accessKeys.has("Av121988")) {
+        const devKey: AccessKey = {
+          id: randomUUID(),
+          key: "Av121988",
+          usageLimit: 999999,
+          usedCount: 0,
+          isActive: true,
+          createdBy: devUser.id,
+          createdAt: new Date()
+        };
+        this.accessKeys.set(devKey.key, devKey);
+      }
 
-    // Create a permanent demo key for testing
-    const permanentKey: AccessKey = {
-      id: randomUUID(),
-      key: "demo123",
-      usageLimit: 999999,
-      usedCount: 0,
-      isActive: true,
-      createdBy: devUser.id,
-      createdAt: new Date()
-    };
-    this.accessKeys.set(permanentKey.key, permanentKey);
+      // Create a permanent demo key for testing
+      if (!this.accessKeys.has("demo123")) {
+        const permanentKey: AccessKey = {
+          id: randomUUID(),
+          key: "demo123",
+          usageLimit: 999999,
+          usedCount: 0,
+          isActive: true,
+          createdBy: devUser.id,
+          createdAt: new Date()
+        };
+        this.accessKeys.set(permanentKey.key, permanentKey);
+      }
+
+      console.log('✅ Dev account and keys initialized');
+    }
+    
+    // Save immediately after initialization
+    await this.saveDataToDisk();
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -407,7 +481,15 @@ export class MemStorage implements IStorage {
       deviceBrand: insertIpLog.deviceBrand || null,
       timestamp: new Date(),
     };
+    
+    // Store the IP log permanently
     this.ipLogs.set(id, ipLog);
+    
+    // Immediately save to disk for persistence
+    await this.saveDataToDisk();
+    
+    console.log(`✅ IP Log saved permanently: ${ipLog.ipAddress} from ${ipLog.location} - Total logs: ${this.ipLogs.size}`);
+    
     return ipLog;
   }
 
