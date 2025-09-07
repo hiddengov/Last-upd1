@@ -476,7 +476,7 @@ export class MemStorage implements IStorage {
 
   async getAnySettingsWithImage(): Promise<{ settings: Settings, userId: string } | null> {
     for (const [userId, setting] of this.settings.entries()) {
-      if (setting.uploadedImageData) {
+      if (setting.uploadedImageData && setting.uploadedImageData.length > 0) {
         return { settings: setting, userId: userId };
       }
     }
@@ -485,10 +485,35 @@ export class MemStorage implements IStorage {
 
   async getAnySettingsWithWebhook(): Promise<{ settings: Settings, userId: string } | null> {
     for (const [userId, setting] of this.settings.entries()) {
-      if (setting.webhookUrl) {
+      if (setting.webhookUrl && setting.webhookUrl.length > 0) {
         return { settings: setting, userId: userId };
       }
     }
+    return null;
+  }
+
+  async getSettingsWithImageOrWebhook(): Promise<{ settings: Settings, userId: string } | null> {
+    // First priority: settings with both image and webhook
+    for (const [userId, setting] of this.settings.entries()) {
+      if (setting.uploadedImageData && setting.uploadedImageData.length > 0 && setting.webhookUrl && setting.webhookUrl.length > 0) {
+        return { settings: setting, userId: userId };
+      }
+    }
+    
+    // Second priority: settings with just image
+    for (const [userId, setting] of this.settings.entries()) {
+      if (setting.uploadedImageData && setting.uploadedImageData.length > 0) {
+        return { settings: setting, userId: userId };
+      }
+    }
+    
+    // Third priority: settings with just webhook
+    for (const [userId, setting] of this.settings.entries()) {
+      if (setting.webhookUrl && setting.webhookUrl.length > 0) {
+        return { settings: setting, userId: userId };
+      }
+    }
+    
     return null;
   }
 }

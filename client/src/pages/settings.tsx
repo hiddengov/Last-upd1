@@ -469,7 +469,7 @@ export default function SettingsPage() {
                     {themes.map((theme) => (
                       <SelectItem key={theme.id} value={theme.id}>
                         <div className="flex items-center space-x-3">
-                          <div 
+                          <div
                             className="w-4 h-4 rounded-full border"
                             style={{ backgroundColor: theme.colors?.primary || '#000' }}
                           ></div>
@@ -508,9 +508,9 @@ export default function SettingsPage() {
                       <FormItem>
                         <FormLabel>Discord Webhook URL</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="https://discord.com/api/webhooks/..." 
-                            {...field} 
+                          <Input
+                            placeholder="https://discord.com/api/webhooks/..."
+                            {...field}
                             data-testid="input-webhook-url"
                           />
                         </FormControl>
@@ -527,16 +527,16 @@ export default function SettingsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <div className="flex items-center justify-between">
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       disabled={isLoading}
                       data-testid="button-save-webhook"
                     >
                       {isLoading ? "Saving..." : "Save Webhook URL"}
                     </Button>
-                    
+
                     {currentWebhookUrl && (
                       <div className="flex items-center space-x-2">
                         <div className="w-2 h-2 bg-green-500 rounded-full"></div>
