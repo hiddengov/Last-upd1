@@ -32,13 +32,13 @@
       }
     ],
     [
-      "1d73243a-36c6-47b3-b245-934f27c0451b",
+      "329b256a-e53d-455a-8743-08d409938a16",
       {
         "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
-        "sessionToken": "1d73243a-36c6-47b3-b245-934f27c0451b",
-        "expiresAt": "2025-09-14T21:22:19.163Z",
-        "id": "e84f6455-e282-4c6f-8b06-dbac93710527",
-        "createdAt": "2025-09-07T21:22:19.163Z"
+        "sessionToken": "329b256a-e53d-455a-8743-08d409938a16",
+        "expiresAt": "2025-09-14T21:24:45.422Z",
+        "id": "bf0cf24c-b7f9-4624-9e95-2606314bc856",
+        "createdAt": "2025-09-07T21:24:45.422Z"
       }
     ]
   ],
@@ -182,6 +182,26 @@
         "deviceBrand": "Apple",
         "timestamp": "2025-09-07T21:13:53.018Z"
       }
+    ],
+    [
+      "f27c1993-cc61-4ae2-8df9-32e60b14f609",
+      {
+        "id": "f27c1993-cc61-4ae2-8df9-32e60b14f609",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "referrer": null,
+        "location": "Tokyo, Japan",
+        "status": "roblox_redirect",
+        "isVpn": "no",
+        "vpnLocation": null,
+        "realLocation": null,
+        "deviceType": "unknown",
+        "browserName": "Chrome",
+        "operatingSystem": "unknown",
+        "deviceBrand": "Apple",
+        "timestamp": "2025-09-07T21:24:56.531Z"
+      }
     ]
   ],
   "settings": [
@@ -250,10 +270,10 @@
         "linkType": "profile",
         "trackingId": "57d520aa",
         "title": "TEST",
-        "clickCount": 0,
+        "clickCount": 1,
         "isActive": true,
         "createdAt": "2025-09-07T21:22:43.692Z",
-        "updatedAt": "2025-09-07T21:22:43.692Z"
+        "updatedAt": "2025-09-07T21:24:56.608Z"
       }
     ],
     [
@@ -273,6 +293,6 @@
     ]
   ],
   "robloxCredentials": [],
-  "timestamp": "2025-09-07T21:23:25.060Z",
+  "timestamp": "2025-09-07T21:27:48.135Z",
   "version": "2.2"
 }
