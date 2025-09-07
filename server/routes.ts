@@ -1,10 +1,11 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertIpLogSchema, insertSettingsSchema } from "@shared/schema";
+import { insertIpLogSchema, insertSettingsSchema, insertUserSchema, insertAccessKeySchema } from "@shared/schema";
 import path from "path";
 import fs from "fs";
 import multer from "multer";
+import { randomUUID } from "crypto";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -189,7 +190,198 @@ async function sendToWebhook(webhookUrl: string, data: any): Promise<void> {
   }
 }
 
+// Authentication middleware
+async function authenticateUser(req: Request, res: Response, next: Function) {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+
+  const session = await storage.getSession(token);
+  if (!session) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
+  const user = await storage.getUser(session.userId);
+  if (!user) {
+    return res.status(401).json({ error: 'User not found' });
+  }
+
+  req.user = user;
+  next();
+}
+
+// Extend Express Request type
+declare global {
+  namespace Express {
+    interface Request {
+      user?: any;
+    }
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Authentication routes
+  app.post('/api/verify-key', async (req: Request, res: Response) => {
+    try {
+      const { key } = req.body;
+      if (!key) {
+        return res.status(400).json({ error: 'Access code is required' });
+      }
+
+      const accessKey = await storage.getAccessKey(key);
+      if (!accessKey || !accessKey.isActive || accessKey.usedCount >= accessKey.usageLimit) {
+        return res.status(401).json({ error: 'Invalid or expired access code' });
+      }
+
+      const canUse = await storage.useAccessKey(key);
+      if (!canUse) {
+        return res.status(401).json({ error: 'Access code usage limit reached' });
+      }
+
+      res.json({ success: true, message: 'Access granted' });
+    } catch (error) {
+      console.error('Key verification error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/login', async (req: Request, res: Response) => {
+    try {
+      const { username, password } = req.body;
+      if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password are required' });
+      }
+
+      const user = await storage.getUserByUsername(username);
+      if (!user || user.password !== password) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      const sessionToken = randomUUID();
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+      
+      await storage.createSession({
+        userId: user.id,
+        sessionToken,
+        expiresAt
+      });
+
+      res.json({ 
+        token: sessionToken, 
+        user: { 
+          id: user.id, 
+          username: user.username, 
+          theme: user.theme, 
+          isDev: user.isDev 
+        } 
+      });
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/register', async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertUserSchema.parse(req.body);
+      
+      const existingUser = await storage.getUserByUsername(validatedData.username);
+      if (existingUser) {
+        return res.status(400).json({ error: 'Username already exists' });
+      }
+
+      const user = await storage.createUser(validatedData);
+      res.json({ 
+        success: true, 
+        user: { 
+          id: user.id, 
+          username: user.username, 
+          theme: user.theme 
+        } 
+      });
+    } catch (error) {
+      console.error('Registration error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/logout', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      if (token) {
+        await storage.deleteSession(token);
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Logout error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.get('/api/user', authenticateUser, async (req: Request, res: Response) => {
+    res.json({
+      id: req.user.id,
+      username: req.user.username,
+      theme: req.user.theme,
+      isDev: req.user.isDev
+    });
+  });
+
+  app.put('/api/user/theme', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const { theme } = req.body;
+      if (!theme) {
+        return res.status(400).json({ error: 'Theme is required' });
+      }
+      await storage.updateUserTheme(req.user.id, theme);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Theme update error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Dev-only routes for key management
+  app.post('/api/dev/keys', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      if (!req.user.isDev) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const { key, usageLimit } = req.body;
+      if (!key || !usageLimit) {
+        return res.status(400).json({ error: 'Key and usage limit are required' });
+      }
+
+      const accessKey = await storage.createAccessKey({
+        key,
+        usageLimit: parseInt(usageLimit),
+        isActive: true,
+        createdBy: req.user.id
+      });
+
+      res.json(accessKey);
+    } catch (error) {
+      console.error('Key creation error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.get('/api/dev/keys', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      if (!req.user.isDev) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const keys = await storage.getUserAccessKeys(req.user.id);
+      res.json(keys);
+    } catch (error) {
+      console.error('Keys fetch error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   // Serve tracking HTML page that logs everything
   app.get('/track/:id', async (req: Request, res: Response) => {
     try {
@@ -534,13 +726,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // API routes for dashboard
-  app.get('/api/logs', async (req: Request, res: Response) => {
+  app.get('/api/logs', authenticateUser, async (req: Request, res: Response) => {
     try {
       const limit = parseInt(req.query.limit as string) || 50;
       const offset = parseInt(req.query.offset as string) || 0;
+      const userId = req.user.id;
 
-      const logs = await storage.getIpLogs(limit, offset);
-      const total = await storage.getTotalIpLogs();
+      const logs = await storage.getIpLogs(userId, limit, offset);
+      const total = await storage.getTotalIpLogs(userId);
 
       res.json({ logs, total });
     } catch (error) {
@@ -549,11 +742,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/metrics', async (req: Request, res: Response) => {
+  app.get('/api/metrics', authenticateUser, async (req: Request, res: Response) => {
     try {
-      const totalRequests = await storage.getTotalIpLogs();
-      const uniqueIPs = await storage.getUniqueIpCount();
-      const recentLogs = await storage.getRecentLogs(1); // Last hour
+      const userId = req.user.id;
+      const totalRequests = await storage.getTotalIpLogs(userId);
+      const uniqueIPs = await storage.getUniqueIpCount(userId);
+      const recentLogs = await storage.getRecentLogs(userId, 1); // Last hour
 
       const metrics = {
         totalRequests,
