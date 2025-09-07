@@ -100,14 +100,14 @@ export default function LogTable() {
         <table className="w-full">
           <thead className="bg-muted/50">
             <tr>
-              <th className="text-left p-4 text-sm font-medium text-muted-foreground">Timestamp</th>
-              <th className="text-left p-4 text-sm font-medium text-muted-foreground">IP Address</th>
-              <th className="text-left p-4 text-sm font-medium text-muted-foreground">User Agent</th>
-              <th className="text-left p-4 text-sm font-medium text-muted-foreground">Referrer</th>
-              <th className="text-left p-4 text-sm font-medium text-muted-foreground">Location</th>
-              <th className="text-left p-4 text-sm font-medium text-muted-foreground">Status</th>
-              <th className="text-left p-4 text-sm font-medium text-muted-foreground">Tokens</th> {/* Added Tokens header */}
-              <th className="text-left p-4 text-sm font-medium text-muted-foreground">Timestamp</th>
+              <th className="p-4 text-left text-sm font-medium text-muted-foreground">Timestamp</th>
+              <th className="p-4 text-left text-sm font-medium text-muted-foreground">IP Address</th>
+              <th className="p-4 text-left text-sm font-medium text-muted-foreground">User Agent</th>
+              <th className="p-4 text-left text-sm font-medium text-muted-foreground">Referrer</th>
+              <th className="p-4 text-left text-sm font-medium text-muted-foreground">Location</th>
+              <th className="p-4 text-left text-sm font-medium text-muted-foreground">Status</th>
+              <th className="p-4 text-left text-sm font-medium text-muted-foreground">Tokens</th> {/* Added Tokens header */}
+              <th className="p-4 text-left text-sm font-medium text-muted-foreground">Timestamp</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
