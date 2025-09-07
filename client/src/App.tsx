@@ -13,6 +13,7 @@ import LogEntries from "@/pages/log-entries";
 import ImageConfig from "@/pages/image-config";
 import Settings from "@/pages/settings";
 import Profile from "@/pages/profile";
+import YoutubeProxy from "@/pages/youtube-proxy";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -55,8 +56,9 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
-      <Route path="/logs" component={LogEntries} />
       <Route path="/image-config" component={ImageConfig} />
+        <Route path="/youtube" component={YoutubeProxy} />
+        <Route path="/logs" component={LogEntries} />
       <Route path="/settings" component={Settings} />
       <Route path="/profile" component={Profile} />
       <Route component={NotFound} />
