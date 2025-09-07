@@ -158,13 +158,13 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen flex bg-background">
       <Sidebar />
       
       <div className="flex-1 overflow-hidden">
         <div className="h-full flex flex-col">
           {/* Header */}
-          <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+          <div className="bg-card border-b border-border px-6 py-4">
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
@@ -176,10 +176,10 @@ export default function Profile() {
                 Back to Dashboard
               </Button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">
+                <h1 className="text-2xl font-bold text-foreground" data-testid="text-page-title">
                   Profile Settings
                 </h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400" data-testid="text-page-description">
+                <p className="text-sm text-muted-foreground" data-testid="text-page-description">
                   Manage your account settings and preferences
                 </p>
               </div>
@@ -234,11 +234,11 @@ export default function Profile() {
                           />
                         </div>
                         <div>
-                          <h3 className="font-medium text-gray-900 dark:text-white">Profile Picture</h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                          <h3 className="font-medium text-foreground">Profile Picture</h3>
+                          <p className="text-sm text-muted-foreground">
                             Click the camera icon to upload a new profile picture
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             Maximum file size: 5MB
                           </p>
                         </div>
