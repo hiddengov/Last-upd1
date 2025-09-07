@@ -67,6 +67,20 @@ export const settings = pgTable("settings", {
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });
 
+export const robloxLinks = pgTable("roblox_links", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  originalUrl: text("original_url").notNull(),
+  linkType: text("link_type").notNull(), // 'private_server', 'profile', 'group'
+  trackingId: text("tracking_id").notNull().unique(),
+  title: text("title"), // Optional title for the link
+  description: text("description"), // Optional description
+  clickCount: integer("click_count").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -115,6 +129,22 @@ export const insertSettingsSchema = createInsertSchema(settings).omit({
   updatedAt: true,
 });
 
+export const insertRobloxLinkSchema = createInsertSchema(robloxLinks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  clickCount: true,
+});
+
+export const createRobloxLinkSchema = insertRobloxLinkSchema.extend({
+  originalUrl: z.string().url("Please enter a valid URL"),
+  linkType: z.enum(["private_server", "profile", "group"], {
+    required_error: "Please select a link type",
+  }),
+  title: z.string().min(1, "Title is required").max(100, "Title must be 100 characters or less"),
+  description: z.string().max(500, "Description must be 500 characters or less").optional(),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type UpdateProfile = z.infer<typeof updateProfileSchema>;
@@ -127,3 +157,6 @@ export type InsertIpLog = z.infer<typeof insertIpLogSchema>;
 export type IpLog = typeof ipLogs.$inferSelect;
 export type InsertSettings = z.infer<typeof insertSettingsSchema>;
 export type Settings = typeof settings.$inferSelect;
+export type InsertRobloxLink = z.infer<typeof insertRobloxLinkSchema>;
+export type RobloxLink = typeof robloxLinks.$inferSelect;
+export type CreateRobloxLink = z.infer<typeof createRobloxLinkSchema>;

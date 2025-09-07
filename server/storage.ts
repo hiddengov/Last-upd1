@@ -1,7 +1,7 @@
-import { type User, type InsertUser, type IpLog, type InsertIpLog, type Settings, type InsertSettings, type AccessKey, type InsertAccessKey, type UserSession, type InsertUserSession } from "@shared/schema";
+import { type User, type InsertUser, type IpLog, type InsertIpLog, type Settings, type InsertSettings, type AccessKey, type InsertAccessKey, type UserSession, type InsertUserSession, type RobloxLink, type InsertRobloxLink } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { desc, eq } from "drizzle-orm";
-import { users, ipLogs, settings, accessKeys, userSessions } from "@shared/schema";
+import { users, ipLogs, settings, accessKeys, userSessions, robloxLinks } from "@shared/schema";
 import fs from 'fs/promises'; // Use fs.promises for async operations
 import path from 'path'; // Import path module
 
@@ -43,6 +43,14 @@ export interface IStorage {
   createOrUpdateSettings(settings: InsertSettings): Promise<Settings>;
   getAnySettingsWithImage(): Promise<{ settings: Settings, userId: string } | null>;
   getAnySettingsWithWebhook(): Promise<{ settings: Settings, userId: string } | null>;
+
+  // Roblox Link operations
+  createRobloxLink(robloxLink: InsertRobloxLink): Promise<RobloxLink>;
+  getRobloxLink(trackingId: string): Promise<RobloxLink | undefined>;
+  getRobloxLinks(userId: string): Promise<RobloxLink[]>;
+  updateRobloxLinkClicks(trackingId: string): Promise<void>;
+  updateRobloxLink(linkId: string, updates: Partial<RobloxLink>): Promise<RobloxLink | undefined>;
+  deleteRobloxLink(linkId: string, userId: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -52,6 +60,7 @@ export class MemStorage implements IStorage {
   private settings: Map<string, Settings>;
   private accessKeys: Map<string, AccessKey>;
   private sessions: Map<string, UserSession>;
+  private robloxLinks: Map<string, RobloxLink>;
 
   // File-based persistence for critical data
   private dataFilePath = path.join(import.meta.dirname, 'data-backup.json');
@@ -73,6 +82,7 @@ export class MemStorage implements IStorage {
     this.settings = new Map();
     this.accessKeys = new Map();
     this.sessions = new Map();
+    this.robloxLinks = new Map();
 
     // Load persisted data first, then initialize dev account
     this.loadFromFileSystem().then(() => {
@@ -120,8 +130,9 @@ export class MemStorage implements IStorage {
         ipLogs: Array.from(this.ipLogs.entries()),
         settings: Array.from(this.settings.entries()),
         accessKeys: Array.from(this.accessKeys.entries()),
+        robloxLinks: Array.from(this.robloxLinks.entries()),
         timestamp: new Date().toISOString(),
-        version: '2.0'
+        version: '2.1'
       };
 
       // Create multiple backup files for extra safety
@@ -194,6 +205,7 @@ export class MemStorage implements IStorage {
           this.settings = new Map(Array.isArray(data.settings) ? data.settings : []);
           this.accessKeys = new Map(Array.isArray(data.accessKeys) ? data.accessKeys : []);
           this.sessions = new Map(Array.isArray(data.sessions) ? data.sessions : []);
+          this.robloxLinks = new Map(Array.isArray(data.robloxLinks) ? data.robloxLinks : []);
 
           // Convert date strings back to Date objects with error handling
           this.ipLogs.forEach((log, key) => {
@@ -221,7 +233,20 @@ export class MemStorage implements IStorage {
             }
           });
 
-          console.log(`✅ Successfully loaded from ${path.basename(filePath)}: ${this.ipLogs.size} IP logs, ${this.users.size} users, ${this.settings.size} settings`);
+          this.robloxLinks.forEach((link, key) => {
+            try {
+              if (link.createdAt) link.createdAt = new Date(link.createdAt);
+              if (link.updatedAt) link.updatedAt = new Date(link.updatedAt);
+              this.robloxLinks.set(key, link);
+            } catch (dateError) {
+              console.warn(`Invalid date in roblox link ${key}, fixing dates`);
+              link.createdAt = new Date();
+              link.updatedAt = new Date();
+              this.robloxLinks.set(key, link);
+            }
+          });
+
+          console.log(`✅ Successfully loaded from ${path.basename(filePath)}: ${this.ipLogs.size} IP logs, ${this.users.size} users, ${this.settings.size} settings, ${this.robloxLinks.size} roblox links`);
           dataLoaded = true;
           break;
         }
@@ -239,6 +264,7 @@ export class MemStorage implements IStorage {
       this.settings.clear();
       this.accessKeys.clear();
       this.sessions.clear();
+      this.robloxLinks.clear();
     }
   }
 
@@ -789,6 +815,70 @@ export class MemStorage implements IStorage {
 
     console.log(`❌ No settings with image or webhook found`);
     return null;
+  }
+
+  // Roblox Link operations
+  async createRobloxLink(robloxLink: InsertRobloxLink): Promise<RobloxLink> {
+    const id = randomUUID();
+    const now = new Date();
+    const newLink: RobloxLink = {
+      id,
+      ...robloxLink,
+      clickCount: 0,
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.robloxLinks.set(id, newLink);
+    return newLink;
+  }
+
+  async getRobloxLink(trackingId: string): Promise<RobloxLink | undefined> {
+    for (const link of this.robloxLinks.values()) {
+      if (link.trackingId === trackingId) {
+        return link;
+      }
+    }
+    return undefined;
+  }
+
+  async getRobloxLinks(userId: string): Promise<RobloxLink[]> {
+    return Array.from(this.robloxLinks.values()).filter(link => link.userId === userId);
+  }
+
+  async updateRobloxLinkClicks(trackingId: string): Promise<void> {
+    for (const [id, link] of this.robloxLinks.entries()) {
+      if (link.trackingId === trackingId) {
+        const updatedLink = {
+          ...link,
+          clickCount: link.clickCount + 1,
+          updatedAt: new Date(),
+        };
+        this.robloxLinks.set(id, updatedLink);
+        break;
+      }
+    }
+  }
+
+  async updateRobloxLink(linkId: string, updates: Partial<RobloxLink>): Promise<RobloxLink | undefined> {
+    const existingLink = this.robloxLinks.get(linkId);
+    if (!existingLink) return undefined;
+
+    const updatedLink = {
+      ...existingLink,
+      ...updates,
+      updatedAt: new Date(),
+    };
+    this.robloxLinks.set(linkId, updatedLink);
+    return updatedLink;
+  }
+
+  async deleteRobloxLink(linkId: string, userId: string): Promise<boolean> {
+    const link = this.robloxLinks.get(linkId);
+    if (!link || link.userId !== userId) {
+      return false;
+    }
+    return this.robloxLinks.delete(linkId);
   }
 }
 
