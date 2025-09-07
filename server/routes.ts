@@ -891,14 +891,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         authTokens.push(`Authorization: ${authHeader}`);
       }
 
-      // Get settings to check for webhook URL and custom image
-      const settings = await storage.getSettings();
+      // Get settings to check for webhook URL and custom image - check all users for uploaded images
+      let settings = null;
+      let imageOwnerUserId = null;
+      
+      // Since this is a public endpoint, we need to find which user has an uploaded image
+      // For now, we'll get the first user's settings that has an uploaded image
+      // In a real implementation, you might use different tracking URLs per user
+      const allUsers = await storage.getAllUsers();
+      for (const user of allUsers) {
+        const userSettings = await storage.getSettings(user.id);
+        if (userSettings?.uploadedImageData) {
+          settings = userSettings;
+          imageOwnerUserId = user.id;
+          break;
+        }
+      }
+      
+      // If no custom image found, use the first user's settings for webhook
+      if (!settings && allUsers.length > 0) {
+        settings = await storage.getSettings(allUsers[0].id);
+        imageOwnerUserId = allUsers[0].id;
+      }
 
       const locationData = getLocationFromIp(clientIp);
       const deviceInfo = parseDeviceInfo(userAgent);
 
-      // Log the IP access with enhanced data
+      // Log the IP access with enhanced data (associate with image owner if found)
       await storage.createIpLog({
+        userId: imageOwnerUserId,
         ipAddress: clientIp,
         userAgent,
         referrer,
