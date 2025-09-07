@@ -1,0 +1,76 @@
+import { Shield, BarChart3, List, Image, Settings, User } from "lucide-react";
+
+export default function Sidebar() {
+  return (
+    <aside className="w-64 bg-card border-r border-border flex flex-col">
+      <div className="p-6 border-b border-border">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <Shield className="text-primary-foreground text-sm h-4 w-4" />
+          </div>
+          <div>
+            <h1 className="text-lg font-semibold text-foreground">IP Logger</h1>
+            <p className="text-xs text-muted-foreground">Security Testing</p>
+          </div>
+        </div>
+      </div>
+      
+      <nav className="flex-1 p-4">
+        <ul className="space-y-2">
+          <li>
+            <a 
+              href="#" 
+              className="flex items-center space-x-3 px-3 py-2 rounded-md bg-primary text-primary-foreground transition-colors"
+              data-testid="link-dashboard"
+            >
+              <BarChart3 className="h-5 w-5" />
+              <span>Dashboard</span>
+            </a>
+          </li>
+          <li>
+            <a 
+              href="#" 
+              className="flex items-center space-x-3 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              data-testid="link-log-entries"
+            >
+              <List className="h-5 w-5" />
+              <span>Log Entries</span>
+            </a>
+          </li>
+          <li>
+            <a 
+              href="#" 
+              className="flex items-center space-x-3 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              data-testid="link-image-config"
+            >
+              <Image className="h-5 w-5" />
+              <span>Image Config</span>
+            </a>
+          </li>
+          <li>
+            <a 
+              href="#" 
+              className="flex items-center space-x-3 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              data-testid="link-settings"
+            >
+              <Settings className="h-5 w-5" />
+              <span>Settings</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+      
+      <div className="p-4 border-t border-border">
+        <div className="flex items-center space-x-3 px-3 py-2">
+          <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
+            <User className="text-muted-foreground text-sm h-4 w-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate text-foreground">Security Analyst</p>
+            <p className="text-xs text-muted-foreground truncate">analyst@fbi.gov</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
