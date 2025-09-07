@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Trash2, Link, Settings as SettingsIcon, Shield, AlertTriangle } from "lucide-react";
+import { Upload, Link, Settings as SettingsIcon, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 
@@ -27,7 +27,6 @@ type SettingsForm = z.infer<typeof settingsSchema>;
 
 export default function Settings() {
   const { toast } = useToast();
-  const [dragOver, setDragOver] = useState(false);
 
   const { data: settings, isLoading } = useQuery<SettingsData>({
     queryKey: ['/api/settings'],
@@ -241,119 +240,37 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* Decoy Content Upload */}
+          {/* Image Configuration Link */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Upload className="h-5 w-5" />
-                <span>Custom Decoy Content</span>
+                <span>Image Configuration</span>
               </CardTitle>
               <CardDescription>
-                Upload a custom image or video to replace the default content. This will be served when targets access your tracking URLs.
+                Manage your decoy images and generate tracking links
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Current Decoy Content Status */}
-              {settings?.hasUploadedImage ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
-                        <Upload className="h-5 w-5 text-green-500" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-foreground">Custom Content Active</p>
-                        <p className="text-sm text-muted-foreground">{settings.uploadedImageName}</p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => deleteMutation.mutate()}
-                      disabled={deleteMutation.isPending}
-                      data-testid="button-delete-image"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      {deleteMutation.isPending ? "Deleting..." : "Delete"}
-                    </Button>
+            <CardContent>
+              <div className="flex items-center justify-between p-4 bg-muted/20 border border-border rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <Upload className="h-5 w-5 text-primary" />
                   </div>
-
-                  {/* Tracking URL */}
-                  <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-foreground mb-2">🎯 Your Tracking URL</p>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          Send this URL to targets - they'll see your uploaded content and you'll get their IP
-                        </p>
-                        <div className="flex items-center space-x-2">
-                          <code className="bg-muted px-3 py-2 rounded text-sm font-mono text-foreground flex-1 select-all border">
-                            {window.location.origin}/track/{settings.uploadedImageName || 'default'}
-                          </code>
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              navigator.clipboard.writeText(`${window.location.origin}/track/${settings.uploadedImageName || 'default'}`);
-                              toast({ title: "Copied!", description: "Tracking URL copied to clipboard" });
-                            }}
-                            data-testid="button-copy-url"
-                          >
-                            Copy URL
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-3 p-4 bg-muted/50 border border-border rounded-lg">
-                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
                   <div>
-                    <p className="font-medium text-foreground">Using Default 1x1 Pixel</p>
-                    <p className="text-sm text-muted-foreground">A 1x1 transparent GIF will be served by default.</p>
+                    <p className="font-medium text-foreground">Upload & Configure Images</p>
+                    <p className="text-sm text-muted-foreground">
+                      {settings?.hasUploadedImage 
+                        ? `Current: ${settings.uploadedImageName}` 
+                        : "Using default 1x1 pixel"}
+                    </p>
                   </div>
                 </div>
-              )}
-
-              {/* Upload Area */}
-              <div
-                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                  dragOver 
-                    ? 'border-primary bg-primary/5' 
-                    : 'border-muted-foreground/25 hover:border-muted-foreground/50'
-                }`}
-                onDrop={handleDrop}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragOver(true);
-                }}
-                onDragLeave={() => setDragOver(false)}
-              >
-                <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-foreground mb-2">Upload New Decoy Content</h3>
-                <p className="text-muted-foreground mb-4">
-                  Drag and drop an image or video here, or click to select
-                </p>
-                <input
-                  type="file"
-                  accept="image/*,video/*"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  id="content-upload"
-                  data-testid="input-content-upload"
-                />
-                <Button 
-                  asChild 
-                  variant="outline"
-                  disabled={uploadMutation.isPending}
-                >
-                  <label htmlFor="content-upload" className="cursor-pointer">
-                    {uploadMutation.isPending ? "Uploading..." : "Select File"}
-                  </label>
+                <Button asChild>
+                  <a href="/image-config" data-testid="button-manage-images">
+                    Manage Images
+                  </a>
                 </Button>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Max file size: 10MB • Supported: JPG, PNG, GIF, WebP, MP4, MOV, AVI
-                </p>
               </div>
             </CardContent>
           </Card>

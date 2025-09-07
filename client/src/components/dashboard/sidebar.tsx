@@ -35,24 +35,32 @@ export default function Sidebar() {
             </Link>
           </li>
           <li>
-            <a 
-              href="#" 
-              className="flex items-center space-x-3 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            <Link 
+              href="/logs"
+              className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
+                location === "/logs" 
+                  ? "bg-primary text-primary-foreground" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
+              }`}
               data-testid="link-log-entries"
             >
               <List className="h-5 w-5" />
               <span>Log Entries</span>
-            </a>
+            </Link>
           </li>
           <li>
-            <a 
-              href="#" 
-              className="flex items-center space-x-3 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            <Link 
+              href="/image-config"
+              className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
+                location === "/image-config" 
+                  ? "bg-primary text-primary-foreground" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
+              }`}
               data-testid="link-image-config"
             >
               <Image className="h-5 w-5" />
               <span>Image Config</span>
-            </a>
+            </Link>
           </li>
           <li>
             <Link 
