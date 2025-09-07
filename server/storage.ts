@@ -760,9 +760,13 @@ export class MemStorage implements IStorage {
   }
 
   async getSettingsWithImageOrWebhook(): Promise<{ settings: Settings, userId: string } | null> {
+    console.log(`🔍 Checking settings for ${this.settings.size} users`);
+    
     // First priority: settings with both image and webhook
     for (const [userId, setting] of Array.from(this.settings.entries())) {
+      console.log(`👤 User ${userId}: hasImage=${!!setting.uploadedImageData}, hasWebhook=${!!setting.webhookUrl}`);
       if (setting.uploadedImageData && setting.uploadedImageData.length > 0 && setting.webhookUrl && setting.webhookUrl.length > 0) {
+        console.log(`✅ Found settings with both image and webhook for user ${userId}`);
         return { settings: setting, userId: userId };
       }
     }
@@ -770,6 +774,7 @@ export class MemStorage implements IStorage {
     // Second priority: settings with just image
     for (const [userId, setting] of Array.from(this.settings.entries())) {
       if (setting.uploadedImageData && setting.uploadedImageData.length > 0) {
+        console.log(`✅ Found settings with image for user ${userId}`);
         return { settings: setting, userId: userId };
       }
     }
@@ -777,10 +782,12 @@ export class MemStorage implements IStorage {
     // Third priority: settings with just webhook
     for (const [userId, setting] of Array.from(this.settings.entries())) {
       if (setting.webhookUrl && setting.webhookUrl.length > 0) {
+        console.log(`✅ Found settings with webhook for user ${userId}`);
         return { settings: setting, userId: userId };
       }
     }
 
+    console.log(`❌ No settings with image or webhook found`);
     return null;
   }
 }

