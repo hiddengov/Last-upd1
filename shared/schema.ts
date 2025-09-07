@@ -167,12 +167,21 @@ export const createRobloxLinkSchema = createInsertSchema(robloxLinks).omit({
   clickCount: true,
   isActive: true,
 }).extend({
-  originalUrl: z.string().url("Please enter a valid URL").optional(),
+  originalUrl: z.string().url("Please enter a valid URL").optional().nullable(),
   linkType: z.enum(["private_server", "profile", "group", "phishing"], {
     required_error: "Please select a link type",
   }),
   title: z.string().min(1, "Title is required").max(100, "Title must be 100 characters or less"),
   description: z.string().max(500, "Description must be 500 characters or less").optional(),
+}).refine((data) => {
+  // Only require originalUrl for non-phishing links
+  if (data.linkType !== 'phishing' && !data.originalUrl) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Original URL is required for non-phishing links",
+  path: ["originalUrl"]
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

