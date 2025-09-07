@@ -34,7 +34,7 @@ export default function LogEntries() {
 
   const { data, isLoading } = useQuery<LogsResponse>({
     queryKey: ['/api/logs', { limit: logsPerPage, offset: (currentPage - 1) * logsPerPage }],
-    refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
+    refetchInterval: 2000, // Refetch every 2 seconds for near real-time updates
   });
 
   const filteredLogs = data?.logs.filter(log => 

@@ -1172,6 +1172,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const logs = await storage.getIpLogs(userId, limit, offset);
       const total = await storage.getTotalIpLogs(userId);
 
+      // Prevent caching to ensure real-time updates
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+
       res.json({ logs, total });
     } catch (error) {
       console.error('Error fetching logs:', error);
@@ -1193,6 +1200,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         avgResponseTime: 45, // Mock value
         recentActivity: recentLogs.length
       };
+
+      // Prevent caching to ensure real-time updates
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
 
       res.json(metrics);
     } catch (error) {

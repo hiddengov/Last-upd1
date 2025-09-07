@@ -35,7 +35,7 @@ export default function LogTable() {
 
   const { data, isLoading } = useQuery<LogsResponse>({
     queryKey: ['/api/logs', { limit: logsPerPage, offset: (currentPage - 1) * logsPerPage }],
-    refetchInterval: 10000, // Refetch every 10 seconds
+    refetchInterval: 2000, // Refetch every 2 seconds for faster updates
   });
 
   const filteredLogs = data?.logs.filter(log => 
