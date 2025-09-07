@@ -30,6 +30,16 @@
         "id": "19ec3681-8a34-45ec-acc2-ca86fc2ef5f3",
         "createdAt": "2025-09-07T20:43:32.978Z"
       }
+    ],
+    [
+      "1d73243a-36c6-47b3-b245-934f27c0451b",
+      {
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "sessionToken": "1d73243a-36c6-47b3-b245-934f27c0451b",
+        "expiresAt": "2025-09-14T21:22:19.163Z",
+        "id": "e84f6455-e282-4c6f-8b06-dbac93710527",
+        "createdAt": "2025-09-07T21:22:19.163Z"
+      }
     ]
   ],
   "ipLogs": [
@@ -230,9 +240,39 @@
         "createdAt": "2025-09-07T21:13:47.723Z",
         "updatedAt": "2025-09-07T21:13:53.025Z"
       }
+    ],
+    [
+      "cdecfc6d-22da-4573-9122-677275f977ab",
+      {
+        "id": "cdecfc6d-22da-4573-9122-677275f977ab",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "originalUrl": "https://www.roblox.com/users/9173571353/profile",
+        "linkType": "profile",
+        "trackingId": "57d520aa",
+        "title": "TEST",
+        "clickCount": 0,
+        "isActive": true,
+        "createdAt": "2025-09-07T21:22:43.692Z",
+        "updatedAt": "2025-09-07T21:22:43.692Z"
+      }
+    ],
+    [
+      "e9970465-a703-4856-87b8-d6240c155284",
+      {
+        "id": "e9970465-a703-4856-87b8-d6240c155284",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "originalUrl": "http://ae8c0453-e7b1-4bd5-bd80-9cea117ae053-00-ilh5cl808jjo.worf.replit.dev/roblox/46005ad2",
+        "linkType": "profile",
+        "trackingId": "4bd420f4",
+        "title": "e",
+        "clickCount": 0,
+        "isActive": true,
+        "createdAt": "2025-09-07T21:22:53.372Z",
+        "updatedAt": "2025-09-07T21:22:53.372Z"
+      }
     ]
   ],
   "robloxCredentials": [],
-  "timestamp": "2025-09-07T21:21:55.052Z",
+  "timestamp": "2025-09-07T21:22:55.058Z",
   "version": "2.2"
 }
