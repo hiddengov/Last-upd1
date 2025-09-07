@@ -121,7 +121,7 @@ export default function LogEntries() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setLocation("/dashboard")}
+                onClick={() => setLocation("/")}
                 className="mr-2"
               >
                 <ArrowLeft className="h-4 w-4 mr-1" />
