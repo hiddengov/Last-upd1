@@ -20,7 +20,18 @@
       }
     ]
   ],
-  "sessions": [],
+  "sessions": [
+    [
+      "f7ee6d13-4257-45f7-89c1-1801ea915eb5",
+      {
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "sessionToken": "f7ee6d13-4257-45f7-89c1-1801ea915eb5",
+        "expiresAt": "2025-09-14T20:32:03.995Z",
+        "id": "aec97a73-a527-4179-a553-1afb44e35a0a",
+        "createdAt": "2025-09-07T20:32:03.995Z"
+      }
+    ]
+  ],
   "ipLogs": [
     [
       "fef9a87a-2840-4471-a6bc-ca63fb46c221",
@@ -40,6 +51,26 @@
         "operatingSystem": "unknown",
         "deviceBrand": "Apple",
         "timestamp": "2025-09-07T20:17:50.686Z"
+      }
+    ],
+    [
+      "c3252678-0efd-4915-ab28-e947a0c164d1",
+      {
+        "id": "c3252678-0efd-4915-ab28-e947a0c164d1",
+        "userId": null,
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "referrer": "https://21ba43d0-1069-4af9-af90-a66db32fce5e-00-x30f1wdpgjyn.kirk.replit.dev/youtube",
+        "location": "Munich, Germany",
+        "status": "youtube_proxy_access",
+        "isVpn": "no",
+        "vpnLocation": null,
+        "realLocation": null,
+        "deviceType": "unknown",
+        "browserName": "Chrome",
+        "operatingSystem": "unknown",
+        "deviceBrand": "Apple",
+        "timestamp": "2025-09-07T20:32:49.348Z"
       }
     ]
   ],
@@ -70,6 +101,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-07T20:30:19.438Z",
+  "timestamp": "2025-09-07T20:33:49.493Z",
   "version": "2.0"
 }
