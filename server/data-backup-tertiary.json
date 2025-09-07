@@ -162,6 +162,26 @@
         "deviceBrand": "Apple",
         "timestamp": "2025-09-07T20:42:13.776Z"
       }
+    ],
+    [
+      "09d64f95-f108-4394-8b8e-ebbbaeae7113",
+      {
+        "id": "09d64f95-f108-4394-8b8e-ebbbaeae7113",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "referrer": null,
+        "location": "Marseille, France",
+        "status": "roblox_redirect",
+        "isVpn": "no",
+        "vpnLocation": null,
+        "realLocation": null,
+        "deviceType": "unknown",
+        "browserName": "Chrome",
+        "operatingSystem": "unknown",
+        "deviceBrand": "Apple",
+        "timestamp": "2025-09-07T21:13:53.018Z"
+      }
     ]
   ],
   "settings": [
@@ -205,7 +225,23 @@
       }
     ]
   ],
-  "robloxLinks": [],
-  "timestamp": "2025-09-07T21:13:40.140Z",
+  "robloxLinks": [
+    [
+      "bf673276-1bde-468c-8719-d0343672443e",
+      {
+        "id": "bf673276-1bde-468c-8719-d0343672443e",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "originalUrl": "https://www.roblox.com/users/9173571353/profile",
+        "linkType": "private_server",
+        "trackingId": "46005ad2",
+        "title": "test",
+        "clickCount": 1,
+        "isActive": true,
+        "createdAt": "2025-09-07T21:13:47.723Z",
+        "updatedAt": "2025-09-07T21:13:53.025Z"
+      }
+    ]
+  ],
+  "timestamp": "2025-09-07T21:14:50.141Z",
   "version": "2.1"
 }
