@@ -3,28 +3,17 @@
   "version": 2,
   "builds": [
     {
-      "src": "server/index.ts",
+      "src": "package.json",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": [
-          "server/**",
-          "shared/**",
-          "dist/public/**"
-        ]
-      }
-    },
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist/public"
+        "zeroConfig": true
       }
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/server/index.ts"
+      "dest": "/api/index.js"
     },
     {
       "src": "/(.*)",
@@ -32,11 +21,14 @@
     }
   ],
   "functions": {
-    "server/index.ts": {
+    "api/index.js": {
       "maxDuration": 30
     }
   },
   "env": {
     "NODE_ENV": "production"
-  }
+  },
+  "installCommand": "npm install",
+  "buildCommand": "npm run vercel-build",
+  "outputDirectory": "dist/public"
 }
