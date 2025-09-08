@@ -1,9 +1,20 @@
 import express, { type Request, Response, NextFunction } from "express";
+import cors from "cors";
 import path from 'path';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+
+// Configure CORS to allow requests from all origins (including other hosted apps)
+app.use(cors({
+  origin: true, // Allow all origins
+  credentials: true, // Allow credentials to be included
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range']
+}));
+
 app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ extended: false, limit: '500mb' }));
 
