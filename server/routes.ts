@@ -350,6 +350,21 @@ declare global {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health check endpoint - for keeping the app alive
+  app.get('/health', (req: Request, res: Response) => {
+    res.status(200).json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      message: 'Server is running and accepting requests'
+    });
+  });
+
+  // Ping endpoint - simple keep-alive endpoint
+  app.get('/ping', (req: Request, res: Response) => {
+    res.status(200).send('pong');
+  });
+
   // Authentication routes
   app.post('/api/verify-key', async (req: Request, res: Response) => {
     try {
