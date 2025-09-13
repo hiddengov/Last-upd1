@@ -462,10 +462,10 @@ export class MemStorage implements IStorage {
 
   // Admin-only password reset function
   async adminResetUserPassword(userId: string, newPassword: string, adminUserId: string): Promise<void> {
-    // Verify admin privileges
+    // Verify admin or developer privileges
     const admin = this.users.get(adminUserId);
-    if (!admin || admin.accountType !== 'admin') {
-      throw new Error('Access denied: Admin privileges required to reset passwords');
+    if (!admin || (!admin.isDev && admin.accountType !== 'admin')) {
+      throw new Error('Access denied: Admin or Developer privileges required to reset passwords');
     }
 
     const user = this.users.get(userId);

@@ -1068,9 +1068,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin password reset endpoint
   app.put('/api/admin/users/:userId/password', authenticateUser, async (req: Request, res: Response) => {
     try {
-      // Only allow admin accounts to reset passwords
-      if (req.user.accountType !== 'admin') {
-        return res.status(403).json({ error: 'Access denied: Admin privileges required to reset passwords' });
+      // Only allow admin accounts or developers to reset passwords
+      if (!req.user.isDev && req.user.accountType !== 'admin') {
+        return res.status(403).json({ error: 'Access denied: Admin or Developer privileges required to reset passwords' });
       }
 
       const { userId } = req.params;
