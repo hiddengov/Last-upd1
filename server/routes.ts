@@ -597,6 +597,16 @@ async function sendToWebhook(webhookUrl: string, data: any): Promise<void> {
   }
 }
 
+// Health check endpoint for uptime monitoring
+app.get('/health', (req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    service: 'IP Tracker API'
+  });
+});
+
 // Authentication middleware
 async function authenticateUser(req: Request, res: Response, next: Function) {
   const token = req.headers.authorization?.replace('Bearer ', '');
