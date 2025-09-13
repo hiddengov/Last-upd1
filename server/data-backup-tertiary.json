@@ -960,6 +960,26 @@
         "deviceBrand": "Apple",
         "timestamp": "2025-09-13T20:18:28.433Z"
       }
+    ],
+    [
+      "be7c389a-8cd1-46a6-a677-15f98868a5f2",
+      {
+        "id": "be7c389a-8cd1-46a6-a677-15f98868a5f2",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "referrer": null,
+        "location": "Tokyo, Japan",
+        "status": "success",
+        "isVpn": "no",
+        "vpnLocation": null,
+        "realLocation": null,
+        "deviceType": "unknown",
+        "browserName": "Chrome",
+        "operatingSystem": "unknown",
+        "deviceBrand": "Apple",
+        "timestamp": "2025-09-13T20:21:02.815Z"
+      }
     ]
   ],
   "settings": [
@@ -1167,6 +1187,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-13T20:19:04.307Z",
+  "timestamp": "2025-09-13T20:22:24.321Z",
   "version": "2.2"
 }

