@@ -459,6 +459,42 @@ export class MemStorage implements IStorage {
     await this.saveToFileSystem(); // Persist password update
   }
 
+  // Admin-only password reset function
+  async adminResetUserPassword(userId: string, newPassword: string, adminUserId: string): Promise<void> {
+    // Verify admin privileges
+    const admin = this.users.get(adminUserId);
+    if (!admin || admin.accountType !== 'admin') {
+      throw new Error('Access denied: Admin privileges required to reset passwords');
+    }
+
+    const user = this.users.get(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Hash the new password with bcrypt
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    this.users.set(userId, { ...user, password: hashedNewPassword });
+    await this.saveToFileSystem(); // Persist password reset
+    
+    console.log(`🔐 Admin ${admin.username} reset password for user ${user.username}`);
+  }
+
+  // Emergency password migration function for plaintext passwords
+  async migrateUserPassword(username: string, newPassword: string): Promise<void> {
+    const user = Array.from(this.users.values()).find(u => u.username === username);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Hash the new password with bcrypt
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    this.users.set(user.id, { ...user, password: hashedNewPassword });
+    await this.saveToFileSystem(); // Persist password migration
+    
+    console.log(`🔄 Password migrated to bcrypt for user: ${user.username}`);
+  }
+
   async updateUserRole(userId: string, roleData: { accountType?: string; isDev?: boolean }, updatedBy: string): Promise<User> {
     const updater = await this.getUser(updatedBy);
     if (!updater?.isDev) {

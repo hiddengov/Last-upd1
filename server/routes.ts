@@ -1065,6 +1065,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin password reset endpoint
+  app.put('/api/admin/users/:userId/password', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      // Only allow admin accounts to reset passwords
+      if (req.user.accountType !== 'admin') {
+        return res.status(403).json({ error: 'Access denied: Admin privileges required to reset passwords' });
+      }
+
+      const { userId } = req.params;
+      const { newPassword } = req.body;
+
+      if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+      }
+
+      await storage.adminResetUserPassword(userId, newPassword, req.user.id);
+      
+      res.json({
+        success: true,
+        message: 'Password reset successfully'
+      });
+    } catch (error: any) {
+      console.error('Admin password reset error:', error);
+      if (error.message === 'User not found') {
+        return res.status(404).json({ error: error.message });
+      }
+      if (error.message.includes('Access denied')) {
+        return res.status(403).json({ error: error.message });
+      }
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+
   // YouTube proxy route that logs IP and redirects to real video
   app.get('/yt/:id', async (req: Request, res: Response) => {
     try {

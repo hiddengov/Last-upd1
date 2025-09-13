@@ -43,13 +43,32 @@
       {
         "id": "3da67feb-fbde-483f-90fc-47cddf0e76fd",
         "username": "vexfuly",
-        "password": "imtaco123",
+        "password": "$2b$10$mualrnwRMjffsZuvMzyCPOpl/qQJvZbuDYEysrhp77Ld6iXdXjfz.",
         "theme": "teal",
         "isDev": true,
         "accessKeyUsed": null,
         "profilePicture": null,
         "createdAt": "2025-09-08T00:12:56.726Z",
         "accountType": "admin",
+        "isBanned": false,
+        "bannedAt": null,
+        "bannedBy": null,
+        "banReason": null,
+        "lastLoginAt": null
+      }
+    ],
+    [
+      "42821de5-75d8-4170-861b-690efc26a51d",
+      {
+        "id": "42821de5-75d8-4170-861b-690efc26a51d",
+        "username": "vexfulyy",
+        "password": "$2b$10$ISWz.ni1yAl.idr7ATIeoefW8S63MoyfYKS.iULZVhFD4Bc9hfhbK",
+        "theme": "default",
+        "isDev": false,
+        "accessKeyUsed": null,
+        "profilePicture": null,
+        "createdAt": "2025-09-13T20:46:12.252Z",
+        "accountType": "user",
         "isBanned": false,
         "bannedAt": null,
         "bannedBy": null,
@@ -110,16 +129,6 @@
       }
     ],
     [
-      "9ea43dfa-1739-4770-9354-3c4948d03630",
-      {
-        "userId": "3da67feb-fbde-483f-90fc-47cddf0e76fd",
-        "sessionToken": "9ea43dfa-1739-4770-9354-3c4948d03630",
-        "expiresAt": "2025-09-20T20:05:35.302Z",
-        "id": "fbbe921e-e928-4bec-bcfa-66dfc58f3764",
-        "createdAt": "2025-09-13T20:05:35.302Z"
-      }
-    ],
-    [
       "d4f850f2-25dc-4edf-8ea4-f9745c5831d5",
       {
         "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
@@ -127,6 +136,16 @@
         "expiresAt": "2025-09-20T20:17:48.613Z",
         "id": "05b7c4d0-389a-484e-b880-ef06f9961719",
         "createdAt": "2025-09-13T20:17:48.613Z"
+      }
+    ],
+    [
+      "f19d0b83-2c62-46d9-a97d-871f7e5313b8",
+      {
+        "userId": "3da67feb-fbde-483f-90fc-47cddf0e76fd",
+        "sessionToken": "f19d0b83-2c62-46d9-a97d-871f7e5313b8",
+        "expiresAt": "2025-09-20T20:53:08.016Z",
+        "id": "a5065915-84b6-4ba7-be96-cc105e20e0d2",
+        "createdAt": "2025-09-13T20:53:08.016Z"
       }
     ]
   ],
@@ -1177,6 +1196,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-13T20:24:25.778Z",
+  "timestamp": "2025-09-13T20:53:22.218Z",
   "version": "2.2"
 }
