@@ -451,6 +451,7 @@ export class MemStorage implements IStorage {
       throw new Error('User not found');
     }
 
+    // Verify current password before allowing change
     if (!(await bcrypt.compare(currentPassword, user.password))) {
       throw new Error('Current password is incorrect');
     }
@@ -458,6 +459,8 @@ export class MemStorage implements IStorage {
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
     this.users.set(userId, { ...user, password: hashedNewPassword });
     await this.saveToFileSystem(); // Persist password update
+    
+    console.log(`🔐 Password updated by account owner: ${user.username}`);
   }
 
   // Admin-only password reset function
@@ -473,12 +476,22 @@ export class MemStorage implements IStorage {
       throw new Error('User not found');
     }
 
+    // Prevent non-admin developers from resetting other developer passwords
+    if (user.isDev && admin.accountType !== 'admin') {
+      throw new Error('Access denied: Admin privileges required to reset developer passwords');
+    }
+
+    // Prevent resetting admin passwords unless you are also an admin
+    if (user.accountType === 'admin' && admin.accountType !== 'admin') {
+      throw new Error('Access denied: Admin privileges required to reset admin passwords');
+    }
+
     // Hash the new password with bcrypt
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
     this.users.set(userId, { ...user, password: hashedNewPassword });
     await this.saveToFileSystem(); // Persist password reset
     
-    console.log(`🔐 Admin ${admin.username} reset password for user ${user.username}`);
+    console.log(`🔐 Admin/Developer ${admin.username} (${admin.accountType}) reset password for user ${user.username} (${user.accountType})`);
   }
 
   // Emergency password migration function for plaintext passwords

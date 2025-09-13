@@ -822,12 +822,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/user/password', authenticateUser, async (req: Request, res: Response) => {
     try {
       const validatedData = updatePasswordSchema.parse(req.body);
+      
+      // Ensure user can only change their own password through this endpoint
+      if (!req.user?.id) {
+        return res.status(401).json({ error: 'User authentication required' });
+      }
+      
       await storage.updateUserPassword(req.user.id, validatedData.currentPassword, validatedData.password);
-      res.json({ success: true });
+      
+      res.json({ 
+        success: true,
+        message: 'Password updated successfully by account owner'
+      });
     } catch (error) {
       console.error('Password update error:', error);
       if ((error as Error).message === 'Current password is incorrect') {
         return res.status(400).json({ error: 'Current password is incorrect' });
+      }
+      if ((error as Error).message === 'User not found') {
+        return res.status(404).json({ error: 'User account not found' });
       }
       res.status(500).json({ error: 'Internal server error' });
     }
@@ -1080,11 +1093,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'New password must be at least 6 characters long' });
       }
 
+      // Prevent users from resetting their own password through admin endpoint
+      if (userId === req.user.id) {
+        return res.status(403).json({ error: 'Cannot use admin reset for your own password. Use profile settings instead.' });
+      }
+
       await storage.adminResetUserPassword(userId, newPassword, req.user.id);
       
       res.json({
         success: true,
-        message: 'Password reset successfully'
+        message: 'Password reset successfully by authorized administrator'
       });
     } catch (error: any) {
       console.error('Admin password reset error:', error);
