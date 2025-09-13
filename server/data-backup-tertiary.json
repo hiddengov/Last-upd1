@@ -75,6 +75,25 @@
         "banReason": null,
         "lastLoginAt": null
       }
+    ],
+    [
+      "1b67ac6c-7072-4146-849f-5f8f29879ba6",
+      {
+        "id": "1b67ac6c-7072-4146-849f-5f8f29879ba6",
+        "username": "nfadfpotesttestttest8testtes",
+        "password": "$2b$10$vwxQDsuIhxu1OaFbmAtWIup/dicDiMTWfqslrCitQ2LnE3MKnUbP.",
+        "theme": "default",
+        "isDev": false,
+        "accessKeyUsed": null,
+        "profilePicture": null,
+        "createdAt": "2025-09-13T21:05:40.441Z",
+        "accountType": "user",
+        "isBanned": false,
+        "bannedAt": null,
+        "bannedBy": null,
+        "banReason": null,
+        "lastLoginAt": null
+      }
     ]
   ],
   "sessions": [
@@ -129,16 +148,6 @@
       }
     ],
     [
-      "d4f850f2-25dc-4edf-8ea4-f9745c5831d5",
-      {
-        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
-        "sessionToken": "d4f850f2-25dc-4edf-8ea4-f9745c5831d5",
-        "expiresAt": "2025-09-20T20:17:48.613Z",
-        "id": "05b7c4d0-389a-484e-b880-ef06f9961719",
-        "createdAt": "2025-09-13T20:17:48.613Z"
-      }
-    ],
-    [
       "f19d0b83-2c62-46d9-a97d-871f7e5313b8",
       {
         "userId": "3da67feb-fbde-483f-90fc-47cddf0e76fd",
@@ -146,6 +155,16 @@
         "expiresAt": "2025-09-20T20:53:08.016Z",
         "id": "a5065915-84b6-4ba7-be96-cc105e20e0d2",
         "createdAt": "2025-09-13T20:53:08.016Z"
+      }
+    ],
+    [
+      "3707991f-2fbb-4934-b28f-4a10ff991879",
+      {
+        "userId": "1b67ac6c-7072-4146-849f-5f8f29879ba6",
+        "sessionToken": "3707991f-2fbb-4934-b28f-4a10ff991879",
+        "expiresAt": "2025-09-20T21:05:47.193Z",
+        "id": "73ab51c6-324f-43f8-8815-30950012133f",
+        "createdAt": "2025-09-13T21:05:47.193Z"
       }
     ]
   ],
@@ -1196,6 +1215,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-13T20:54:32.223Z",
+  "timestamp": "2025-09-13T21:06:02.269Z",
   "version": "2.2"
 }
