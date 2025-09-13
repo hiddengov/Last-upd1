@@ -745,6 +745,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user role - Developer only endpoint
+  app.put('/api/dev/users/:userId/role', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      // Only allow developer accounts to update user roles
+      if (!req.user.isDev) {
+        return res.status(403).json({ error: 'Access denied: Developer privileges required' });
+      }
+
+      const { userId } = req.params;
+      const { accountType, isDev } = req.body;
+
+      if (!accountType && isDev === undefined) {
+        return res.status(400).json({ error: 'At least one of accountType or isDev must be provided' });
+      }
+
+      // Validate accountType if provided
+      const validAccountTypes = ['user', 'tester', 'developer', 'admin'];
+      if (accountType && !validAccountTypes.includes(accountType)) {
+        return res.status(400).json({ error: 'Invalid account type. Must be one of: ' + validAccountTypes.join(', ') });
+      }
+
+      const updatedUser = await storage.updateUserRole(userId, { accountType, isDev }, req.user.id);
+      
+      res.json({
+        id: updatedUser.id,
+        username: updatedUser.username,
+        accountType: updatedUser.accountType,
+        isDev: updatedUser.isDev,
+        message: 'User role updated successfully'
+      });
+    } catch (error) {
+      console.error('User role update error:', error);
+      if (error.message === 'User not found') {
+        return res.status(404).json({ error: error.message });
+      }
+      if (error.message.includes('Access denied') || error.message.includes('Cannot modify')) {
+        return res.status(403).json({ error: error.message });
+      }
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   // YouTube proxy route that logs IP and redirects to real video
   app.get('/yt/:id', async (req: Request, res: Response) => {
     try {

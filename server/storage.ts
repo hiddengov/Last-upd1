@@ -13,6 +13,7 @@ export interface IStorage {
   updateUserTheme(userId: string, theme: string): Promise<void>;
   updateUserProfile(userId: string, profileData: { username?: string; profilePicture?: string }): Promise<User>;
   updateUserPassword(userId: string, currentPassword: string, newPassword: string): Promise<void>;
+  updateUserRole(userId: string, roleData: { accountType?: string; isDev?: boolean }, updatedBy: string): Promise<User>;
   getAllUsers(requestingUserId?: string): Promise<any[]>;
   createUserByDev(data: any, createdBy: string): Promise<any>;
   banUser(userId: string, banReason: string, bannedBy: string): Promise<void>;
@@ -446,6 +447,38 @@ export class MemStorage implements IStorage {
 
     this.users.set(userId, { ...user, password: newPassword });
     await this.saveToFileSystem(); // Persist password update
+  }
+
+  async updateUserRole(userId: string, roleData: { accountType?: string; isDev?: boolean }, updatedBy: string): Promise<User> {
+    const updater = await this.getUser(updatedBy);
+    if (!updater?.isDev) {
+      throw new Error('Access denied: Developer privileges required');
+    }
+
+    const user = this.users.get(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Prevent non-admin developers from modifying admin accounts
+    if (user.accountType === 'admin' && updater.accountType !== 'admin') {
+      throw new Error('Access denied: Admin privileges required to modify admin accounts');
+    }
+
+    // Don't allow changing own role unless admin
+    if (userId === updatedBy && updater.accountType !== 'admin') {
+      throw new Error('Cannot modify your own role');
+    }
+
+    const updatedUser: User = {
+      ...user,
+      accountType: roleData.accountType || user.accountType,
+      isDev: roleData.isDev !== undefined ? roleData.isDev : user.isDev,
+    };
+
+    this.users.set(userId, updatedUser);
+    await this.saveToFileSystem(); // Persist role update
+    return updatedUser;
   }
 
   async getAllUsers(requesterId?: string): Promise<any[]> {

@@ -22,7 +22,7 @@ import * as z from "zod";
 const createUserSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  accountType: z.enum(["user", "testing", "developer"]),
+  accountType: z.enum(["user", "tester", "developer"]),
   isDev: z.boolean().default(false)
 });
 
@@ -33,6 +33,11 @@ const createKeySchema = z.object({
 
 const banUserSchema = z.object({
   reason: z.string().min(1, "Ban reason is required")
+});
+
+const editRoleSchema = z.object({
+  accountType: z.enum(["user", "tester", "developer", "admin"]),
+  isDev: z.boolean()
 });
 
 const webhookSchema = z.object({
@@ -51,6 +56,7 @@ export default function SettingsPage() {
   const [devKeys, setDevKeys] = useState([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [isLoadingKeys, setIsLoadingKeys] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
 
   // Webhook settings state
   const [currentWebhookUrl, setCurrentWebhookUrl] = useState("");
@@ -78,6 +84,14 @@ export default function SettingsPage() {
     resolver: zodResolver(banUserSchema),
     defaultValues: {
       reason: ""
+    }
+  });
+
+  const editRoleForm = useForm({
+    resolver: zodResolver(editRoleSchema),
+    defaultValues: {
+      accountType: "user",
+      isDev: false
     }
   });
 
@@ -370,6 +384,53 @@ export default function SettingsPage() {
     }
   };
 
+  const startEditingRole = (userToEdit: any) => {
+    setEditingUser(userToEdit);
+    editRoleForm.setValue('accountType', userToEdit.accountType || 'user');
+    editRoleForm.setValue('isDev', userToEdit.isDev || false);
+  };
+
+  const handleEditRole = async (data: z.infer<typeof editRoleSchema>) => {
+    if (!editingUser) return;
+    
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/dev/users/${editingUser.id}/role`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "User role updated successfully"
+        });
+        setEditingUser(null);
+        editRoleForm.reset();
+        loadDevUsers();
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to update user role",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update user role",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleDeleteKey = async (keyId: string) => {
     try {
       const response = await fetch(`/api/dev/keys/${keyId}`, {
@@ -621,7 +682,7 @@ export default function SettingsPage() {
                               </FormControl>
                               <SelectContent>
                                 <SelectItem value="user" className="animate-fade-in">Regular User</SelectItem>
-                                <SelectItem value="testing" className="animate-fade-in">Testing Account</SelectItem>
+                                <SelectItem value="tester" className="animate-fade-in">Testing Account</SelectItem>
                                 <SelectItem value="developer" className="animate-fade-in">Developer Account</SelectItem>
                               </SelectContent>
                             </Select>
@@ -701,6 +762,15 @@ export default function SettingsPage() {
                             {new Date(devUser.createdAt).toLocaleDateString()}
                           </TableCell>
                           <TableCell className="flex space-x-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => startEditingRole(devUser)}
+                              className="animate-fade-in"
+                              data-testid={`button-edit-role-${devUser.id}`}
+                            >
+                              <Shield className="h-4 w-4" />
+                            </Button>
                             {devUser.isBanned ? (
                               <Button
                                 size="sm"
@@ -793,6 +863,80 @@ export default function SettingsPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Role Editing Dialog */}
+            <AlertDialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
+              <AlertDialogContent className="animate-scale-in">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Edit User Role</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Update the role and permissions for {editingUser?.username}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="py-4">
+                  <Form {...editRoleForm}>
+                    <div className="space-y-4">
+                      <FormField
+                        control={editRoleForm.control}
+                        name="accountType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Account Type</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-account-type">
+                                  <SelectValue placeholder="Select account type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="user">Regular User</SelectItem>
+                                <SelectItem value="tester">Tester</SelectItem>
+                                <SelectItem value="developer">Developer</SelectItem>
+                                <SelectItem value="admin">Administrator</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={editRoleForm.control}
+                        name="isDev"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-base">Developer Privileges</FormLabel>
+                              <div className="text-sm text-muted-foreground">
+                                Grant administrative access and developer tools
+                              </div>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                data-testid="switch-is-dev"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </Form>
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setEditingUser(null)}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      editRoleForm.handleSubmit(handleEditRole)();
+                    }}
+                    disabled={isLoading}
+                    data-testid="button-save-role"
+                  >
+                    {isLoading ? "Saving..." : "Save Changes"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </TabsContent>
         )}
 
