@@ -14,6 +14,7 @@ export interface IStorage {
   updateUserTheme(userId: string, theme: string): Promise<void>;
   updateUserProfile(userId: string, profileData: { username?: string; profilePicture?: string }): Promise<User>;
   updateUserPassword(userId: string, currentPassword: string, newPassword: string): Promise<void>;
+  adminResetUserPassword(userId: string, newPassword: string, adminUserId: string): Promise<void>;
   updateUserRole(userId: string, roleData: { accountType?: string; isDev?: boolean }, updatedBy: string): Promise<User>;
   getAllUsers(requestingUserId?: string): Promise<any[]>;
   createUserByDev(data: any, createdBy: string): Promise<any>;

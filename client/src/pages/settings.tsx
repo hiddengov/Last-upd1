@@ -13,7 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Settings, User, Key, Shield, UserPlus, Ban, Trash2, UserCheck, Eye, ArrowLeft, Palette, Webhook } from "lucide-react";
+import { Settings, User, Key, Shield, UserPlus, Ban, Trash2, UserCheck, Eye, ArrowLeft, Palette, Webhook, KeyRound } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocation } from "wouter";
@@ -40,6 +40,10 @@ const editRoleSchema = z.object({
   isDev: z.boolean()
 });
 
+const resetPasswordSchema = z.object({
+  newPassword: z.string().min(6, "Password must be at least 6 characters")
+});
+
 const webhookSchema = z.object({
   webhookUrl: z.string().url("Please enter a valid Discord webhook URL").optional().or(z.literal(""))
 });
@@ -56,13 +60,14 @@ export default function SettingsPage() {
   const [devKeys, setDevKeys] = useState([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [isLoadingKeys, setIsLoadingKeys] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
+  const [editingUser, setEditingUser] = useState<any>(null);
+  const [resettingPasswordUser, setResettingPasswordUser] = useState<any>(null);
 
   // Webhook settings state
   const [currentWebhookUrl, setCurrentWebhookUrl] = useState("");
 
   // Forms
-  const createUserForm = useForm({
+  const createUserForm = useForm<z.infer<typeof createUserSchema>>({
     resolver: zodResolver(createUserSchema),
     defaultValues: {
       username: "",
@@ -87,11 +92,18 @@ export default function SettingsPage() {
     }
   });
 
-  const editRoleForm = useForm({
+  const editRoleForm = useForm<z.infer<typeof editRoleSchema>>({
     resolver: zodResolver(editRoleSchema),
     defaultValues: {
       accountType: "user",
       isDev: false
+    }
+  });
+
+  const resetPasswordForm = useForm<z.infer<typeof resetPasswordSchema>>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      newPassword: ""
     }
   });
 
@@ -424,6 +436,46 @@ export default function SettingsPage() {
       toast({
         title: "Error",
         description: "Failed to update user role",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (data: z.infer<typeof resetPasswordSchema>) => {
+    if (!resettingPasswordUser) return;
+    
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/admin/users/${resettingPasswordUser.id}/password`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ newPassword: data.newPassword })
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Password reset successfully"
+        });
+        setResettingPasswordUser(null);
+        resetPasswordForm.reset();
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to reset password",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to reset password",
         variant: "destructive"
       });
     } finally {
@@ -771,6 +823,67 @@ export default function SettingsPage() {
                             >
                               <Shield className="h-4 w-4" />
                             </Button>
+                            {((user as any)?.accountType === 'admin' || user?.isDev) && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button 
+                                    size="sm" 
+                                    variant="secondary" 
+                                    className="animate-fade-in"
+                                    data-testid={`button-reset-password-${devUser.id}`}
+                                  >
+                                    <KeyRound className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="animate-scale-in">
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Reset Password</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Set a new password for {devUser.username}
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <div className="py-4">
+                                    <Form {...resetPasswordForm}>
+                                      <FormField
+                                        control={resetPasswordForm.control}
+                                        name="newPassword"
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            <FormLabel>New Password</FormLabel>
+                                            <FormControl>
+                                              <Input
+                                                type="password"
+                                                placeholder="Enter new password..."
+                                                {...field}
+                                                className="animate-fade-in"
+                                                data-testid="input-new-password"
+                                              />
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                    </Form>
+                                  </div>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel className="animate-fade-in">Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => {
+                                        const newPassword = resetPasswordForm.getValues().newPassword;
+                                        if (newPassword) {
+                                          setResettingPasswordUser(devUser);
+                                          handleResetPassword({ newPassword });
+                                        }
+                                      }}
+                                      className="animate-fade-in"
+                                      data-testid="button-confirm-reset"
+                                    >
+                                      Reset Password
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
                             {devUser.isBanned ? (
                               <Button
                                 size="sm"
