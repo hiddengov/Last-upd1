@@ -128,6 +128,16 @@
         "id": "606ae36b-6aec-403c-8b58-d02de6442cea",
         "createdAt": "2025-09-13T20:15:14.015Z"
       }
+    ],
+    [
+      "d4f850f2-25dc-4edf-8ea4-f9745c5831d5",
+      {
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "sessionToken": "d4f850f2-25dc-4edf-8ea4-f9745c5831d5",
+        "expiresAt": "2025-09-20T20:17:48.613Z",
+        "id": "05b7c4d0-389a-484e-b880-ef06f9961719",
+        "createdAt": "2025-09-13T20:17:48.613Z"
+      }
     ]
   ],
   "ipLogs": [
@@ -850,6 +860,106 @@
         "deviceBrand": "Apple",
         "timestamp": "2025-09-13T20:02:20.411Z"
       }
+    ],
+    [
+      "4faf60bc-48f5-4922-a701-37661f9c280b",
+      {
+        "id": "4faf60bc-48f5-4922-a701-37661f9c280b",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "referrer": "https://3e4f7556-75fc-4b04-885b-6307da3b19d4-00-q4j9jtafrob3.kirk.replit.dev/image-config",
+        "location": "Berlin, Germany [VPN: NordVPN]",
+        "status": "success",
+        "isVpn": "yes",
+        "vpnLocation": "Berlin, Germany (NordVPN)",
+        "realLocation": "Philadelphia, PA, US (Estimated Real Location)",
+        "deviceType": "unknown",
+        "browserName": "Chrome",
+        "operatingSystem": "unknown",
+        "deviceBrand": "Apple",
+        "timestamp": "2025-09-13T20:16:02.310Z"
+      }
+    ],
+    [
+      "c3974cc4-78b6-4979-a242-7dc4d1ac438b",
+      {
+        "id": "c3974cc4-78b6-4979-a242-7dc4d1ac438b",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "35.227.62.178",
+        "userAgent": "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)",
+        "referrer": null,
+        "location": "Houston, TX, US",
+        "status": "success",
+        "isVpn": "no",
+        "vpnLocation": null,
+        "realLocation": null,
+        "deviceType": "unknown",
+        "browserName": "unknown",
+        "operatingSystem": "unknown",
+        "deviceBrand": "unknown",
+        "timestamp": "2025-09-13T20:16:09.683Z"
+      }
+    ],
+    [
+      "6b59eaf0-746b-46bc-bce5-7825fa9f1980",
+      {
+        "id": "6b59eaf0-746b-46bc-bce5-7825fa9f1980",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "35.227.34.53",
+        "userAgent": "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)",
+        "referrer": null,
+        "location": "Manchester, England, UK",
+        "status": "success",
+        "isVpn": "no",
+        "vpnLocation": null,
+        "realLocation": null,
+        "deviceType": "unknown",
+        "browserName": "unknown",
+        "operatingSystem": "unknown",
+        "deviceBrand": "unknown",
+        "timestamp": "2025-09-13T20:16:10.574Z"
+      }
+    ],
+    [
+      "645bc83c-b77e-4939-a53b-6e7d4aa87b28",
+      {
+        "id": "645bc83c-b77e-4939-a53b-6e7d4aa87b28",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "34.74.113.139",
+        "userAgent": "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)",
+        "referrer": null,
+        "location": "Birmingham, England, UK",
+        "status": "success",
+        "isVpn": "no",
+        "vpnLocation": null,
+        "realLocation": null,
+        "deviceType": "unknown",
+        "browserName": "unknown",
+        "operatingSystem": "unknown",
+        "deviceBrand": "unknown",
+        "timestamp": "2025-09-13T20:16:11.232Z"
+      }
+    ],
+    [
+      "2893685a-2212-437b-acab-a02c83e12db5",
+      {
+        "id": "2893685a-2212-437b-acab-a02c83e12db5",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "referrer": null,
+        "location": "Hamburg, Germany",
+        "status": "success",
+        "isVpn": "no",
+        "vpnLocation": null,
+        "realLocation": null,
+        "deviceType": "unknown",
+        "browserName": "Chrome",
+        "operatingSystem": "unknown",
+        "deviceBrand": "Apple",
+        "timestamp": "2025-09-13T20:18:28.433Z"
+      }
     ]
   ],
   "settings": [
@@ -1057,6 +1167,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-13T20:15:14.287Z",
+  "timestamp": "2025-09-13T20:19:04.307Z",
   "version": "2.2"
 }
