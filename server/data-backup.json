@@ -100,13 +100,13 @@
       }
     ],
     [
-      "ef1f8fd2-9825-4c32-ae97-36e2035edaaa",
+      "4c7b06a6-dfcf-4a8b-8479-ea6c13340d4e",
       {
         "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
-        "sessionToken": "ef1f8fd2-9825-4c32-ae97-36e2035edaaa",
-        "expiresAt": "2025-09-20T20:00:11.913Z",
-        "id": "546eabcb-25f8-4d61-b1eb-3cf1636aeec4",
-        "createdAt": "2025-09-13T20:00:11.913Z"
+        "sessionToken": "4c7b06a6-dfcf-4a8b-8479-ea6c13340d4e",
+        "expiresAt": "2025-09-20T20:02:20.075Z",
+        "id": "187e548f-e0e9-4baf-8c96-6414a8c6f634",
+        "createdAt": "2025-09-13T20:02:20.075Z"
       }
     ]
   ],
@@ -810,6 +810,26 @@
         "deviceBrand": "Apple",
         "timestamp": "2025-09-13T20:01:03.359Z"
       }
+    ],
+    [
+      "38aa3232-e26a-4592-b6e0-c90d8aa06518",
+      {
+        "id": "38aa3232-e26a-4592-b6e0-c90d8aa06518",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "referrer": "https://3e4f7556-75fc-4b04-885b-6307da3b19d4-00-q4j9jtafrob3.kirk.replit.dev/image-config",
+        "location": "Dallas, TX, US",
+        "status": "success",
+        "isVpn": "no",
+        "vpnLocation": null,
+        "realLocation": null,
+        "deviceType": "unknown",
+        "browserName": "Chrome",
+        "operatingSystem": "unknown",
+        "deviceBrand": "Apple",
+        "timestamp": "2025-09-13T20:02:20.411Z"
+      }
     ]
   ],
   "settings": [
@@ -1017,6 +1037,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-13T20:01:59.885Z",
+  "timestamp": "2025-09-13T20:03:19.892Z",
   "version": "2.2"
 }
