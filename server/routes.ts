@@ -595,16 +595,6 @@ async function sendToWebhook(webhookUrl: string, data: any): Promise<void> {
   } catch (error) {
     console.error('❌ Critical error sending webhook:', error);
   }
-
-  // Health check endpoint for uptime monitoring
-  app.get('/health', (req: Request, res: Response) => {
-    res.status(200).json({
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      service: 'IP Tracker API'
-    });
-  });
 }
 
 // Authentication middleware
