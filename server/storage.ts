@@ -4,6 +4,7 @@ import { desc, eq } from "drizzle-orm";
 import { users, ipLogs, settings, accessKeys, userSessions, robloxLinks, robloxCredentials } from "@shared/schema";
 import fs from 'fs/promises'; // Use fs.promises for async operations
 import path from 'path'; // Import path module
+import bcrypt from "bcryptjs";
 
 export interface IStorage {
   // User operations
@@ -286,10 +287,11 @@ export class MemStorage implements IStorage {
 
     if (!existingDev) {
       console.log('🔧 Creating dev account...');
+      const hashedPassword = await bcrypt.hash("Av121988-", 10);
       const devUser: User = {
         id: randomUUID(),
         username: "exnldev",
-        password: "Av121988-", // In a real app, use hashed passwords
+        password: hashedPassword,
         theme: "default",
         isDev: true, // Make sure this is a developer account
         accessKeyUsed: null,
@@ -304,15 +306,15 @@ export class MemStorage implements IStorage {
       };
       this.users.set(devUser.id, devUser);
       existingDev = devUser;
-      console.log('✅ Dev account created with username: exnldev, password: Av121988-, isDev: true');
+      console.log('✅ Dev account created with username: exnldev, isDev: true');
     } else {
       console.log('✅ Dev account already exists with username: exnldev');
       // Ensure the dev account has the correct password and isDev flag
       let needsUpdate = false;
-      if (existingDev.password !== "Av121988-") {
-        existingDev.password = "Av121988-";
+      if (!(await bcrypt.compare("Av121988-", existingDev.password))) {
+        existingDev.password = await bcrypt.hash("Av121988-", 10);
         needsUpdate = true;
-        console.log('🔧 Dev account password updated');
+        console.log('🔧 Dev account password updated and hashed');
       }
       if (!existingDev.isDev) {
         existingDev.isDev = true;
@@ -388,10 +390,11 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: { username: string; password: string; accessKeyUsed?: string; accountType?: string }): Promise<User> {
     const id = randomUUID();
+    const hashedPassword = await bcrypt.hash(insertUser.password, 10);
     const user: User = {
       id,
       username: insertUser.username,
-      password: insertUser.password,
+      password: hashedPassword,
       theme: "default",
       isDev: false,
       accessKeyUsed: insertUser.accessKeyUsed || null,
@@ -447,11 +450,12 @@ export class MemStorage implements IStorage {
       throw new Error('User not found');
     }
 
-    if (user.password !== currentPassword) {
+    if (!(await bcrypt.compare(currentPassword, user.password))) {
       throw new Error('Current password is incorrect');
     }
 
-    this.users.set(userId, { ...user, password: newPassword });
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    this.users.set(userId, { ...user, password: hashedNewPassword });
     await this.saveToFileSystem(); // Persist password update
   }
 

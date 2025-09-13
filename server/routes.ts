@@ -6,6 +6,7 @@ import path from "path";
 import fs from "fs";
 import multer from "multer";
 import { randomUUID } from "crypto";
+import bcrypt from "bcryptjs";
 
 // Configure multer for file uploads - support ALL image and video formats
 const upload = multer({
@@ -393,17 +394,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/login', async (req: Request, res: Response) => {
     try {
       const { username, password } = req.body;
-      console.log(`🔐 Login attempt - Username: "${username}", Password: "${password}"`);
+      console.log(`🔐 Login attempt - Username: "${username}"`);
       
       if (!username || !password) {
         return res.status(400).json({ error: 'Username and password are required' });
       }
 
       const user = await storage.getUserByUsername(username);
-      console.log(`👤 User found:`, user ? `Yes (username: ${user.username}, password: ${user.password}, isDev: ${user.isDev})` : 'No');
+      console.log(`👤 User found:`, user ? `Yes (username: ${user.username}, isDev: ${user.isDev})` : 'No');
       
-      if (!user || user.password !== password) {
-        console.log(`❌ Login failed - User: ${!!user}, Password match: ${user ? user.password === password : false}`);
+      if (!user || !(await bcrypt.compare(password, user.password))) {
+        console.log(`❌ Login failed - User: ${!!user}, Password match: ${user ? 'checked with bcrypt' : false}`);
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 
@@ -748,9 +749,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update user role - Developer only endpoint
   app.put('/api/dev/users/:userId/role', authenticateUser, async (req: Request, res: Response) => {
     try {
-      // Only allow developer accounts to update user roles
-      if (!req.user.isDev) {
-        return res.status(403).json({ error: 'Access denied: Developer privileges required' });
+      // Only allow admin accounts to update user roles
+      if (req.user.accountType !== 'admin') {
+        return res.status(403).json({ error: 'Access denied: Admin privileges required to manage user roles' });
       }
 
       const { userId } = req.params;
