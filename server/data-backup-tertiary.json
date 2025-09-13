@@ -11,7 +11,7 @@
         "accessKeyUsed": null,
         "profilePicture": null,
         "createdAt": "2025-09-07T20:21:21.588Z",
-        "accountType": "developer",
+        "accountType": "admin",
         "isBanned": false,
         "bannedAt": null,
         "bannedBy": null,
@@ -26,11 +26,11 @@
         "username": "LeviB",
         "password": "001652195",
         "theme": "default",
-        "isDev": false,
+        "isDev": true,
         "accessKeyUsed": null,
         "profilePicture": null,
         "createdAt": "2025-09-07T22:23:36.362Z",
-        "accountType": "user",
+        "accountType": "admin",
         "isBanned": false,
         "bannedAt": null,
         "bannedBy": null,
@@ -44,12 +44,12 @@
         "id": "3da67feb-fbde-483f-90fc-47cddf0e76fd",
         "username": "vexfuly",
         "password": "imtaco123",
-        "theme": "default",
-        "isDev": false,
+        "theme": "teal",
+        "isDev": true,
         "accessKeyUsed": null,
         "profilePicture": null,
         "createdAt": "2025-09-08T00:12:56.726Z",
-        "accountType": "user",
+        "accountType": "developer",
         "isBanned": false,
         "bannedAt": null,
         "bannedBy": null,
@@ -100,13 +100,23 @@
       }
     ],
     [
-      "4c7b06a6-dfcf-4a8b-8479-ea6c13340d4e",
+      "76e3b550-9b2b-49a5-94e4-f819901bc0a6",
       {
-        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
-        "sessionToken": "4c7b06a6-dfcf-4a8b-8479-ea6c13340d4e",
-        "expiresAt": "2025-09-20T20:02:20.075Z",
-        "id": "187e548f-e0e9-4baf-8c96-6414a8c6f634",
-        "createdAt": "2025-09-13T20:02:20.075Z"
+        "userId": "3da67feb-fbde-483f-90fc-47cddf0e76fd",
+        "sessionToken": "76e3b550-9b2b-49a5-94e4-f819901bc0a6",
+        "expiresAt": "2025-09-20T20:04:11.078Z",
+        "id": "bcdd2402-eebf-4d91-a8d9-de4ec26e4d8d",
+        "createdAt": "2025-09-13T20:04:11.078Z"
+      }
+    ],
+    [
+      "9ea43dfa-1739-4770-9354-3c4948d03630",
+      {
+        "userId": "3da67feb-fbde-483f-90fc-47cddf0e76fd",
+        "sessionToken": "9ea43dfa-1739-4770-9354-3c4948d03630",
+        "expiresAt": "2025-09-20T20:05:35.302Z",
+        "id": "fbbe921e-e928-4bec-bcfa-66dfc58f3764",
+        "createdAt": "2025-09-13T20:05:35.302Z"
       }
     ]
   ],
@@ -854,7 +864,7 @@
         "id": "01858b39-ef0f-48f3-971c-01c793a0d6b7",
         "key": "Av121988",
         "usageLimit": 999999,
-        "usedCount": 7,
+        "usedCount": 9,
         "isActive": true,
         "createdBy": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
         "createdAt": "2025-09-07T20:25:45.472Z"
@@ -1037,6 +1047,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-13T20:03:19.892Z",
+  "timestamp": "2025-09-13T20:09:05.962Z",
   "version": "2.2"
 }

@@ -295,7 +295,7 @@ export class MemStorage implements IStorage {
         accessKeyUsed: null,
         profilePicture: null,
         createdAt: new Date(),
-        accountType: "developer",
+        accountType: "admin",
         isBanned: false,
         bannedAt: null,
         bannedBy: null,
@@ -316,9 +316,15 @@ export class MemStorage implements IStorage {
       }
       if (!existingDev.isDev) {
         existingDev.isDev = true;
-        existingDev.accountType = "developer";
+        existingDev.accountType = "admin";
         needsUpdate = true;
-        console.log('🔧 Dev account isDev flag updated to true');
+        console.log('🔧 Dev account isDev flag updated to true with admin privileges');
+      }
+      // Also upgrade existing developer accounts to admin level
+      if (existingDev.accountType !== "admin") {
+        existingDev.accountType = "admin";
+        needsUpdate = true;
+        console.log('🔧 Dev account upgraded to admin privileges');
       }
       if (needsUpdate) {
         this.users.set(existingDev.id, existingDev);
