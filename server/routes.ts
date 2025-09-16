@@ -2092,16 +2092,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const settings = await storage.getSettings(userId);
       if (!settings) {
+        // Ensure trackingId exists even if no settings exist yet
+        const trackingId = await storage.ensureTrackingId(userId);
         res.json({
           webhookUrl: null,
           uploadedImageName: null,
-          hasUploadedImage: false
+          hasUploadedImage: false,
+          trackingId
         });
       } else {
+        // Ensure trackingId exists on existing settings
+        const trackingId = settings.trackingId || await storage.ensureTrackingId(userId);
         res.json({
           webhookUrl: settings.webhookUrl,
           uploadedImageName: settings.uploadedImageName,
-          hasUploadedImage: !!settings.uploadedImageData
+          hasUploadedImage: !!settings.uploadedImageData,
+          trackingId
         });
       }
     } catch (error) {
