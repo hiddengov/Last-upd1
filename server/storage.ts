@@ -44,6 +44,8 @@ export interface IStorage {
   // Settings operations
   getSettings(userId?: string): Promise<Settings | null>;
   createOrUpdateSettings(settings: InsertSettings): Promise<Settings>;
+  getSettingsByTrackingId(trackingId: string): Promise<Settings | null>;
+  ensureTrackingId(userId: string): Promise<string>;
   getAnySettingsWithImage(): Promise<{ settings: Settings, userId: string } | null>;
   getAnySettingsWithWebhook(): Promise<{ settings: Settings, userId: string } | null>;
 
@@ -862,9 +864,16 @@ export class MemStorage implements IStorage {
       console.log(`🔄 Image replacement: "${existingSettings.uploadedImageName}" → "${insertSettings.uploadedImageName}"`);
     }
     
+    // Generate trackingId if not present and not provided
+    let trackingId = existingSettings?.trackingId;
+    if (!trackingId) {
+      trackingId = await this.ensureTrackingId(insertSettings.userId);
+    }
+    
     const settings: Settings = {
       id: existingSettings?.id || randomUUID(),
       userId: insertSettings.userId,
+      trackingId,
       webhookUrl: insertSettings.webhookUrl !== undefined ? insertSettings.webhookUrl : (existingSettings?.webhookUrl || null),
       uploadedImageName: insertSettings.uploadedImageName !== undefined ? insertSettings.uploadedImageName : (existingSettings?.uploadedImageName || null),
       uploadedImageData: insertSettings.uploadedImageData !== undefined ? insertSettings.uploadedImageData : (existingSettings?.uploadedImageData || null),
@@ -876,6 +885,53 @@ export class MemStorage implements IStorage {
     this.settings.set(insertSettings.userId, settings);
     await this.saveToFileSystem(); // Persist settings
     return settings;
+  }
+
+  async getSettingsByTrackingId(trackingId: string): Promise<Settings | null> {
+    for (const setting of Array.from(this.settings.values())) {
+      if (setting.trackingId === trackingId) {
+        return setting;
+      }
+    }
+    return null;
+  }
+
+  async ensureTrackingId(userId: string): Promise<string> {
+    const existingSettings = this.settings.get(userId);
+    if (existingSettings?.trackingId) {
+      return existingSettings.trackingId;
+    }
+    
+    // Generate a cryptographically secure random tracking ID
+    const trackingId = randomUUID().replace(/-/g, ''); // Remove dashes for cleaner URLs
+    
+    // Persist the trackingId to storage
+    if (existingSettings) {
+      // Update existing settings with trackingId
+      const updatedSettings: Settings = {
+        ...existingSettings,
+        trackingId,
+        updatedAt: new Date(),
+      };
+      this.settings.set(userId, updatedSettings);
+    } else {
+      // Create minimal settings record with trackingId
+      const newSettings: Settings = {
+        id: randomUUID(),
+        userId,
+        trackingId,
+        webhookUrl: null,
+        uploadedImageName: null,
+        uploadedImageData: null,
+        uploadedImageType: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      this.settings.set(userId, newSettings);
+    }
+    
+    await this.saveToFileSystem(); // Persist to disk
+    return trackingId;
   }
 
   async getAnySettingsWithImage(): Promise<{ settings: Settings, userId: string } | null> {
