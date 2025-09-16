@@ -350,6 +350,16 @@
         "id": "98cacfa9-0ca1-4f46-8232-1e3fdc95ea0a",
         "createdAt": "2025-09-16T23:21:19.771Z"
       }
+    ],
+    [
+      "cb249d56-1d4d-4bc6-915b-1822e6489ab6",
+      {
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "sessionToken": "cb249d56-1d4d-4bc6-915b-1822e6489ab6",
+        "expiresAt": "2025-09-23T23:47:21.634Z",
+        "id": "3b439d72-cf6b-460f-ac0f-11431e8e7e3c",
+        "createdAt": "2025-09-16T23:47:21.634Z"
+      }
     ]
   ],
   "ipLogs": [
@@ -2009,7 +2019,7 @@
         "id": "01858b39-ef0f-48f3-971c-01c793a0d6b7",
         "key": "Av121988",
         "usageLimit": 999999,
-        "usedCount": 15,
+        "usedCount": 16,
         "isActive": true,
         "createdBy": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
         "createdAt": "2025-09-07T20:25:45.472Z"
@@ -2204,6 +2214,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-16T23:46:12.677Z",
+  "timestamp": "2025-09-16T23:48:42.685Z",
   "version": "2.2"
 }

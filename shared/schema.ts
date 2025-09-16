@@ -59,6 +59,7 @@ export const ipLogs = pgTable("ip_logs", {
 export const settings = pgTable("settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
+  trackingId: text("tracking_id").unique(), // Unique identifier for tracking URLs
   webhookUrl: text("webhook_url"),
   uploadedImageName: text("uploaded_image_name"),
   uploadedImageData: text("uploaded_image_data"), // base64 encoded
