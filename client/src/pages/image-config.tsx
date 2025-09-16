@@ -14,6 +14,7 @@ interface SettingsData {
   webhookUrl: string | null;
   uploadedImageName: string | null;
   hasUploadedImage: boolean;
+  trackingId: string;
 }
 
 export default function ImageConfig() {
@@ -104,13 +105,13 @@ export default function ImageConfig() {
   };
 
   const copyTrackingUrl = () => {
-    const url = `${window.location.origin}/image.jpg`;
+    const url = `${window.location.origin}/image.jpg?tid=${settings?.trackingId}`;
     navigator.clipboard.writeText(url);
     toast({ title: "Copied!", description: "Tracking URL copied to clipboard" });
   };
 
   const openTrackingUrl = () => {
-    window.open(`${window.location.origin}/image.jpg`, '_blank');
+    window.open(`${window.location.origin}/image.jpg?tid=${settings?.trackingId}`, '_blank');
   };
 
   // Placeholder for handleSave function, as it's not defined in the original code
@@ -210,6 +211,7 @@ export default function ImageConfig() {
                         size="sm"
                         variant="outline"
                         onClick={openTrackingUrl}
+                        disabled={isLoading || !settings?.trackingId}
                         data-testid="button-preview-image"
                         className="self-start sm:self-auto"
                       >
@@ -219,7 +221,7 @@ export default function ImageConfig() {
                     </div>
                     <div className="w-full max-w-md mx-auto p-4 bg-white rounded-lg border">
                       <img 
-                        src={`${window.location.origin}/image.jpg`} 
+                        src={`${window.location.origin}/image.jpg?tid=${settings?.trackingId}`} 
                         alt="Current tracking image"
                         className="w-full h-auto rounded"
                         onError={(e) => {
@@ -265,11 +267,12 @@ export default function ImageConfig() {
 
                     <div className="flex items-center space-x-2">
                       <code className="bg-muted px-3 py-2 rounded text-sm font-mono text-foreground flex-1 select-all border">
-                        {window.location.origin}/image.jpg
+                        {window.location.origin}/image.jpg?tid={settings?.trackingId}
                       </code>
                       <Button
                         size="sm"
                         onClick={copyTrackingUrl}
+                        disabled={isLoading || !settings?.trackingId}
                         data-testid="button-copy-url"
                       >
                         <Copy className="h-4 w-4 mr-2" />
@@ -279,6 +282,7 @@ export default function ImageConfig() {
                         size="sm"
                         variant="outline"
                         onClick={openTrackingUrl}
+                        disabled={isLoading || !settings?.trackingId}
                         data-testid="button-test-url"
                       >
                         <ExternalLink className="h-4 w-4 mr-2" />

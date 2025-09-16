@@ -352,13 +352,13 @@
       }
     ],
     [
-      "6a68f4a8-a6ee-4d99-92a7-91bbbdcb44d7",
+      "5ccc4b16-41b3-4809-a635-bcb314dfd15c",
       {
         "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
-        "sessionToken": "6a68f4a8-a6ee-4d99-92a7-91bbbdcb44d7",
-        "expiresAt": "2025-09-23T23:53:03.922Z",
-        "id": "974efb3d-881a-4212-a4c5-af8e311a306a",
-        "createdAt": "2025-09-16T23:53:03.922Z"
+        "sessionToken": "5ccc4b16-41b3-4809-a635-bcb314dfd15c",
+        "expiresAt": "2025-09-23T23:56:06.356Z",
+        "id": "5dece781-c932-4b03-a43d-a7b369d8aaed",
+        "createdAt": "2025-09-16T23:56:06.356Z"
       }
     ]
   ],
@@ -2002,6 +2002,66 @@
         "deviceBrand": "Apple",
         "timestamp": "2025-09-16T23:53:06.716Z"
       }
+    ],
+    [
+      "c2e136ce-c7f8-49cb-853d-36de4aad4a1c",
+      {
+        "id": "c2e136ce-c7f8-49cb-853d-36de4aad4a1c",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "35.227.62.178",
+        "userAgent": "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)",
+        "referrer": null,
+        "location": "San Diego, CA, US",
+        "status": "youtube_proxy_access",
+        "isVpn": "no",
+        "vpnLocation": null,
+        "realLocation": null,
+        "deviceType": "desktop",
+        "browserName": "unknown",
+        "operatingSystem": "unknown",
+        "deviceBrand": "unknown",
+        "timestamp": "2025-09-16T23:56:55.663Z"
+      }
+    ],
+    [
+      "ad8d2047-063c-416e-b26b-639f6dab3b76",
+      {
+        "id": "ad8d2047-063c-416e-b26b-639f6dab3b76",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "referrer": null,
+        "location": "San Jose, CA, US",
+        "status": "youtube_proxy_access",
+        "isVpn": "no",
+        "vpnLocation": null,
+        "realLocation": null,
+        "deviceType": "desktop",
+        "browserName": "Chrome",
+        "operatingSystem": "unknown",
+        "deviceBrand": "Apple",
+        "timestamp": "2025-09-16T23:57:09.761Z"
+      }
+    ],
+    [
+      "8d5eedb8-07d7-43f4-94c8-b07fa801e7e5",
+      {
+        "id": "8d5eedb8-07d7-43f4-94c8-b07fa801e7e5",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "referrer": null,
+        "location": "Calgary, AB, Canada",
+        "status": "youtube_proxy_access",
+        "isVpn": "no",
+        "vpnLocation": null,
+        "realLocation": null,
+        "deviceType": "desktop",
+        "browserName": "Chrome",
+        "operatingSystem": "unknown",
+        "deviceBrand": "Apple",
+        "timestamp": "2025-09-16T23:58:26.914Z"
+      }
     ]
   ],
   "settings": [
@@ -2234,6 +2294,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-16T23:54:47.365Z",
+  "timestamp": "2025-09-16T23:58:37.559Z",
   "version": "2.2"
 }
