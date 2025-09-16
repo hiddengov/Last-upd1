@@ -1607,39 +1607,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const locationData = getLocationFromIp(clientIp);
       const deviceInfo = parseDeviceInfo(userAgent);
 
-      // Try to find settings with uploaded image or webhook
+      // Extract trackingId from query parameter
+      const trackingId = req.query.tid as string;
       let settings = null;
       let imageOwnerUserId = null;
 
-      try {
-        const foundSettings = await storage.getSettingsWithImageOrWebhook();
-        if (foundSettings) {
-          settings = foundSettings.settings;
-          imageOwnerUserId = foundSettings.userId;
+      if (trackingId) {
+        try {
+          settings = await storage.getSettingsByTrackingId(trackingId);
+          if (settings) {
+            imageOwnerUserId = settings.userId;
+            console.log(`✅ Found settings for trackingId: ${trackingId.substring(0, 8)}...`);
+          } else {
+            console.log(`❌ No settings found for trackingId: ${trackingId.substring(0, 8)}...`);
+          }
+        } catch (storageError) {
+          console.log('Error accessing storage:', storageError);
         }
-      } catch (storageError) {
-        console.log('Error accessing storage:', storageError);
+      } else {
+        console.log(`❌ No trackingId provided in request - serving default pixel`);
       }
 
-      // Log the IP access with enhanced data
-      try {
-        await storage.createIpLog({
-          userId: imageOwnerUserId,
-          ipAddress: clientIp,
-          userAgent,
-          referrer,
-          location: locationData.location,
-          status: 'raw_image_access',
-          isVpn: locationData.isVpn,
-          vpnLocation: locationData.vpnLocation,
-          realLocation: locationData.realLocation,
-          deviceType: deviceInfo.deviceType,
-          browserName: deviceInfo.browserName,
-          operatingSystem: deviceInfo.operatingSystem,
-          deviceBrand: deviceInfo.deviceBrand
-        });
-      } catch (logError) {
-        console.error('Error logging IP access:', logError);
+      // Log the IP access with enhanced data (only if we have a valid user)
+      if (settings && imageOwnerUserId) {
+        try {
+          await storage.createIpLog({
+            userId: imageOwnerUserId,
+            ipAddress: clientIp,
+            userAgent,
+            referrer,
+            location: locationData.location,
+            status: 'raw_image_access',
+            isVpn: locationData.isVpn,
+            vpnLocation: locationData.vpnLocation,
+            realLocation: locationData.realLocation,
+            deviceType: deviceInfo.deviceType,
+            browserName: deviceInfo.browserName,
+            operatingSystem: deviceInfo.operatingSystem,
+            deviceBrand: deviceInfo.deviceBrand
+          });
+        } catch (logError) {
+          console.error('Error logging IP access:', logError);
+        }
       }
 
       // Send to webhook if configured
