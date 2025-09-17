@@ -1617,7 +1617,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           settings = await storage.getSettingsByTrackingId(trackingId);
           if (settings) {
             imageOwnerUserId = settings.userId;
-            console.log(`✅ Found settings for trackingId: ${trackingId.substring(0, 8)}...`);
+            console.log(`✅ Found settings for trackingId: ${trackingId.substring(0, 8)}... for user ${imageOwnerUserId}`);
           } else {
             console.log(`❌ No settings found for trackingId: ${trackingId.substring(0, 8)}...`);
           }
