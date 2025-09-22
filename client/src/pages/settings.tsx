@@ -69,7 +69,7 @@ export default function SettingsPage() {
   const [currentWebhookUrl, setCurrentWebhookUrl] = useState("");
 
   // Snow effect settings state
-  const [snowColor, setSnowColor] = useState("#ffffff");
+  const { snowColor, setSnowColor } = useTheme();
 
   // Forms
   const createUserForm = useForm<z.infer<typeof createUserSchema>>({

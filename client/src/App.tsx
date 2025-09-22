@@ -70,12 +70,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ThemeProvider>
-          <TooltipProvider>
+        {({ user, isAuthenticated }) => (
+          <ThemeProvider user={user} isAuthenticated={isAuthenticated}>
+            <TooltipProvider>
             <Toaster />
             <Router />
           </TooltipProvider>
-        </ThemeProvider>
+          </ThemeProvider>
+        )}
       </AuthProvider>
     </QueryClientProvider>
   );

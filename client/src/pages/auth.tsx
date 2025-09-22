@@ -16,7 +16,7 @@ export default function Auth({ onLogin }: AuthProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [snowColor, setSnowColor] = useState("#ffffff");
+  const { snowColor, setSnowColor } = useTheme();
   const { toast } = useToast();
 
   // Login form state

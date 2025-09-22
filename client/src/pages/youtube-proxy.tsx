@@ -16,11 +16,7 @@ export default function YoutubeProxy() {
   const [generatedLink, setGeneratedLink] = useState("");
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
-  const { theme, showSnow, snowSettings } = useTheme();
-
-  // Placeholder for actual theme variables, assuming they exist in ThemeContext
-  const snowColor = theme?.snowColor || "#FFFFFF";
-  const currentTheme = theme || {}; // Ensure currentTheme is always an object
+  const { theme: currentTheme, snowColor } = useTheme();
 
   const extractVideoId = (url: string): string | null => {
     const patterns = [

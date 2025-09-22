@@ -15,7 +15,7 @@ export default function KeyAccess({ onAccessGranted }: KeyAccessProps) {
   const [accessKey, setAccessKey] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [snowColor, setSnowColor] = useState("#ffffff");
+  const { snowColor, setSnowColor } = useTheme();
   const { toast } = useToast();
 
   const handleVerifyAccess = async (e: React.FormEvent) => {

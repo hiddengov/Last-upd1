@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { themes, applyTheme, getThemeById, type Theme } from '@/lib/themes';
-import { useAuth } from './AuthContext';
 import { apiRequest } from '@/lib/queryClient';
 
 interface ThemeContextType {
@@ -8,6 +7,19 @@ interface ThemeContextType {
   themes: Theme[];
   setTheme: (themeId: string) => void;
   isChangingTheme: boolean;
+  snowColor: string;
+  setSnowColor: (color: string) => void;
+  theme: {
+    gradient: string;
+    snowDensity: number;
+    snowSpeed: number;
+    snowColor: string;
+  };
+  showSnow: boolean;
+  snowSettings: {
+    density: number;
+    speed: number;
+  };
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -22,12 +34,16 @@ export const useTheme = () => {
 
 interface ThemeProviderProps {
   children: ReactNode;
+  user?: any;
+  isAuthenticated?: boolean;
 }
 
-export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
-  const { user, isAuthenticated } = useAuth();
+export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children, user, isAuthenticated }) => {
   const [currentTheme, setCurrentTheme] = useState<Theme>(themes[0]);
   const [isChangingTheme, setIsChangingTheme] = useState(false);
+  const [snowColor, setSnowColorState] = useState(() => {
+    return localStorage.getItem('snowColor') || '#ffffff';
+  });
 
   useEffect(() => {
     if (isAuthenticated && user?.theme) {
@@ -69,11 +85,29 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }
   };
 
+  const setSnowColor = (color: string) => {
+    setSnowColorState(color);
+    localStorage.setItem('snowColor', color);
+  };
+
   const value = {
     currentTheme,
     themes,
     setTheme,
     isChangingTheme,
+    snowColor,
+    setSnowColor,
+    theme: {
+      gradient: currentTheme.colors.background,
+      snowDensity: 50,
+      snowSpeed: 1,
+      snowColor: snowColor,
+    },
+    showSnow: true,
+    snowSettings: {
+      density: 50,
+      speed: 1,
+    },
   };
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

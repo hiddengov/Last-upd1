@@ -27,7 +27,7 @@ export const useAuth = () => {
 };
 
 interface AuthProviderProps {
-  children: ReactNode;
+  children: ReactNode | ((context: AuthContextType) => ReactNode);
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
@@ -129,5 +129,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {typeof children === 'function' ? children(value) : children}
+    </AuthContext.Provider>
+  );
 };

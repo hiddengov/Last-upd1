@@ -24,17 +24,8 @@ export default function ImageConfig() {
   const [dragOver, setDragOver] = useState(false);
   const [location, setLocation] = useLocation();
   
-  // Add error handling for theme context
   const themeContext = useTheme();
-  const currentTheme = themeContext?.theme || {
-    gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    snowDensity: 50,
-    snowSpeed: 1
-  };
-  const showSnow = themeContext?.showSnow || false;
-  const snowSettings = themeContext?.snowSettings || {};
-
-  const snowColor = "#ffffff";
+  const { theme: currentTheme, snowColor } = themeContext;
 
   const { data: settings, isLoading } = useQuery<SettingsData>({
     queryKey: ['/api/settings'],
@@ -134,14 +125,14 @@ export default function ImageConfig() {
         <SnowEffect 
           color={snowColor} 
           glow={true} 
-          density={currentTheme?.snowDensity || 50} 
-          speed={currentTheme?.snowSpeed || 1} 
+          density={currentTheme.snowDensity || 50} 
+          speed={currentTheme.snowSpeed || 1} 
         />
 
         <div 
           className="min-h-screen transition-all duration-1000 animate-fade-in"
           style={{
-            background: currentTheme?.gradient || "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            background: currentTheme.gradient || "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
             backdropFilter: 'blur(20px)',
           }}
         >
@@ -198,7 +189,7 @@ export default function ImageConfig() {
       <div 
         className="min-h-screen transition-all duration-1000 animate-fade-in"
         style={{
-          background: currentTheme.gradient,
+          background: currentTheme.gradient || "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
           backdropFilter: 'blur(20px)',
         }}
       >
