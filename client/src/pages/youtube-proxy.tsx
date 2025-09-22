@@ -17,6 +17,13 @@ export default function YoutubeProxy() {
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const { theme: currentTheme, snowColor } = useTheme();
+  
+  // Fallback theme in case currentTheme is undefined
+  const safeTheme = currentTheme || {
+    gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    snowDensity: 50,
+    snowSpeed: 1
+  };
 
   const extractVideoId = (url: string): string | null => {
     const patterns = [
@@ -84,14 +91,14 @@ export default function YoutubeProxy() {
       <SnowEffect
         color={snowColor}
         glow={true}
-        density={currentTheme?.snowDensity || 50}
-        speed={currentTheme?.snowSpeed || 1}
+        density={safeTheme.snowDensity || 50}
+        speed={safeTheme.snowSpeed || 1}
       />
 
       <div
         className="min-h-screen transition-all duration-1000 animate-fade-in"
         style={{
-          background: currentTheme.gradient,
+          background: safeTheme.gradient || "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
           backdropFilter: 'blur(20px)',
         }}
       >

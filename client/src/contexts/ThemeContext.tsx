@@ -42,7 +42,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children, user, is
   const [currentTheme, setCurrentTheme] = useState<Theme>(themes[0]);
   const [isChangingTheme, setIsChangingTheme] = useState(false);
   const [snowColor, setSnowColorState] = useState(() => {
-    return localStorage.getItem('snowColor') || '#ffffff';
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('snowColor') || '#ffffff';
+    }
+    return '#ffffff';
   });
 
   useEffect(() => {
@@ -87,7 +90,9 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children, user, is
 
   const setSnowColor = (color: string) => {
     setSnowColorState(color);
-    localStorage.setItem('snowColor', color);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('snowColor', color);
+    }
   };
 
   const value = {
@@ -98,7 +103,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children, user, is
     snowColor,
     setSnowColor,
     theme: {
-      gradient: currentTheme.colors.background,
+      gradient: currentTheme?.colors?.background || "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
       snowDensity: 50,
       snowSpeed: 1,
       snowColor: snowColor,
