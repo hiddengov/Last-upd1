@@ -42,10 +42,10 @@ export default function SnowEffect({
         snowflakesRef.current.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height,
-          size: Math.random() * 4 + 1,
-          speed: Math.random() * 2 + 0.5,
-          opacity: Math.random() * 0.8 + 0.2,
-          drift: Math.random() * 0.5 - 0.25
+          size: Math.random() * 3 + 0.5, // Smaller, more consistent size range
+          speed: Math.random() * 1.5 + 0.3, // Slower, more consistent speed
+          opacity: Math.random() * 0.6 + 0.3, // More visible opacity range
+          drift: Math.random() * 0.3 - 0.15 // Less drift to prevent going off-screen
         });
       }
     };
@@ -58,32 +58,29 @@ export default function SnowEffect({
         snowflake.y += snowflake.speed * speed;
         snowflake.x += snowflake.drift;
 
-        // Fade out as it reaches bottom
-        const fadeZone = canvas.height * 0.8;
-        if (snowflake.y > fadeZone) {
-          const fadeProgress = (snowflake.y - fadeZone) / (canvas.height * 0.2);
-          snowflake.opacity = Math.max(0, snowflake.opacity * (1 - fadeProgress));
-        }
-
-        // Reset snowflake when it goes off screen
-        if (snowflake.y > canvas.height + 50 || snowflake.x < -50 || snowflake.x > canvas.width + 50) {
-          snowflake.y = -50;
+        // Reset snowflake when it goes off screen (remove fade logic causing glitches)
+        if (snowflake.y > canvas.height + 10 || snowflake.x < -10 || snowflake.x > canvas.width + 10) {
+          snowflake.y = -10;
           snowflake.x = Math.random() * canvas.width;
           snowflake.opacity = Math.random() * 0.8 + 0.2;
+          snowflake.size = Math.random() * 4 + 1; // Reset size to prevent large flakes
         }
 
-        // Draw snowflake
+        // Draw snowflake with size constraints
         ctx.save();
+        
+        // Ensure snowflake size stays within bounds
+        const constrainedSize = Math.min(Math.max(snowflake.size, 0.5), 4);
         
         if (glow) {
           ctx.shadowColor = color;
-          ctx.shadowBlur = 10;
+          ctx.shadowBlur = 8;
         }
         
-        ctx.globalAlpha = snowflake.opacity;
+        ctx.globalAlpha = Math.min(Math.max(snowflake.opacity, 0), 1);
         ctx.fillStyle = color;
         ctx.beginPath();
-        ctx.arc(snowflake.x, snowflake.y, snowflake.size, 0, Math.PI * 2);
+        ctx.arc(snowflake.x, snowflake.y, constrainedSize, 0, Math.PI * 2);
         ctx.fill();
         
         ctx.restore();
