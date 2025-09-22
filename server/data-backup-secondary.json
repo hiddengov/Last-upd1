@@ -602,6 +602,26 @@
         "id": "21985ea2-ff68-46c2-b928-54d7e1ebf59b",
         "createdAt": "2025-09-22T15:21:57.148Z"
       }
+    ],
+    [
+      "fe8c7bc5-a5bc-40a9-9e1d-97a86f38210c",
+      {
+        "userId": "39145b9d-62a8-4834-9a51-cf607ffda4b9",
+        "sessionToken": "fe8c7bc5-a5bc-40a9-9e1d-97a86f38210c",
+        "expiresAt": "2025-09-29T19:41:49.503Z",
+        "id": "651d8267-b8e8-4312-b836-a33715845425",
+        "createdAt": "2025-09-22T19:41:49.503Z"
+      }
+    ],
+    [
+      "9bd61cf6-6b02-40e5-85b9-c2b673cfa110",
+      {
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "sessionToken": "9bd61cf6-6b02-40e5-85b9-c2b673cfa110",
+        "expiresAt": "2025-09-29T19:41:50.286Z",
+        "id": "6d7efef1-8904-4b0c-9159-94d0fbbb75f5",
+        "createdAt": "2025-09-22T19:41:50.286Z"
+      }
     ]
   ],
   "ipLogs": [
@@ -4464,6 +4484,55 @@
         "deviceBrand": "Apple",
         "timestamp": "2025-09-22T19:31:27.617Z"
       }
+    ],
+    [
+      "85aad49e-9182-454e-b988-467bc56fd5f2",
+      {
+        "id": "85aad49e-9182-454e-b988-467bc56fd5f2",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "35.196.132.85",
+        "userAgent": "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)",
+        "referrer": null,
+        "location": "North Charleston, South Carolina United States",
+        "status": "youtube_proxy_access",
+        "country": "United States",
+        "region": "South Carolina",
+        "city": "North Charleston",
+        "latitude": "32.87734",
+        "longitude": "-80.0086",
+        "timezone": "UTC",
+        "isp": "Google LLC",
+        "organization": "Unknown",
+        "coordinates": "32.87734, -80.00860",
+        "isVpn": "no",
+        "isProxy": "no",
+        "threatLevel": "Low",
+        "vpnProvider": null,
+        "realLocation": null,
+        "deviceType": "desktop",
+        "browserName": "unknown",
+        "browserVersion": "unknown",
+        "operatingSystem": "unknown",
+        "osVersion": "unknown",
+        "deviceBrand": "unknown",
+        "deviceModel": "unknown",
+        "architecture": "unknown",
+        "engine": "unknown",
+        "engineVersion": "unknown",
+        "isBot": true,
+        "isSuspicious": false,
+        "securityFlags": [
+          "Potential Bot/Scraper"
+        ],
+        "capabilities": [
+          "💻 Full DOM Access",
+          "📂 File System API",
+          "🖱️ Pointer Events",
+          "⌨️ Keyboard API"
+        ],
+        "fingerprint": "ZGVza3RvcC11bmtu",
+        "timestamp": "2025-09-22T19:42:39.250Z"
+      }
     ]
   ],
   "settings": [
@@ -4860,6 +4929,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-22T19:41:39.630Z",
+  "timestamp": "2025-09-22T19:42:44.475Z",
   "version": "2.2"
 }
