@@ -23,7 +23,7 @@ const client = new Client({
 });
 
 const REQUIRED_ROLE_ID = '1419809093178228777';
-const API_BASE_URL = process.env.API_BASE_URL || 'https://fcff8b87-f36d-4144-9175-16bf641e250e-00-2he7cvtphzsd4.worf.replit.dev';
+const API_BASE_URL = process.env.API_BASE_URL || 'https://workspace.worf.replit.dev';
 
 // Store user webhooks temporarily
 const userWebhooks = new Map();
