@@ -1,4 +1,4 @@
-import { Shield, BarChart3, List, Image, Settings, User, LogOut, Palette, Youtube, Link2 } from "lucide-react";
+import { Shield, BarChart3, List, Image, Settings, User, LogOut, Palette, Youtube } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";

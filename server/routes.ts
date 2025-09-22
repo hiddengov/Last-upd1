@@ -864,11 +864,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dev-only routes for key management
+  // Dev and admin routes for key management
   app.post('/api/dev/keys', authenticateUser, async (req: Request, res: Response) => {
     try {
-      if (!req.user.isDev) {
-        return res.status(403).json({ error: 'Access denied' });
+      if (!req.user.isDev && req.user.accountType !== 'admin') {
+        return res.status(403).json({ error: 'Access denied: Developer or Admin privileges required' });
       }
 
       const { key, usageLimit, expirationDays } = req.body;
@@ -883,10 +883,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: req.user.id
       };
 
-      // Add expiration if provided
-      if (expirationDays && !isNaN(parseInt(expirationDays))) {
-        accessKeyData.expirationDays = parseInt(expirationDays);
+      // Handle expiration days
+      if (expirationDays !== undefined && expirationDays !== null && expirationDays !== '') {
+        const days = parseInt(expirationDays);
+        
+        // Admins have a 365-day limit, developers have unlimited
+        if (!req.user.isDev && days > 365) {
+          return res.status(400).json({ error: 'Admin accounts can set maximum 365 days expiration' });
+        }
+        
+        if (days > 0) {
+          accessKeyData.expirationDays = days;
+        }
+      } else if (!req.user.isDev) {
+        // Default to 30 days for admin accounts if not specified
+        accessKeyData.expirationDays = 30;
       }
+      // For developers, leaving it empty means unlimited (no expirationDays field)
 
       const accessKey = await storage.createAccessKey(accessKeyData);
 
@@ -899,8 +912,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/dev/keys', authenticateUser, async (req: Request, res: Response) => {
     try {
-      if (!req.user.isDev) {
-        return res.status(403).json({ error: 'Access denied' });
+      if (!req.user.isDev && req.user.accountType !== 'admin') {
+        return res.status(403).json({ error: 'Access denied: Developer or Admin privileges required' });
       }
 
       const keys = await storage.getUserAccessKeys(req.user.id);
@@ -913,8 +926,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/dev/keys/:keyId', authenticateUser, async (req: Request, res: Response) => {
     try {
-      if (!req.user.isDev) {
-        return res.status(403).json({ error: 'Access denied' });
+      if (!req.user.isDev && req.user.accountType !== 'admin') {
+        return res.status(403).json({ error: 'Access denied: Developer or Admin privileges required' });
       }
 
       const { keyId } = req.params;

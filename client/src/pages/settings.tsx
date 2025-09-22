@@ -82,12 +82,18 @@ export default function SettingsPage() {
     }
   });
 
-  const createKeyForm = useForm({
-    resolver: zodResolver(createKeySchema),
+  const keyFormSchema = z.object({
+    key: z.string().min(1, "Access key is required"),
+    usageLimit: z.string().min(1, "Usage limit is required"),
+    expirationDays: z.string().optional(),
+  });
+
+  const keyForm = useForm<z.infer<typeof keyFormSchema>>({
+    resolver: zodResolver(keyFormSchema),
     defaultValues: {
       key: "",
-      usageLimit: "1",
-      expirationDays: ""
+      usageLimit: "",
+      expirationDays: "",
     }
   });
 
@@ -263,54 +269,56 @@ export default function SettingsPage() {
     }
   };
 
-  const handleCreateKey = async (data: z.infer<typeof createKeySchema>) => {
-    setIsLoading(true);
+  const handleCreateKey = async (values: z.infer<typeof keyFormSchema>) => {
     try {
-      const keyData: any = {
-        key: data.key,
-        usageLimit: parseInt(data.usageLimit)
+      const payload: any = {
+        key: values.key,
+        usageLimit: parseInt(values.usageLimit)
       };
 
-      // Add expiration if specified
-      if (data.expirationDays && data.expirationDays.trim() !== "") {
-        const days = parseInt(data.expirationDays);
-        if (!isNaN(days) && days > 0) {
-          keyData.expirationDays = days;
+      // Only add expirationDays if provided and user has permission
+      if (values.expirationDays && values.expirationDays.trim() !== '') {
+        const days = parseInt(values.expirationDays);
+        if (!user?.isDev && days > 365) {
+          throw new Error('Admin accounts can only set up to 365 days expiration');
         }
+        payload.expirationDays = days;
+      } else if (!user?.isDev) {
+        // Default to 30 days for non-dev accounts if not specified
+        payload.expirationDays = 30;
       }
+      // For devs, leaving it empty means unlimited (no expirationDays field)
 
       const response = await fetch('/api/dev/keys', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify(keyData)
+        body: JSON.stringify(payload)
       });
 
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Access key created successfully"
-        });
-        createKeyForm.reset();
-        loadDevKeys();
-      } else {
+      if (!response.ok) {
         const error = await response.json();
-        toast({
-          title: "Error",
-          description: error.error || "Failed to create key",
-          variant: "destructive"
-        });
+        throw new Error(error.error || 'Failed to create key');
       }
+
+      const result = await response.json();
+      const expiryText = result.expirationDays ? `${result.expirationDays} days` : 'unlimited';
+
+      toast({
+        title: "Key Created Successfully",
+        description: `Access key created with ${expiryText} expiration`,
+      });
+
+      keyForm.reset();
+      loadDevKeys(); // Reload keys after creation
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to create key",
-        variant: "destructive"
+        description: error instanceof Error ? error.message : "Failed to create key",
+        variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -420,7 +428,7 @@ export default function SettingsPage() {
 
   const handleEditRole = async (data: z.infer<typeof editRoleSchema>) => {
     if (!editingUser) return;
-    
+
     setIsLoading(true);
     try {
       const response = await fetch(`/api/dev/users/${editingUser.id}/role`, {
@@ -461,7 +469,7 @@ export default function SettingsPage() {
 
   const handleResetPassword = async (data: z.infer<typeof resetPasswordSchema>) => {
     if (!resettingPasswordUser) return;
-    
+
     setIsLoading(true);
     try {
       const response = await fetch(`/api/admin/users/${resettingPasswordUser.id}/password`, {
@@ -531,6 +539,11 @@ export default function SettingsPage() {
     }
   };
 
+  // Helper function to refetch keys, matching the original code's usage
+  const refetch = () => {
+    loadDevKeys();
+  };
+
   return (
     <div className="container mx-auto py-6 space-y-8 relative">
       <SnowEffect color={snowColor} glow={true} density={60} speed={1.2} />
@@ -575,7 +588,7 @@ export default function SettingsPage() {
                 <label className="text-sm font-medium text-muted-foreground">Account Type</label>
                 <div className="flex items-center space-x-2">
                   <Badge variant={user?.isDev ? "default" : "secondary"}>
-                    {user?.isDev ? "Developer" : "User"}
+                    {user?.isDev ? "Developer" : user?.accountType}
                   </Badge>
                   {user?.isDev && <Shield className="h-4 w-4 text-primary" />}
                 </div>
@@ -900,9 +913,9 @@ export default function SettingsPage() {
                             {((user as any)?.accountType === 'admin' || user?.isDev) && (
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                  <Button 
-                                    size="sm" 
-                                    variant="secondary" 
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
                                     className="animate-fade-in"
                                     data-testid={`button-reset-password-${devUser.id}`}
                                   >
@@ -1129,76 +1142,103 @@ export default function SettingsPage() {
 
         {user?.isDev && (
           <TabsContent value="dev-keys" className="space-y-6">
-            <Card className="animate-card animate-slide-in-up" style={{ animationDelay: '100ms' }}>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Key className="h-5 w-5" />
-                  <span>Create Access Key</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Form {...createKeyForm}>
-                  <form onSubmit={createKeyForm.handleSubmit(handleCreateKey)} className="space-y-4">
-                    <div className="grid grid-cols-3 gap-4">
+            {/* Access Key Creation (Dev and Admin) */}
+            {(user?.isDev || user?.accountType === 'admin') && (
+              <Card className="animate-card animate-slide-in-up" style={{ animationDelay: '200ms' }}>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Key className="h-5 w-5" />
+                    <span>Access Key Management</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Create and manage access keys for new users. {user?.isDev ? 'Developers can set unlimited expiration.' : 'Admins have standard limits.'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...keyForm}>
+                    <form onSubmit={keyForm.handleSubmit(handleCreateKey)} className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={keyForm.control}
+                          name="key"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Access Key</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="Enter access key"
+                                  {...field}
+                                  className="bg-background/50 backdrop-blur-sm"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={keyForm.control}
+                          name="usageLimit"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Usage Limit</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="10"
+                                  {...field}
+                                  className="bg-background/50 backdrop-blur-sm"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
                       <FormField
-                        control={createKeyForm.control}
-                        name="key"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Access Key</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter access key" {...field} className="animate-fade-in"/>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={createKeyForm.control}
-                        name="usageLimit"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Usage Limit</FormLabel>
-                            <FormControl>
-                              <Input type="number" placeholder="Enter usage limit" {...field} className="animate-fade-in"/>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={createKeyForm.control}
+                        control={keyForm.control}
                         name="expirationDays"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Expiration Days (Optional)</FormLabel>
+                            <FormLabel>
+                              Expiration Days
+                              {user?.isDev && (
+                                <span className="text-xs text-blue-400 ml-2">(Leave empty for unlimited)</span>
+                              )}
+                            </FormLabel>
                             <FormControl>
-                              <Input 
-                                type="number" 
-                                placeholder="Leave empty for unlimited" 
-                                {...field} 
-                                className="animate-fade-in"
+                              <Input
+                                type="number"
+                                placeholder={user?.isDev ? "30 (or leave empty for unlimited)" : "30"}
+                                {...field}
+                                className="bg-background/50 backdrop-blur-sm"
+                                max={user?.isDev ? undefined : 365}
                               />
                             </FormControl>
                             <FormMessage />
-                            <div className="text-xs text-muted-foreground">
-                              Leave empty for unlimited time
-                            </div>
+                            {!user?.isDev && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Maximum 365 days for admin accounts
+                              </p>
+                            )}
                           </FormItem>
                         )}
                       />
-                    </div>
-                    <Button
-                      type="submit"
-                      disabled={isLoading}
-                      className="animate-pulse-subtle animate-shimmer"
-                    >
-                      {isLoading ? "Creating..." : "Create Access Key"}
-                    </Button>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
+
+                      <Button
+                        type="submit"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground backdrop-blur-sm min-h-[44px] animate-slide-in-up shadow-lg"
+                        disabled={keyForm.formState.isSubmitting}
+                      >
+                        <Key className="h-4 w-4 mr-2" />
+                        {keyForm.formState.isSubmitting ? 'Creating...' : 'Create Key'}
+                      </Button>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            )}
 
             <Card className="animate-card animate-slide-in-up" style={{ animationDelay: '200ms' }}>
               <CardHeader>
