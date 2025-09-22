@@ -1168,7 +1168,7 @@ export default function SettingsPage() {
                                 <Input
                                   placeholder="Enter access key"
                                   {...field}
-                                  className="bg-background/50 backdrop-blur-sm"
+                                  className="bg-black/90 backdrop-blur-sm text-white border-white/20 placeholder:text-gray-400"
                                 />
                               </FormControl>
                               <FormMessage />
@@ -1187,7 +1187,7 @@ export default function SettingsPage() {
                                   type="number"
                                   placeholder="10"
                                   {...field}
-                                  className="bg-background/50 backdrop-blur-sm"
+                                  className="bg-black/90 backdrop-blur-sm text-white border-white/20 placeholder:text-gray-400"
                                 />
                               </FormControl>
                               <FormMessage />
@@ -1212,7 +1212,7 @@ export default function SettingsPage() {
                                 type="number"
                                 placeholder={user?.isDev ? "30 (or leave empty for unlimited)" : "30"}
                                 {...field}
-                                className="bg-background/50 backdrop-blur-sm"
+                                className="bg-black/90 backdrop-blur-sm text-white border-white/20 placeholder:text-gray-400"
                                 max={user?.isDev ? undefined : 365}
                               />
                             </FormControl>
