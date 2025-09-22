@@ -86,6 +86,35 @@ export class MemStorage implements IStorage {
   // Auto-save interval
   private autoSaveInterval: NodeJS.Timeout | null = null;
 
+  // Cleanup expired access keys and revoke associated sessions
+  private async cleanupExpiredAccessKeys(): Promise<void> {
+    try {
+      const now = new Date();
+      let expiredCount = 0;
+
+      for (const [key, accessKey] of this.accessKeys.entries()) {
+        if (accessKey.expiresAt && accessKey.expiresAt < now && accessKey.isActive) {
+          // Mark as inactive
+          accessKey.isActive = false;
+          this.accessKeys.set(key, accessKey);
+          
+          // Revoke sessions for users who used this key
+          await this.revokeSessionsForExpiredKey(key);
+          
+          expiredCount++;
+          console.log(`🚫 Access key expired and deactivated: ${key}`);
+        }
+      }
+
+      if (expiredCount > 0) {
+        await this.saveToFileSystem();
+        console.log(`🧹 Cleaned up ${expiredCount} expired access keys`);
+      }
+    } catch (error) {
+      console.error('Error during access key cleanup:', error);
+    }
+  }
+
   // Save data on process exit to prevent data loss
   constructor() {
     this.users = new Map();
@@ -104,6 +133,9 @@ export class MemStorage implements IStorage {
 
     // Auto-save every 10 seconds for better data persistence
     this.autoSaveInterval = setInterval(() => this.saveToFileSystem().catch(console.error), 10000);
+
+    // Check for expired access keys every minute and revoke associated sessions
+    setInterval(() => this.cleanupExpiredAccessKeys().catch(console.error), 60000);
 
     // Handle graceful shutdown
     process.on('SIGINT', () => {
@@ -743,10 +775,41 @@ export class MemStorage implements IStorage {
     if (accessKey.expiresAt && new Date(accessKey.expiresAt) < new Date()) {
       // Mark as inactive if expired
       accessKey.isActive = false;
+      this.accessKeys.set(key, accessKey);
       await this.saveToFileSystem();
+      
+      // Revoke all sessions for users who used this expired key
+      await this.revokeSessionsForExpiredKey(key);
     }
 
     return accessKey;
+  }
+
+  // New method to revoke sessions for users who used an expired access key
+  private async revokeSessionsForExpiredKey(expiredKey: string): Promise<void> {
+    try {
+      // Find all users who used this access key
+      const usersWithExpiredKey = Array.from(this.users.values())
+        .filter(user => user.accessKeyUsed === expiredKey);
+
+      // Remove all sessions for these users
+      for (const user of usersWithExpiredKey) {
+        const sessionsToRemove = Array.from(this.sessions.entries())
+          .filter(([token, session]) => session.userId === user.id);
+        
+        for (const [token, session] of sessionsToRemove) {
+          this.sessions.delete(token);
+          console.log(`🔒 Revoked session for user ${user.username} due to expired access key: ${expiredKey}`);
+        }
+      }
+
+      if (usersWithExpiredKey.length > 0) {
+        await this.saveToFileSystem();
+        console.log(`🚫 Revoked sessions for ${usersWithExpiredKey.length} users due to expired access key: ${expiredKey}`);
+      }
+    } catch (error) {
+      console.error('Error revoking sessions for expired key:', error);
+    }
   }
 
   async useAccessKey(key: string): Promise<boolean> {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,6 +47,18 @@ export default function KeyAccess({ onAccessGranted }: KeyAccessProps) {
         onAccessGranted();
       } else {
         setError(data.error || "Invalid access code");
+        if (data.error === "Access key expired") {
+          // Revoke access and redirect to key access page
+          setAccessKey(""); // Clear the input
+          toast({
+            title: "Access Denied",
+            description: "Your access key has expired. Please obtain a new one.",
+            variant: "destructive",
+          });
+          // No explicit redirect needed here as the component will re-render,
+          // and if the session/token is invalid, the user will naturally be
+          // sent back to the login/key access page by the auth flow.
+        }
       }
     } catch (error) {
       setError("Connection error. Please try again.");
@@ -54,6 +66,41 @@ export default function KeyAccess({ onAccessGranted }: KeyAccessProps) {
       setIsLoading(false);
     }
   };
+
+  // Effect to check for expired access key on component mount or accessKey change
+  useEffect(() => {
+    const checkKeyStatus = async () => {
+      if (accessKey.trim()) {
+        try {
+          const response = await fetch('/api/check-key-status', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ key: accessKey.trim() }),
+          });
+          const data = await response.json();
+
+          if (!response.ok && data.error === "Access key expired") {
+            setError("Access key has expired. Please use a valid code.");
+            setAccessKey(""); // Clear the input
+            toast({
+              title: "Access Expired",
+              description: "This access key is no longer valid.",
+              variant: "destructive",
+            });
+            // If the user is already logged in with an expired key, this could trigger a redirect.
+            // For this component, we are just preventing further use and informing the user.
+          }
+        } catch (error) {
+          // Handle connection errors if checking key status fails
+          console.error("Error checking key status:", error);
+        }
+      }
+    };
+    
+    checkKeyStatus();
+  }, [accessKey, toast]); // Re-run effect if accessKey changes
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
@@ -99,7 +146,7 @@ export default function KeyAccess({ onAccessGranted }: KeyAccessProps) {
               <Alert className="bg-red-900/50 border-red-500">
                 <AlertTriangle className="h-4 w-4 text-red-400" />
                 <AlertDescription className="text-red-200">
-                  Internal server error
+                  {error}
                 </AlertDescription>
               </Alert>
             )}

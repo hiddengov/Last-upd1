@@ -597,7 +597,7 @@ async function sendToWebhook(webhookUrl: string, data: any): Promise<void> {
   }
 }
 
-// Authentication middleware
+// Authentication middleware with access key expiration check
 async function authenticateUser(req: Request, res: Response, next: Function) {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) {
@@ -612,6 +612,19 @@ async function authenticateUser(req: Request, res: Response, next: Function) {
   const user = await storage.getUser(session.userId);
   if (!user) {
     return res.status(401).json({ error: 'User not found' });
+  }
+
+  // Check if user's access key has expired
+  if (user.accessKeyUsed) {
+    const accessKey = await storage.getAccessKey(user.accessKeyUsed);
+    if (!accessKey || !accessKey.isActive || (accessKey.expiresAt && new Date(accessKey.expiresAt) < new Date())) {
+      // Access key expired, revoke session and require re-authentication
+      await storage.deleteSession(token);
+      return res.status(401).json({ 
+        error: 'Access key expired. Please obtain a new access code.',
+        code: 'ACCESS_KEY_EXPIRED'
+      });
+    }
   }
 
   req.user = user;
@@ -670,8 +683,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const accessKey = await storage.getAccessKey(key);
-      if (!accessKey || !accessKey.isActive || accessKey.usedCount >= accessKey.usageLimit) {
-        return res.status(401).json({ error: 'Invalid or expired access code' });
+      if (!accessKey) {
+        return res.status(401).json({ error: 'Invalid access code' });
+      }
+
+      // Check if access key is expired
+      if (accessKey.expiresAt && new Date(accessKey.expiresAt) < new Date()) {
+        return res.status(401).json({ error: 'Access code has expired' });
+      }
+
+      // Check if access key is active and within usage limits
+      if (!accessKey.isActive || accessKey.usedCount >= accessKey.usageLimit) {
+        return res.status(401).json({ error: 'Access code is no longer valid' });
       }
 
       const canUse = await storage.useAccessKey(key);

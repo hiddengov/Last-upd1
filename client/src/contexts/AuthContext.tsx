@@ -52,13 +52,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             'Authorization': `Bearer ${savedToken}`
           }
         })
-        .then(response => {
+        .then(async response => {
           if (!response.ok) {
-            // Token is invalid, clear it
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            setToken(null);
-            setUser(null);
+            const errorData = await response.json().catch(() => ({}));
+            
+            // Check if it's an access key expiration error
+            if (errorData.code === 'ACCESS_KEY_EXPIRED') {
+              console.log('Access key expired, redirecting to key access page');
+              // Clear stored auth data
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              setToken(null);
+              setUser(null);
+              
+              // Set a flag to show expired message
+              localStorage.setItem('accessKeyExpired', 'true');
+            } else {
+              // Token is invalid for other reasons, clear it
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              setToken(null);
+              setUser(null);
+            }
           }
         })
         .catch(() => {
