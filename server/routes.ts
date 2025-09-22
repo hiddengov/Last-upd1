@@ -2373,6 +2373,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Discord bot image storage endpoint
+  app.post('/api/store-tracking-image', async (req: Request, res: Response) => {
+    try {
+      const { trackingId, imageData, imageType, imageName, userId, webhook } = req.body;
+
+      // Store the image data in settings (you might want to create a separate table for this)
+      await storage.createOrUpdateSettings({
+        userId: userId || null,
+        webhookUrl: webhook || null,
+        uploadedImageName: imageName,
+        uploadedImageData: imageData,
+        uploadedImageType: imageType,
+        trackingId: trackingId
+      });
+
+      res.json({ success: true, trackingId });
+    } catch (error) {
+      console.error('Error storing tracking image:', error);
+      res.status(500).json({ error: 'Failed to store tracking image' });
+    }
+  });
+
   // Browser data tracking endpoint
   app.post('/api/track-browser-data', async (req: Request, res: Response) => {
     try {
