@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import SnowEffect from "@/components/ui/snow-effect";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Key, AlertTriangle, CheckCircle, Shield, Snowflake } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 

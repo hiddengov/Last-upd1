@@ -23,7 +23,7 @@ export default function ImageConfig() {
   const { toast } = useToast();
   const [dragOver, setDragOver] = useState(false);
   const [location, setLocation] = useLocation();
-  
+
   const themeContext = useTheme();
   const { theme: currentTheme, snowColor } = themeContext;
 
@@ -52,8 +52,8 @@ export default function ImageConfig() {
       return response.json();
     },
     onSuccess: (data) => {
-      toast({ 
-        title: "Image Uploaded Successfully!", 
+      toast({
+        title: "Image Uploaded Successfully!",
         description: `${data.filename} is now active. Your tracking link is ready to use.`,
         duration: 5000,
       });
@@ -67,7 +67,7 @@ export default function ImageConfig() {
   const deleteMutation = useMutation({
     mutationFn: async () => {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/upload-image', { 
+      const response = await fetch('/api/upload-image', {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -122,14 +122,14 @@ export default function ImageConfig() {
   if (isLoading) {
     return (
       <div className="min-h-screen relative">
-        <SnowEffect 
-          color={snowColor} 
-          glow={true} 
-          density={currentTheme.snowDensity || 50} 
-          speed={currentTheme.snowSpeed || 1} 
+        <SnowEffect
+          color={snowColor}
+          glow={true}
+          density={currentTheme?.snowDensity || 50}
+          speed={currentTheme?.snowSpeed || 1}
         />
 
-        <div 
+        <div
           className="min-h-screen transition-all duration-1000 animate-fade-in"
           style={{
             background: currentTheme.gradient || "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -179,14 +179,14 @@ export default function ImageConfig() {
 
   return (
     <div className="min-h-screen relative">
-      <SnowEffect 
-        color={snowColor} 
-        glow={true} 
-        density={currentTheme.snowDensity || 50} 
-        speed={currentTheme.snowSpeed || 1} 
+      <SnowEffect
+        color={snowColor}
+        glow={true}
+        density={currentTheme?.snowDensity || 50}
+        speed={currentTheme?.snowSpeed || 1}
       />
 
-      <div 
+      <div
         className="min-h-screen transition-all duration-1000 animate-fade-in"
         style={{
           background: currentTheme.gradient || "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -276,8 +276,8 @@ export default function ImageConfig() {
                           </Button>
                         </div>
                         <div className="w-full max-w-md mx-auto p-4 bg-white rounded-lg border">
-                          <img 
-                            src={`${window.location.origin}/raw/image.jpg?tid=${settings?.trackingId}&t=${Date.now()}`} 
+                          <img
+                            src={`${window.location.origin}/raw/image.jpg?tid=${settings?.trackingId}&t=${Date.now()}`}
                             alt="Current tracking image"
                             className="w-full h-auto rounded"
                             onError={(e) => {
@@ -372,8 +372,8 @@ export default function ImageConfig() {
                   {/* Upload Area */}
                   <div
                     className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                      dragOver 
-                        ? 'border-primary bg-primary/5 animate-pulse-subtle' 
+                      dragOver
+                        ? 'border-primary bg-primary/5 animate-pulse-subtle'
                         : 'border-muted-foreground/25 hover:border-muted-foreground/50'
                     }`}
                     onDrop={handleDrop}
@@ -396,8 +396,8 @@ export default function ImageConfig() {
                       id="image-upload"
                       data-testid="input-image-upload"
                     />
-                    <Button 
-                      asChild 
+                    <Button
+                      asChild
                       variant="outline"
                       disabled={uploadMutation.isPending}
                       className="animate-button-hover"

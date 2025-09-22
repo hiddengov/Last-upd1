@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import SnowEffect from "@/components/ui/snow-effect";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Shield, User, Lock, AlertTriangle, Eye, EyeOff, Snowflake } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 

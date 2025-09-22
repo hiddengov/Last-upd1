@@ -84,8 +84,8 @@ export default function YoutubeProxy() {
       <SnowEffect
         color={snowColor}
         glow={true}
-        density={currentTheme.snowDensity || 50}
-        speed={currentTheme.snowSpeed || 1}
+        density={currentTheme?.snowDensity || 50}
+        speed={currentTheme?.snowSpeed || 1}
       />
 
       <div
