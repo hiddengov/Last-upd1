@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Youtube, Link2, Copy, Eye, ArrowLeft, Play, Shield } from "lucide-react";
@@ -8,12 +9,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import SnowEffect from "@/components/ui/snow-effect";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function YoutubeProxy() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [generatedLink, setGeneratedLink] = useState("");
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
+  const { theme, showSnow, snowSettings } = useTheme();
 
   const extractVideoId = (url: string): string | null => {
     const patterns = [
@@ -77,29 +81,37 @@ export default function YoutubeProxy() {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background relative">
+      {showSnow && (
+        <SnowEffect 
+          color={snowSettings.color} 
+          glow={snowSettings.glow} 
+          density={snowSettings.density} 
+          speed={snowSettings.speed} 
+        />
+      )}
       <Sidebar />
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto relative z-10">
         {/* Header */}
-        <header className="bg-card border-b border-border px-4 sm:px-6 py-4">
+        <header className="bg-card/80 backdrop-blur-md border-b border-border px-4 sm:px-6 py-4">
           <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
             <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-3">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setLocation("/")}
-                className="self-start sm:mr-2"
+                onClick={() => setLocation("/dashboard")}
+                className="self-start sm:mr-2 animate-button-hover"
               >
                 <ArrowLeft className="h-4 w-4 mr-1" />
                 Back
               </Button>
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-red-500/10 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-red-500/10 rounded-lg flex items-center justify-center animate-pulse-subtle">
                   <Youtube className="h-4 w-4 text-red-500" />
                 </div>
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-semibold text-foreground">YouTube Proxy</h2>
-                  <p className="text-sm sm:text-base text-muted-foreground">Generate tracking links for YouTube videos</p>
+                  <h2 className="text-xl sm:text-2xl font-semibold text-foreground animate-slide-in-up">YouTube Proxy</h2>
+                  <p className="text-sm sm:text-base text-muted-foreground animate-slide-in-up" style={{ animationDelay: '100ms' }}>Generate tracking links for YouTube videos</p>
                 </div>
               </div>
             </div>
@@ -114,7 +126,7 @@ export default function YoutubeProxy() {
 
         <div className="p-4 sm:p-6 space-y-6">
           {/* Instructions */}
-          <Card className="border-yellow-500/20 bg-yellow-500/5 animate-card animate-slide-in-up">
+          <Card className="border-yellow-500/20 bg-yellow-500/5 bg-card/80 backdrop-blur-md shadow-2xl animate-slide-in-up">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2 text-yellow-600">
                 <Play className="h-5 w-5" />
@@ -142,7 +154,7 @@ export default function YoutubeProxy() {
           </Card>
 
           {/* YouTube URL Input */}
-          <Card className="p-6 animate-card animate-slide-in-up" style={{ animationDelay: '200ms' }}>
+          <Card className="bg-card/80 backdrop-blur-md border border-border shadow-2xl animate-slide-in-up" style={{ animationDelay: '200ms' }}>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Youtube className="h-5 w-5" />
@@ -185,7 +197,7 @@ export default function YoutubeProxy() {
 
           {/* Generated Link */}
           {generatedLink && (
-            <Card className="border-green-500/20 bg-green-500/5">
+            <Card className="border-green-500/20 bg-green-500/5 bg-card/80 backdrop-blur-md shadow-2xl animate-slide-in-up" style={{ animationDelay: '300ms' }}>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2 text-green-600">
                   <Eye className="h-5 w-5" />
@@ -202,7 +214,7 @@ export default function YoutubeProxy() {
                       {generatedLink}
                     </code>
                     <Button
-                      onClick={copyToClipboard}
+                      onClick={() => copyToClipboard(generatedLink)}
                       variant="outline"
                       size="sm"
                       className="animate-button animate-wobble hover:animate-pulse-subtle"

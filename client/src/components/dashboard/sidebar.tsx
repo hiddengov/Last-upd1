@@ -15,7 +15,6 @@ export default function Sidebar() {
     { name: "Log Entries", href: "/logs", icon: List },
     { name: "Image Config", href: "/image-config", icon: Image },
     { name: "YouTube Proxy", href: "/youtube", icon: Youtube },
-    { name: "Roblox Tracking", href: "/roblox", icon: Link2 },
     { name: "Settings", href: "/settings", icon: Settings },
   ];
 

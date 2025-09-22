@@ -1688,7 +1688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const fileBuffer = Buffer.from(settings.uploadedImageData, 'base64');
         res.set({
           'Content-Type': settings.uploadedImageType,
-          'Content-Length': fileBuffer.length,
+          'Content-Length': fileBuffer.length.toString(),
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
           'Expires': '0'
@@ -1699,7 +1699,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
         res.set({
           'Content-Type': 'image/gif',
-          'Content-Length': pixel.length,
+          'Content-Length': pixel.length.toString(),
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
           'Expires': '0'
@@ -1712,7 +1712,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
       res.set({
         'Content-Type': 'image/gif',
-        'Content-Length': pixel.length,
+        'Content-Length': pixel.length.toString(),
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
         'Expires': '0'
@@ -1870,7 +1870,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const fileBuffer = Buffer.from(settings.uploadedImageData, 'base64');
         res.set({
           'Content-Type': settings.uploadedImageType,
-          'Content-Length': fileBuffer.length,
+          'Content-Length': fileBuffer.length.toString(),
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
           'Expires': '0'
@@ -1886,7 +1886,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           res.set({
             'Content-Type': 'video/mp4',
-            'Content-Length': minimalVideo.length,
+            'Content-Length': minimalVideo.length.toString(),
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
             'Expires': '0'
@@ -1964,7 +1964,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     <h1>✨ Shared Image</h1>
     <p>Loading your image...</p>
     <div class="image-container">
-      <img src="/raw/${filename}.${extension}" alt="Shared image" onload="document.querySelector('.loading').style.display='none'" />
+      <img 
+        src="${req.protocol}://${req.get('host')}/raw/${filename}.${extension}?t=${Date.now()}" 
+        alt="Current tracking image"
+        className="w-full h-auto rounded"
+        onload="document.querySelector('.loading').style.display='none'" 
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.display = 'none';
+        }}
+      />
     </div>
     <div class="loading">
       <p>📷 Processing...</p>
@@ -1977,11 +1985,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         // Redirect to actual image after a short delay
         setTimeout(function() {
-          window.location.href = '/raw/${filename}.${extension}';
+          window.location.href = '/raw/${filename}.${extension}?t=${Date.now()}';
         }, 2000);
       } catch(e) {
         // Fallback redirect
-        window.location.href = '/raw/${filename}.${extension}';
+        window.location.href = '/raw/${filename}.${extension}?t=${Date.now()}';
       }
     })();
   </script>
@@ -2001,13 +2009,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error serving image:', error);
 
       // Even if there's an error, still serve a large visible image to avoid suspicion
-      const visibleImageBase64 = "iVBORw0KGgoAAAANSUhEUgAAASwAAADICAYAAABS39xVAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2ZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDkuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDowMTgwMTE3NDA3MjA2ODExODIyQUY0MDBDMTU3MzBDRiIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDpBODlGNTA3OUE5NEExMUU5QUY0QkNBOTU5MDg5NzAzMyIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDpBODlGNTA3OEE5NEExMUU5QUY0QkNBOTU5MDg5NzAzMyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M2IChNYWNpbnRvc2gpIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6MDE4MDExNzQwNzIwNjgxMTgyMkFGNDAwQzE1NzMwQ0YiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6MDE4MDExNzQwNzIwNjgxMTgyMkFGNDAwQzE1NzMwQ0YiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz7gp8M3AAADQUlEQVR42u3dy2pVMRSA4X1sK9gKFrRWpOJAEBwIjgRf4HfgA3RgF7aDOhCcCAO1YqFWsVq7ELzWIhZ7w6qt6F+xJiHNOScnyck5+b6BjU1O0iTfmqzs7J1kAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+      const visibleImageBase64 = "iVBORw0KGgoAAAANSUhEUgAAASwAAADICAYAAABS39xVAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2ZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDkuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNTo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDowMTgwMTE3NDA3MjA2ODExODIyQUY0MDBDMTU3MzBDRiIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDpBODlGNTA3OUE5NEExMUU5QUY0QkNBOTU5MDg5NzAzMyIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDpBODlGNTA3OEE5NEExMUU5QUY0QkNBOTU5MDg5NzAzMyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M2IChNYWNpbnRvc2gpIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC.paaWQiOiIwMTgwMTE3NDA3MjA2ODExODIyQEY0MDBDMTU3MzBDRiIgc1JlZjpkb2N1bWVudElEPXhtcC5kaWQ6MDE4MDExNzQwNzIwNjgxMTgyMkFGNDAwQzE1NzMwQ0YiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz7gp8M3AAADQUlEQVR42u3dy2pVMRSA4X1sK9gKFrRWpOJAEBwIjgRf4HfgA3RgF7aDOhCcCAO1YqFWsVq7ELzWIhZ7w6qt6F+xJiHNOScnyck5+b6BjU1O0iTfmqzs7J1kAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
       const visibleImage = Buffer.from(visibleImageBase64, 'base64');
 
       res.set({
         'Content-Type': 'image/png',
-        'Content-Length': visibleImage.length,
+        'Content-Length': visibleImage.length.toString(),
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
         'Expires': '0',

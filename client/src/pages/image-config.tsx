@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import Sidebar from "@/components/dashboard/sidebar";
@@ -9,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { ArrowLeft } from "lucide-react";
 import { useLocation } from "wouter";
+import SnowEffect from "@/components/ui/snow-effect";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface SettingsData {
   webhookUrl: string | null;
@@ -21,6 +24,7 @@ export default function ImageConfig() {
   const { toast } = useToast();
   const [dragOver, setDragOver] = useState(false);
   const [location, setLocation] = useLocation();
+  const { theme, showSnow, snowSettings } = useTheme();
 
   const { data: settings, isLoading } = useQuery<SettingsData>({
     queryKey: ['/api/settings'],
@@ -114,18 +118,19 @@ export default function ImageConfig() {
     window.open(`${window.location.origin}/raw/image.jpg?tid=${settings?.trackingId}`, '_blank');
   };
 
-  // Placeholder for handleSave function, as it's not defined in the original code
-  // but is used in the provided changes.
-  const handleSave = () => {
-    // Implement save logic here
-  };
-  const isSaving = false; // Placeholder for isSaving state
-
   if (isLoading) {
     return (
-      <div className="flex h-screen bg-background">
+      <div className="flex h-screen bg-background relative">
+        {showSnow && (
+          <SnowEffect 
+            color={snowSettings.color} 
+            glow={snowSettings.glow} 
+            density={snowSettings.density} 
+            speed={snowSettings.speed} 
+          />
+        )}
         <Sidebar />
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 relative z-10">
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-muted rounded w-48"></div>
             <div className="h-32 bg-muted rounded"></div>
@@ -137,29 +142,37 @@ export default function ImageConfig() {
   }
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background relative">
+      {showSnow && (
+        <SnowEffect 
+          color={snowSettings.color} 
+          glow={snowSettings.glow} 
+          density={snowSettings.density} 
+          speed={snowSettings.speed} 
+        />
+      )}
       <Sidebar />
 
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto relative z-10">
         {/* Header */}
-        <header className="bg-card border-b border-border px-4 sm:px-6 py-4">
+        <header className="bg-card/80 backdrop-blur-md border-b border-border px-4 sm:px-6 py-4">
           <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-3">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setLocation("/dashboard")}
-              className="self-start sm:mr-2"
+              className="self-start sm:mr-2 animate-button-hover"
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center animate-pulse-subtle">
                 <ImageIcon className="h-4 w-4 text-primary" />
               </div>
               <div>
-                <h2 className="text-xl sm:text-2xl font-semibold text-foreground">Image Configuration</h2>
-                <p className="text-sm sm:text-base text-muted-foreground">Upload custom images and generate tracking links</p>
+                <h2 className="text-xl sm:text-2xl font-semibold text-foreground animate-slide-in-up">Image Configuration</h2>
+                <p className="text-sm sm:text-base text-muted-foreground animate-slide-in-up" style={{ animationDelay: '100ms' }}>Upload custom images and generate tracking links</p>
               </div>
             </div>
           </div>
@@ -167,7 +180,7 @@ export default function ImageConfig() {
 
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Current Image Status */}
-          <Card>
+          <Card className="bg-card/80 backdrop-blur-md border border-border shadow-2xl animate-slide-in-up">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <ImageIcon className="h-5 w-5" />
@@ -180,7 +193,7 @@ export default function ImageConfig() {
             <CardContent>
               {settings?.hasUploadedImage ? (
                 <div className="space-y-4">
-                  <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+                  <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 p-4 bg-green-500/10 border border-green-500/20 rounded-lg animate-bounce-once">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
                         <ImageIcon className="h-5 w-5 text-green-500" />
@@ -196,7 +209,7 @@ export default function ImageConfig() {
                       onClick={() => deleteMutation.mutate()}
                       disabled={deleteMutation.isPending}
                       data-testid="button-delete-image"
-                      className="self-start sm:self-auto"
+                      className="self-start sm:self-auto animate-button-hover"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       {deleteMutation.isPending ? "Deleting..." : "Delete"}
@@ -213,7 +226,7 @@ export default function ImageConfig() {
                         onClick={openTrackingUrl}
                         disabled={isLoading || !settings?.trackingId}
                         data-testid="button-preview-image"
-                        className="self-start sm:self-auto"
+                        className="self-start sm:self-auto animate-button-hover"
                       >
                         <ExternalLink className="h-4 w-4 mr-2" />
                         View Image
@@ -221,7 +234,7 @@ export default function ImageConfig() {
                     </div>
                     <div className="w-full max-w-md mx-auto p-4 bg-white rounded-lg border">
                       <img 
-                        src={`${window.location.origin}/raw/image.jpg?tid=${settings?.trackingId}`} 
+                        src={`${window.location.origin}/raw/image.jpg?tid=${settings?.trackingId}&t=${Date.now()}`} 
                         alt="Current tracking image"
                         className="w-full h-auto rounded"
                         onError={(e) => {
@@ -245,7 +258,7 @@ export default function ImageConfig() {
 
           {/* Tracking Link Generator */}
           {settings?.hasUploadedImage && (
-            <Card>
+            <Card className="bg-card/80 backdrop-blur-md border border-border shadow-2xl animate-slide-in-up" style={{ animationDelay: '200ms' }}>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Link2 className="h-5 w-5" />
@@ -274,6 +287,7 @@ export default function ImageConfig() {
                         onClick={copyTrackingUrl}
                         disabled={isLoading || !settings?.trackingId}
                         data-testid="button-copy-url"
+                        className="animate-button-hover"
                       >
                         <Copy className="h-4 w-4 mr-2" />
                         Copy
@@ -284,6 +298,7 @@ export default function ImageConfig() {
                         onClick={openTrackingUrl}
                         disabled={isLoading || !settings?.trackingId}
                         data-testid="button-test-url"
+                        className="animate-button-hover"
                       >
                         <ExternalLink className="h-4 w-4 mr-2" />
                         Test
@@ -300,7 +315,7 @@ export default function ImageConfig() {
           )}
 
           {/* Image Upload */}
-          <Card>
+          <Card className="bg-card/80 backdrop-blur-md border border-border shadow-2xl animate-slide-in-up" style={{ animationDelay: '300ms' }}>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Upload className="h-5 w-5" />
@@ -315,7 +330,7 @@ export default function ImageConfig() {
               <div
                 className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                   dragOver 
-                    ? 'border-primary bg-primary/5' 
+                    ? 'border-primary bg-primary/5 animate-pulse-subtle' 
                     : 'border-muted-foreground/25 hover:border-muted-foreground/50'
                 }`}
                 onDrop={handleDrop}
@@ -325,7 +340,7 @@ export default function ImageConfig() {
                 }}
                 onDragLeave={() => setDragOver(false)}
               >
-                <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-bounce-subtle" />
                 <h3 className="text-lg font-medium text-foreground mb-2">Upload Custom Image</h3>
                 <p className="text-muted-foreground mb-4">
                   Drag and drop an image here, or click to select
@@ -342,6 +357,7 @@ export default function ImageConfig() {
                   asChild 
                   variant="outline"
                   disabled={uploadMutation.isPending}
+                  className="animate-button-hover"
                 >
                   <label htmlFor="image-upload" className="cursor-pointer">
                     {uploadMutation.isPending ? "Uploading..." : "Select Image"}
@@ -355,7 +371,7 @@ export default function ImageConfig() {
           </Card>
 
           {/* Usage Tips */}
-          <Card>
+          <Card className="bg-card/80 backdrop-blur-md border border-border shadow-2xl animate-slide-in-up" style={{ animationDelay: '400ms' }}>
             <CardHeader>
               <CardTitle>Best Practices</CardTitle>
               <CardDescription>
