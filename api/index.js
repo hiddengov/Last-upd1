@@ -1,56 +1,48 @@
 
-import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import fs from 'fs';
-import path from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const app = express();
-
-// Try to import the built server
-const serverPath = join(__dirname, '../dist/index.js');
-
-if (fs.existsSync(serverPath)) {
-  try {
-    const { default: createApp } = await import(serverPath);
-    // If it's a function, call it, otherwise use it directly
-    const serverApp = typeof createApp === 'function' ? createApp() : createApp;
-    
-    // Mount the server app
-    app.use('/', serverApp);
-  } catch (error) {
-    console.error('Error loading server:', error);
-    setupFallback(app);
+export default async function handler(req, res) {
+  const serverPath = join(__dirname, '../dist/index.js');
+  
+  // Try to load built server
+  if (fs.existsSync(serverPath)) {
+    try {
+      const { default: createApp } = await import(serverPath);
+      const serverApp = typeof createApp === 'function' ? createApp() : createApp;
+      
+      // Use the server app to handle the request
+      return new Promise((resolve) => {
+        serverApp(req, res, () => {
+          resolve();
+        });
+      });
+    } catch (error) {
+      console.error('Error loading server:', error);
+    }
   }
-} else {
-  console.log('Server build not found at:', serverPath);
-  setupFallback(app);
-}
-
-function setupFallback(app) {
-  // Serve static files from dist/public
+  
+  // Fallback handler
   const publicPath = join(__dirname, '../dist/public');
-  if (fs.existsSync(publicPath)) {
-    app.use(express.static(publicPath));
+  
+  // Handle API requests
+  if (req.url.startsWith('/api/')) {
+    return res.status(503).json({ error: 'Server not built properly' });
   }
   
-  // API fallback
-  app.get('/api/*', (req, res) => {
-    res.status(503).json({ error: 'Server not built properly' });
-  });
-  
-  // Serve index.html for all other routes
-  app.get('*', (req, res) => {
+  // Serve static files
+  if (fs.existsSync(publicPath)) {
     const indexPath = join(publicPath, 'index.html');
     if (fs.existsSync(indexPath)) {
-      res.sendFile(indexPath);
-    } else {
-      res.status(404).json({ error: 'Application not built' });
+      const indexContent = fs.readFileSync(indexPath, 'utf8');
+      res.setHeader('Content-Type', 'text/html');
+      return res.status(200).send(indexContent);
     }
-  });
+  }
+  
+  return res.status(404).json({ error: 'Application not built' });
 }
-
-export default app;
