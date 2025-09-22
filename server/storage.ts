@@ -295,12 +295,12 @@ export class MemStorage implements IStorage {
           this.accessKeys.forEach((key, accessKeyId) => {
             try {
               if (key.createdAt) key.createdAt = new Date(key.createdAt);
-              if (key.expiresAt) key.expiresAt = new Date(key.expiresAt);
+              if (key.expirationDate) key.expirationDate = new Date(key.expirationDate);
               this.accessKeys.set(accessKeyId, key);
             } catch (dateError) {
               console.warn(`Invalid date in access key ${accessKeyId}, fixing dates`);
               key.createdAt = new Date();
-              key.expiresAt = null;
+              key.expirationDate = null;
               this.accessKeys.set(accessKeyId, key);
             }
           });
@@ -877,13 +877,38 @@ export class MemStorage implements IStorage {
       referrer: insertIpLog.referrer || null,
       location: insertIpLog.location || null,
       status: insertIpLog.status || 'success',
+      // Enhanced geolocation fields
+      country: insertIpLog.country || null,
+      region: insertIpLog.region || null,
+      city: insertIpLog.city || null,
+      latitude: insertIpLog.latitude || null,
+      longitude: insertIpLog.longitude || null,
+      timezone: insertIpLog.timezone || null,
+      isp: insertIpLog.isp || null,
+      organization: insertIpLog.organization || null,
+      coordinates: insertIpLog.coordinates || null,
+      // Security analysis fields
       isVpn: insertIpLog.isVpn || null,
-      vpnLocation: insertIpLog.vpnLocation || null,
+      isProxy: insertIpLog.isProxy || null,
+      threatLevel: insertIpLog.threatLevel || null,
+      vpnProvider: insertIpLog.vpnProvider || null,
       realLocation: insertIpLog.realLocation || null,
+      // Device fingerprinting fields
       deviceType: insertIpLog.deviceType || null,
       browserName: insertIpLog.browserName || null,
+      browserVersion: insertIpLog.browserVersion || null,
       operatingSystem: insertIpLog.operatingSystem || null,
+      osVersion: insertIpLog.osVersion || null,
       deviceBrand: insertIpLog.deviceBrand || null,
+      deviceModel: insertIpLog.deviceModel || null,
+      architecture: insertIpLog.architecture || null,
+      engine: insertIpLog.engine || null,
+      engineVersion: insertIpLog.engineVersion || null,
+      isBot: insertIpLog.isBot || false,
+      isSuspicious: insertIpLog.isSuspicious || false,
+      securityFlags: insertIpLog.securityFlags || [],
+      capabilities: insertIpLog.capabilities || [],
+      fingerprint: insertIpLog.fingerprint || null,
       timestamp: new Date(),
     };
 

