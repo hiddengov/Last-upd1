@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Key, AlertTriangle, CheckCircle, Shield } from "lucide-react";
+import SnowEffect from "@/components/ui/snow-effect";
+import { Key, AlertTriangle, CheckCircle, Shield, Snowflake } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface KeyAccessProps {
@@ -14,6 +15,7 @@ export default function KeyAccess({ onAccessGranted }: KeyAccessProps) {
   const [accessKey, setAccessKey] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [snowColor, setSnowColor] = useState("#ffffff");
   const { toast } = useToast();
 
   const handleVerifyAccess = async (e: React.FormEvent) => {
@@ -54,19 +56,29 @@ export default function KeyAccess({ onAccessGranted }: KeyAccessProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center" 
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden" 
          style={{
-           background: 'radial-gradient(ellipse at center, #7f1d1d 0%, #450a0a 35%, #1c1917 100%)'
+           background: 'radial-gradient(ellipse at center, #1e1b4b 0%, #581c87 35%, #0f0f23 100%)'
          }}>
-      <div className="w-full max-w-md p-6">
-        <Card className="border-0 shadow-2xl" style={{ backgroundColor: 'rgba(12, 10, 9, 0.95)' }}>
+      <SnowEffect color={snowColor} glow={true} density={80} speed={0.8} />
+      <div className="w-full max-w-md p-6 relative z-10">
+        <Card className="border-0 shadow-2xl backdrop-blur-md" style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
           <CardHeader className="text-center pb-4">
-            <div className="mx-auto w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mb-4">
-              <Key className="text-white w-8 h-8" />
+            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mb-4 animate-pulse shadow-lg backdrop-blur-sm">
+              <Key className="text-white w-8 h-8 drop-shadow-lg" />
             </div>
-            <CardTitle className="text-2xl font-bold text-white">
-              EXNL KEY SYSTEM
-            </CardTitle>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <CardTitle className="text-2xl font-bold text-white drop-shadow-lg">
+                EXNL KEY SYSTEM
+              </CardTitle>
+              <button
+                onClick={() => setSnowColor(snowColor === '#ffffff' ? '#00ffff' : '#ffffff')}
+                className="text-gray-400 hover:text-white transition-colors"
+                title="Change snow color"
+              >
+                <Snowflake className="w-5 h-5" />
+              </button>
+            </div>
             <CardDescription className="text-gray-300">
               Enter your one-time access code to continue
             </CardDescription>
@@ -106,7 +118,7 @@ export default function KeyAccess({ onAccessGranted }: KeyAccessProps) {
                   value={accessKey}
                   onChange={(e) => setAccessKey(e.target.value)}
                   placeholder="Enter access code"
-                  className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-red-500"
+                  className="bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder-gray-400 focus:border-blue-500"
                   data-testid="input-access-code"
                   disabled={isLoading}
                 />
@@ -114,7 +126,7 @@ export default function KeyAccess({ onAccessGranted }: KeyAccessProps) {
 
               <Button 
                 type="submit"
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 animate-button"
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 transition-all duration-300 shadow-lg"
                 disabled={isLoading}
                 data-testid="button-verify-access"
               >
@@ -123,15 +135,15 @@ export default function KeyAccess({ onAccessGranted }: KeyAccessProps) {
             </form>
 
             {/* Footer */}
-            <div className="text-center space-y-2 pt-4 border-t border-gray-700">
-              <p className="text-sm text-gray-400">
+            <div className="text-center space-y-2 pt-4 border-t border-white/20">
+              <p className="text-sm text-gray-300">
                 Need an access code? Contact the administrator
               </p>
-              <div className="flex items-center justify-center space-x-2 text-xs text-amber-400">
+              <div className="flex items-center justify-center space-x-2 text-xs text-yellow-300">
                 <AlertTriangle className="w-3 h-3" />
                 <span>Access codes are required for security</span>
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-400">
                 Each code can only be used once unless permanent
               </p>
             </div>

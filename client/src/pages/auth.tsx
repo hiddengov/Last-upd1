@@ -163,17 +163,17 @@ export default function Auth({ onLogin }: AuthProps) {
             )}
 
             <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6 bg-gray-800 animate-slide-in-right">
+              <TabsList className="grid w-full grid-cols-2 mb-6 bg-black/40 backdrop-blur-md border border-white/20 animate-slide-in-right">
                 <TabsTrigger 
                   value="login" 
-                  className="data-[state=active]:bg-red-600 data-[state=active]:text-white transition-colors duration-300"
+                  className="data-[state=active]:bg-blue-600/80 data-[state=active]:text-white text-gray-300 transition-colors duration-300 backdrop-blur-sm"
                   data-testid="tab-login"
                 >
                   Login
                 </TabsTrigger>
                 <TabsTrigger 
                   value="register"
-                  className="data-[state=active]:bg-red-600 data-[state=active]:text-white transition-colors duration-300"
+                  className="data-[state=active]:bg-blue-600/80 data-[state=active]:text-white text-gray-300 transition-colors duration-300 backdrop-blur-sm"
                   data-testid="tab-register"
                 >
                   Create Account
@@ -192,7 +192,7 @@ export default function Auth({ onLogin }: AuthProps) {
                       value={loginData.username}
                       onChange={(e) => setLoginData({...loginData, username: e.target.value})}
                       placeholder="Enter your username"
-                      className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 transition-colors duration-300"
+                      className="bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder-gray-400 focus:border-blue-500 transition-colors duration-300"
                       data-testid="input-login-username"
                       disabled={isLoading}
                     />
@@ -209,7 +209,7 @@ export default function Auth({ onLogin }: AuthProps) {
                         value={loginData.password}
                         onChange={(e) => setLoginData({...loginData, password: e.target.value})}
                         placeholder="Enter your password"
-                        className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 pr-10 transition-colors duration-300"
+                        className="bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder-gray-400 focus:border-blue-500 pr-10 transition-colors duration-300"
                         data-testid="input-login-password"
                         disabled={isLoading}
                       />
@@ -227,7 +227,7 @@ export default function Auth({ onLogin }: AuthProps) {
                   <Button 
                     type="submit"
                     disabled={isLoading}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 transition-colors duration-300 focus:ring-red-500 focus:ring-opacity-50 animate-pulse-subtle animate-shimmer"
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 transition-all duration-300 focus:ring-blue-500 focus:ring-opacity-50 animate-pulse-subtle animate-shimmer shadow-lg"
                     data-testid="button-login"
                   >
                     {isLoading ? "LOGGING IN..." : "LOGIN"}
@@ -247,7 +247,7 @@ export default function Auth({ onLogin }: AuthProps) {
                       value={registerData.username}
                       onChange={(e) => setRegisterData({...registerData, username: e.target.value})}
                       placeholder="Choose a username"
-                      className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 transition-colors duration-300"
+                      className="bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder-gray-400 focus:border-blue-500 transition-colors duration-300"
                       data-testid="input-register-username"
                       disabled={isLoading}
                     />
@@ -264,7 +264,7 @@ export default function Auth({ onLogin }: AuthProps) {
                         value={registerData.password}
                         onChange={(e) => setRegisterData({...registerData, password: e.target.value})}
                         placeholder="Create a password"
-                        className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 pr-10 transition-colors duration-300"
+                        className="bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder-gray-400 focus:border-blue-500 pr-10 transition-colors duration-300"
                         data-testid="input-register-password"
                         disabled={isLoading}
                       />
@@ -288,7 +288,7 @@ export default function Auth({ onLogin }: AuthProps) {
                       value={registerData.confirmPassword}
                       onChange={(e) => setRegisterData({...registerData, confirmPassword: e.target.value})}
                       placeholder="Confirm your password"
-                      className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 transition-colors duration-300"
+                      className="bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder-gray-400 focus:border-blue-500 transition-colors duration-300"
                       data-testid="input-register-confirm-password"
                       disabled={isLoading}
                     />
@@ -297,7 +297,7 @@ export default function Auth({ onLogin }: AuthProps) {
                   <Button 
                     type="submit"
                     disabled={isLoading}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 transition-colors duration-300 focus:ring-red-500 focus:ring-opacity-50 animate-pulse-subtle animate-shimmer"
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 transition-all duration-300 focus:ring-blue-500 focus:ring-opacity-50 animate-pulse-subtle animate-shimmer shadow-lg"
                     data-testid="button-register"
                   >
                     {isLoading ? "CREATING ACCOUNT..." : "CREATE ACCOUNT"}
