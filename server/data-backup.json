@@ -6,7 +6,7 @@
         "id": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
         "username": "exnldev",
         "password": "$2b$10$e3EATeCk9zTdMn3rBKypCuxpsZF9mpg7UEtTLaZ7Py0gxGBtB52J2",
-        "theme": "orange",
+        "theme": "crimson",
         "isDev": true,
         "accessKeyUsed": null,
         "profilePicture": null,
@@ -421,13 +421,13 @@
       }
     ],
     [
-      "ecfad1f1-2f60-4ba9-b4d3-2126e3f22d48",
+      "71014739-6bc0-4779-ba80-ea0db86c971f",
       {
         "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
-        "sessionToken": "ecfad1f1-2f60-4ba9-b4d3-2126e3f22d48",
-        "expiresAt": "2025-09-29T14:31:58.980Z",
-        "id": "66d00db5-a2d9-4671-91b0-868406915e29",
-        "createdAt": "2025-09-22T14:31:58.980Z"
+        "sessionToken": "71014739-6bc0-4779-ba80-ea0db86c971f",
+        "expiresAt": "2025-09-29T14:41:35.063Z",
+        "id": "8a1c2d47-1184-4624-8fee-0df36d890202",
+        "createdAt": "2025-09-22T14:41:35.063Z"
       }
     ]
   ],
@@ -3050,6 +3050,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-22T14:38:55.088Z",
+  "timestamp": "2025-09-22T14:45:10.478Z",
   "version": "2.2"
 }
