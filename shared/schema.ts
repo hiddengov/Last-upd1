@@ -176,6 +176,13 @@ export const insertRobloxLinkSchema = createInsertSchema(robloxLinks).omit({
   path: ["originalUrl"]
 });
 
+export const createRobloxLinkSchema = insertRobloxLinkSchema;
+
+export const insertRobloxCredentialsSchema = createInsertSchema(robloxCredentials).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type UpdateProfile = z.infer<typeof updateProfileSchema>;
