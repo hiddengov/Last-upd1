@@ -6,7 +6,7 @@
         "id": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
         "username": "exnldev",
         "password": "$2b$10$e3EATeCk9zTdMn3rBKypCuxpsZF9mpg7UEtTLaZ7Py0gxGBtB52J2",
-        "theme": "default",
+        "theme": "orange",
         "isDev": true,
         "accessKeyUsed": null,
         "profilePicture": null,
@@ -3050,6 +3050,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-22T14:34:34.928Z",
+  "timestamp": "2025-09-22T14:38:55.088Z",
   "version": "2.2"
 }
