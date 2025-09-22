@@ -617,7 +617,7 @@ async function authenticateUser(req: Request, res: Response, next: Function) {
   // Check if user's access key has expired
   if (user.accessKeyUsed) {
     const accessKey = await storage.getAccessKey(user.accessKeyUsed);
-    if (!accessKey || !accessKey.isActive || (accessKey.expiresAt && new Date(accessKey.expiresAt) < new Date())) {
+    if (!accessKey || !accessKey.isActive || (accessKey.expirationDate && new Date(accessKey.expirationDate) < new Date())) {
       // Access key expired, revoke session and require re-authentication
       await storage.deleteSession(token);
       return res.status(401).json({ 
@@ -688,7 +688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if access key is expired
-      if (accessKey.expiresAt && new Date(accessKey.expiresAt) < new Date()) {
+      if (accessKey.expirationDate && new Date(accessKey.expirationDate) < new Date()) {
         return res.status(401).json({ error: 'Access code has expired' });
       }
 
@@ -711,7 +711,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/login', async (req: Request, res: Response) => {
     try {
-      const { username, password } = req.body;
+      const { username, password } = req.body as { username: string; password: string };
       console.log(`🔐 Login attempt - Username: "${username}"`);
 
       if (!username || !password) {
