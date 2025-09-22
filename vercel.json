@@ -3,7 +3,11 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index.js"
+      "destination": "/api"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/api"
     }
   ],
   "functions": {
@@ -15,6 +19,5 @@
     "NODE_ENV": "production"
   },
   "installCommand": "npm install",
-  "buildCommand": "npm run vercel-build",
-  "outputDirectory": "dist/public"
+  "buildCommand": "npm run vercel-build"
 }
