@@ -6,7 +6,7 @@
         "id": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
         "username": "exnldev",
         "password": "$2b$10$e3EATeCk9zTdMn3rBKypCuxpsZF9mpg7UEtTLaZ7Py0gxGBtB52J2",
-        "theme": "violet",
+        "theme": "default",
         "isDev": true,
         "accessKeyUsed": null,
         "profilePicture": null,
@@ -2823,7 +2823,7 @@
         "id": "01858b39-ef0f-48f3-971c-01c793a0d6b7",
         "key": "Av121988",
         "usageLimit": 999999,
-        "usedCount": 22,
+        "usedCount": 23,
         "isActive": true,
         "createdBy": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
         "createdAt": "2025-09-07T20:25:45.472Z"
@@ -2851,6 +2851,18 @@
         "isActive": true,
         "createdBy": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
         "createdAt": "2025-09-13T22:49:30.916Z"
+      }
+    ],
+    [
+      "privatekeydonotshare111",
+      {
+        "id": "75864170-bc16-4898-86ce-1db7584ea8b7",
+        "key": "privatekeydonotshare111",
+        "usageLimit": 1,
+        "usedCount": 0,
+        "isActive": true,
+        "createdBy": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "createdAt": "2025-09-22T14:19:03.555Z"
       }
     ]
   ],
@@ -3018,6 +3030,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-22T05:09:55.292Z",
+  "timestamp": "2025-09-22T14:28:55.012Z",
   "version": "2.2"
 }

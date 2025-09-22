@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Shield, User, Lock, AlertTriangle, Eye, EyeOff } from "lucide-react";
+import SnowEffect from "@/components/ui/snow-effect";
+import { Shield, User, Lock, AlertTriangle, Eye, EyeOff, Snowflake } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface AuthProps {
@@ -15,6 +16,7 @@ export default function Auth({ onLogin }: AuthProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [snowColor, setSnowColor] = useState("#ffffff");
   const { toast } = useToast();
 
   // Login form state
@@ -122,19 +124,29 @@ export default function Auth({ onLogin }: AuthProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center" 
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden" 
          style={{
-           background: 'radial-gradient(ellipse at center, #7f1d1d 0%, #450a0a 35%, #1c1917 100%)'
+           background: 'radial-gradient(ellipse at center, #1e1b4b 0%, #581c87 35%, #0f0f23 100%)'
          }}>
-      <div className="w-full max-w-md p-6">
-        <Card className="border-0 shadow-2xl animate-card animate-slide-in-up" style={{ backgroundColor: 'rgba(12, 10, 9, 0.95)', animationDelay: '200ms' }}>
+      <SnowEffect color={snowColor} glow={true} density={80} speed={0.8} />
+      <div className="w-full max-w-md p-6 relative z-10">
+        <Card className="border-0 shadow-2xl animate-card animate-slide-in-up backdrop-blur-md" style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)', border: '1px solid rgba(255, 255, 255, 0.1)', animationDelay: '200ms' }}>
           <CardHeader className="text-center pb-4">
-            <div className="mx-auto w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mb-4 animate-pulse">
-              <Shield className="text-white w-8 h-8" />
+            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mb-4 animate-pulse shadow-lg backdrop-blur-sm">
+              <Shield className="text-white w-8 h-8 drop-shadow-lg" />
             </div>
-            <CardTitle className="text-2xl font-bold text-white animate-fade-in-down">
-              EXNL IP LOGGER
-            </CardTitle>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <CardTitle className="text-2xl font-bold text-white animate-fade-in-down drop-shadow-lg">
+                EXNL IP LOGGER
+              </CardTitle>
+              <button
+                onClick={() => setSnowColor(snowColor === '#ffffff' ? '#00ffff' : '#ffffff')}
+                className="text-gray-400 hover:text-white transition-colors"
+                title="Change snow color"
+              >
+                <Snowflake className="w-5 h-5" />
+              </button>
+            </div>
             <CardDescription className="text-gray-300 animate-fade-in-down" style={{ animationDelay: '100ms' }}>
               Secure access to your IP tracking dashboard
             </CardDescription>

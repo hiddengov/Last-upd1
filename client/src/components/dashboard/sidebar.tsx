@@ -20,19 +20,19 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="w-64 bg-card border-r border-border flex flex-col">
-      <div className="p-6 border-b border-border">
+    <aside className="w-64 bg-black/20 backdrop-blur-md border-r border-white/10 flex flex-col relative z-20">
+      <div className="p-6 border-b border-white/10">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <Shield className="text-primary-foreground text-sm h-4 w-4" />
+          <div className="w-8 h-8 bg-blue-600/80 rounded-lg flex items-center justify-center backdrop-blur-sm shadow-lg">
+            <Shield className="text-white text-sm h-4 w-4" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-foreground">Exnl IP LOGGER</h1>
+            <h1 className="text-lg font-semibold text-white drop-shadow-lg">Exnl IP LOGGER</h1>
             <a
               href="https://discord.gg/TrgmgtByzt"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-muted-foreground hover:text-foreground underline transition-colors"
+              className="text-xs text-gray-300 hover:text-white underline transition-colors"
             >
               Discord Server
             </a>
@@ -48,8 +48,8 @@ export default function Sidebar() {
                 href={item.href}
                 className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
                   location === item.href
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                    ? "bg-blue-600/80 text-white backdrop-blur-sm"
+                    : "text-gray-300 hover:text-white hover:bg-white/10"
                 }`}
                 data-testid={`link-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
               >
@@ -61,30 +61,30 @@ export default function Sidebar() {
         </ul>
       </nav>
 
-      <div className="p-4 border-t border-border space-y-3">
+      <div className="p-4 border-t border-white/10 space-y-3">
         {/* Current Theme */}
         <div className="flex items-center space-x-3 px-3 py-2">
-          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-            <Palette className="text-primary-foreground text-sm h-4 w-4" />
+          <div className="w-8 h-8 bg-purple-600/80 rounded-full flex items-center justify-center backdrop-blur-sm">
+            <Palette className="text-white text-sm h-4 w-4" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate text-foreground">{currentTheme.name}</p>
-            <p className="text-xs text-muted-foreground truncate">Current Theme</p>
+            <p className="text-sm font-medium truncate text-white">{currentTheme.name}</p>
+            <p className="text-xs text-gray-400 truncate">Current Theme</p>
           </div>
         </div>
 
         {/* User Info */}
         <Link
           href="/profile"
-          className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors hover:bg-accent ${
+          className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors hover:bg-white/10 ${
             location === '/profile'
-              ? "bg-primary text-primary-foreground"
-              : "text-foreground hover:text-foreground"
+              ? "bg-blue-600/80 text-white backdrop-blur-sm"
+              : "text-white hover:text-white"
           }`}
           data-testid="link-profile"
         >
           <Avatar className="w-8 h-8">
-            <AvatarImage src={user?.profilePicture || undefined} alt="Profile" />
+            <AvatarImage src={undefined} alt="Profile" />
             <AvatarFallback className="text-sm">
               {user?.username?.[0]?.toUpperCase() || 'U'}
             </AvatarFallback>
@@ -102,7 +102,7 @@ export default function Sidebar() {
           onClick={logout}
           variant="outline"
           size="sm"
-          className="w-full justify-start animate-slide-in-left hover:animate-pulse-subtle transition-all duration-300 hover:bg-sidebar-accent/80"
+          className="w-full justify-start animate-slide-in-left hover:animate-pulse-subtle transition-all duration-300 hover:bg-white/10 text-white border-white/20"
           data-testid="button-logout"
         >
           <LogOut className="h-4 w-4 mr-2" />
