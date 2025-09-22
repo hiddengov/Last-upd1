@@ -48,13 +48,38 @@ export const ipLogs = pgTable("ip_logs", {
   timestamp: timestamp("timestamp").notNull().default(sql`now()`),
   location: text("location"),
   status: text("status").notNull().default("success"),
+  // Enhanced geolocation fields
+  country: text("country"),
+  region: text("region"),
+  city: text("city"),
+  latitude: text("latitude"), // Store as text for precision
+  longitude: text("longitude"), // Store as text for precision
+  timezone: text("timezone"),
+  isp: text("isp"),
+  organization: text("organization"),
+  coordinates: text("coordinates"), // "lat, lng" format
+  // Security analysis fields
   isVpn: text("is_vpn"), // 'yes', 'no', 'unknown'
-  vpnLocation: text("vpn_location"), // VPN server location if detected
+  isProxy: text("is_proxy"), // 'yes', 'no', 'unknown'
+  threatLevel: text("threat_level"), // 'Low', 'Medium', 'High', 'Unknown'
+  vpnProvider: text("vpn_provider"), // Detected VPN provider
   realLocation: text("real_location"), // Estimated real location if VPN detected
+  // Device fingerprinting fields
   deviceType: text("device_type"), // 'mobile', 'desktop', 'tablet', 'unknown'
   browserName: text("browser_name"),
+  browserVersion: text("browser_version"),
   operatingSystem: text("operating_system"),
+  osVersion: text("os_version"),
   deviceBrand: text("device_brand"),
+  deviceModel: text("device_model"),
+  architecture: text("architecture"),
+  engine: text("engine"),
+  engineVersion: text("engine_version"),
+  isBot: boolean("is_bot").default(false),
+  isSuspicious: boolean("is_suspicious").default(false),
+  securityFlags: text("security_flags").array(), // Array of security flags
+  capabilities: text("capabilities").array(), // Array of browser capabilities
+  fingerprint: text("fingerprint"), // Unique device fingerprint
 });
 
 export const settings = pgTable("settings", {
