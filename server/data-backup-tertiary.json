@@ -419,16 +419,6 @@
         "id": "fc69b2f7-d1cf-4483-9814-3df8a8dc2c76",
         "createdAt": "2025-09-22T14:31:18.554Z"
       }
-    ],
-    [
-      "ad4e0ad0-468d-4483-887f-6be4bad033da",
-      {
-        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
-        "sessionToken": "ad4e0ad0-468d-4483-887f-6be4bad033da",
-        "expiresAt": "2025-09-29T15:02:08.133Z",
-        "id": "ec0f19b8-56c0-476a-a332-0b2b2cc5221c",
-        "createdAt": "2025-09-22T15:02:08.133Z"
-      }
     ]
   ],
   "ipLogs": [
@@ -3290,6 +3280,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-22T15:04:05.427Z",
+  "timestamp": "2025-09-22T15:05:19.015Z",
   "version": "2.2"
 }
