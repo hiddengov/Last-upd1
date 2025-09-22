@@ -54,15 +54,35 @@ export async function setupVite(app: Express, server: Server) {
 
       // always reload the index.html file from disk incase it changes
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
+      
+      // Clean the URL to prevent Windows path issues
+      const cleanUrl = url.replace(/[\\]/g, '/').split('?')[0];
+      
       template = template.replace(
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`,
       );
-      const page = await vite.transformIndexHtml(url, template);
+      const page = await vite.transformIndexHtml(cleanUrl, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
+      console.error('Vite transform error:', e);
       vite.ssrFixStacktrace(e as Error);
-      next(e);
+      
+      // Send a simple fallback page instead of crashing
+      if (res.headersSent) {
+        return next(e);
+      }
+      
+      res.status(500).set({ "Content-Type": "text/html" }).end(`
+        <!DOCTYPE html>
+        <html>
+          <head><title>Loading Error</title></head>
+          <body>
+            <div>Application loading error. Please refresh the page.</div>
+            <script>setTimeout(() => window.location.reload(), 2000);</script>
+          </body>
+        </html>
+      `);
     }
   });
 }
