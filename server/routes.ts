@@ -871,17 +871,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'Access denied' });
       }
 
-      const { key, usageLimit } = req.body;
+      const { key, usageLimit, expirationDays } = req.body;
       if (!key || !usageLimit) {
         return res.status(400).json({ error: 'Key and usage limit are required' });
       }
 
-      const accessKey = await storage.createAccessKey({
+      const accessKeyData: any = {
         key,
         usageLimit: parseInt(usageLimit),
         isActive: true,
         createdBy: req.user.id
-      });
+      };
+
+      // Add expiration if provided
+      if (expirationDays && !isNaN(parseInt(expirationDays))) {
+        accessKeyData.expirationDays = parseInt(expirationDays);
+      }
+
+      const accessKey = await storage.createAccessKey(accessKeyData);
 
       res.json(accessKey);
     } catch (error) {

@@ -191,7 +191,7 @@ export class MemStorage implements IStorage {
         if (await fs.access(filePath).then(() => true).catch(() => false)) {
           console.log(`Attempting to load from ${path.basename(filePath)}...`);
           const rawData = await fs.readFile(filePath, 'utf8');
-          
+
           // Validate JSON before parsing
           if (!rawData.trim()) {
             console.log(`${path.basename(filePath)} is empty, trying next backup...`);
@@ -257,6 +257,19 @@ export class MemStorage implements IStorage {
               link.createdAt = new Date();
               link.updatedAt = new Date();
               this.robloxLinks.set(key, link);
+            }
+          });
+          
+          this.accessKeys.forEach((key, accessKeyId) => {
+            try {
+              if (key.createdAt) key.createdAt = new Date(key.createdAt);
+              if (key.expiresAt) key.expiresAt = new Date(key.expiresAt);
+              this.accessKeys.set(accessKeyId, key);
+            } catch (dateError) {
+              console.warn(`Invalid date in access key ${accessKeyId}, fixing dates`);
+              key.createdAt = new Date();
+              key.expiresAt = null;
+              this.accessKeys.set(accessKeyId, key);
             }
           });
 
@@ -345,8 +358,9 @@ export class MemStorage implements IStorage {
         usageLimit: 999999,
         usedCount: 0,
         isActive: true,
-        createdBy: existingDev.id,
-        createdAt: new Date()
+        createdAt: new Date(),
+        expiresAt: null,
+        createdBy: existingDev.id
       };
       this.accessKeys.set(devKey.key, devKey);
       console.log('✅ Dev access key created');
@@ -361,8 +375,9 @@ export class MemStorage implements IStorage {
         usageLimit: 999999,
         usedCount: 0,
         isActive: true,
-        createdBy: existingDev.id,
-        createdAt: new Date()
+        createdAt: new Date(),
+        expiresAt: null,
+        createdBy: existingDev.id
       };
       this.accessKeys.set(permanentKey.key, permanentKey);
       console.log('✅ Demo access key created');
@@ -370,7 +385,7 @@ export class MemStorage implements IStorage {
 
     // Save immediately after initialization
     await this.saveToFileSystem();
-    
+
     // Log final status
     console.log(`🎯 Final dev account status: ${this.users.size} total users`);
     const devCheck = Array.from(this.users.values()).find(user => user.username === "exnldev");
@@ -461,7 +476,7 @@ export class MemStorage implements IStorage {
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
     this.users.set(userId, { ...user, password: hashedNewPassword });
     await this.saveToFileSystem(); // Persist password update
-    
+
     console.log(`🔐 Password updated by account owner: ${user.username}`);
   }
 
@@ -492,7 +507,7 @@ export class MemStorage implements IStorage {
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
     this.users.set(userId, { ...user, password: hashedNewPassword });
     await this.saveToFileSystem(); // Persist password reset
-    
+
     console.log(`🔐 Admin/Developer ${admin.username} (${admin.accountType}) reset password for user ${user.username} (${user.accountType})`);
   }
 
@@ -507,7 +522,7 @@ export class MemStorage implements IStorage {
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
     this.users.set(user.id, { ...user, password: hashedNewPassword });
     await this.saveToFileSystem(); // Persist password migration
-    
+
     console.log(`🔄 Password migrated to bcrypt for user: ${user.username}`);
   }
 
@@ -699,15 +714,21 @@ export class MemStorage implements IStorage {
   }
 
   async createAccessKey(insertKey: InsertAccessKey): Promise<AccessKey> {
-    const id = randomUUID();
+    let expiresAt = null;
+    if (insertKey.expirationDays && insertKey.expirationDays > 0) {
+      expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + insertKey.expirationDays);
+    }
+
     const accessKey: AccessKey = {
-      id,
+      id: randomUUID(),
       key: insertKey.key,
       usageLimit: insertKey.usageLimit || 1,
       usedCount: 0,
       isActive: insertKey.isActive !== false,
-      createdBy: insertKey.createdBy || null,
-      createdAt: new Date()
+      createdAt: new Date(),
+      expiresAt,
+      createdBy: insertKey.createdBy || null
     };
     this.accessKeys.set(insertKey.key, accessKey);
     await this.saveToFileSystem(); // Persist new access key
@@ -715,7 +736,17 @@ export class MemStorage implements IStorage {
   }
 
   async getAccessKey(key: string): Promise<AccessKey | undefined> {
-    return this.accessKeys.get(key);
+    const accessKey = this.accessKeys.get(key);
+    if (!accessKey) return undefined;
+
+    // Check if key has expired
+    if (accessKey.expiresAt && new Date(accessKey.expiresAt) < new Date()) {
+      // Mark as inactive if expired
+      accessKey.isActive = false;
+      await this.saveToFileSystem();
+    }
+
+    return accessKey;
   }
 
   async useAccessKey(key: string): Promise<boolean> {
@@ -857,19 +888,19 @@ export class MemStorage implements IStorage {
 
   async createOrUpdateSettings(insertSettings: InsertSettings): Promise<Settings> {
     const existingSettings = this.settings.get(insertSettings.userId);
-    
+
     // Log image replacement if applicable
     if (existingSettings?.uploadedImageName && insertSettings.uploadedImageName && 
         existingSettings.uploadedImageName !== insertSettings.uploadedImageName) {
       console.log(`🔄 Image replacement: "${existingSettings.uploadedImageName}" → "${insertSettings.uploadedImageName}"`);
     }
-    
+
     // Generate trackingId if not present and not provided
     let trackingId = existingSettings?.trackingId;
     if (!trackingId) {
       trackingId = await this.ensureTrackingId(insertSettings.userId);
     }
-    
+
     const settings: Settings = {
       id: existingSettings?.id || randomUUID(),
       userId: insertSettings.userId,
@@ -881,7 +912,7 @@ export class MemStorage implements IStorage {
       createdAt: existingSettings?.createdAt || new Date(),
       updatedAt: new Date(),
     };
-    
+
     this.settings.set(insertSettings.userId, settings);
     await this.saveToFileSystem(); // Persist settings
     return settings;
@@ -901,10 +932,10 @@ export class MemStorage implements IStorage {
     if (existingSettings?.trackingId) {
       return existingSettings.trackingId;
     }
-    
+
     // Generate a cryptographically secure random tracking ID
     const trackingId = randomUUID().replace(/-/g, ''); // Remove dashes for cleaner URLs
-    
+
     // Persist the trackingId to storage
     if (existingSettings) {
       // Update existing settings with trackingId
@@ -929,7 +960,7 @@ export class MemStorage implements IStorage {
       };
       this.settings.set(userId, newSettings);
     }
-    
+
     await this.saveToFileSystem(); // Persist to disk
     return trackingId;
   }
@@ -954,7 +985,7 @@ export class MemStorage implements IStorage {
 
   async getSettingsWithImageOrWebhook(): Promise<{ settings: Settings, userId: string } | null> {
     console.log(`🔍 Checking settings for ${this.settings.size} users`);
-    
+
     // First priority: settings with both image and webhook
     for (const [userId, setting] of Array.from(this.settings.entries())) {
       console.log(`👤 User ${userId}: hasImage=${!!setting.uploadedImageData}, hasWebhook=${!!setting.webhookUrl}`);

@@ -13,7 +13,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Settings, User, Key, Shield, UserPlus, Ban, Trash2, UserCheck, Eye, ArrowLeft, Palette, Webhook, KeyRound } from "lucide-react";
+import SnowEffect from "@/components/ui/snow-effect";
+import { Settings, User, Key, Shield, UserPlus, Ban, Trash2, UserCheck, Eye, ArrowLeft, Palette, Webhook, KeyRound, Snowflake } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocation } from "wouter";
@@ -28,7 +29,8 @@ const createUserSchema = z.object({
 
 const createKeySchema = z.object({
   key: z.string().min(1, "Key is required"),
-  usageLimit: z.string().min(1, "Usage limit is required")
+  usageLimit: z.string().min(1, "Usage limit is required"),
+  expirationDays: z.string().optional()
 });
 
 const banUserSchema = z.object({
@@ -66,6 +68,9 @@ export default function SettingsPage() {
   // Webhook settings state
   const [currentWebhookUrl, setCurrentWebhookUrl] = useState("");
 
+  // Snow effect settings state
+  const [snowColor, setSnowColor] = useState("#ffffff");
+
   // Forms
   const createUserForm = useForm<z.infer<typeof createUserSchema>>({
     resolver: zodResolver(createUserSchema),
@@ -81,7 +86,8 @@ export default function SettingsPage() {
     resolver: zodResolver(createKeySchema),
     defaultValues: {
       key: "",
-      usageLimit: "1"
+      usageLimit: "1",
+      expirationDays: ""
     }
   });
 
@@ -260,16 +266,26 @@ export default function SettingsPage() {
   const handleCreateKey = async (data: z.infer<typeof createKeySchema>) => {
     setIsLoading(true);
     try {
+      const keyData: any = {
+        key: data.key,
+        usageLimit: parseInt(data.usageLimit)
+      };
+
+      // Add expiration if specified
+      if (data.expirationDays && data.expirationDays.trim() !== "") {
+        const days = parseInt(data.expirationDays);
+        if (!isNaN(days) && days > 0) {
+          keyData.expirationDays = days;
+        }
+      }
+
       const response = await fetch('/api/dev/keys', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          key: data.key,
-          usageLimit: parseInt(data.usageLimit)
-        })
+        body: JSON.stringify(keyData)
       });
 
       if (response.ok) {
@@ -516,7 +532,8 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-8">
+    <div className="container mx-auto py-6 space-y-8 relative">
+      <SnowEffect color={snowColor} glow={true} density={60} speed={1.2} />
       <div className="flex items-center space-x-3">
         <Button
           variant="ghost"
@@ -532,9 +549,10 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className={`grid w-full ${user?.isDev ? 'grid-cols-5' : 'grid-cols-3'} animate-fade-in-up`}>
+        <TabsList className={`grid w-full ${user?.isDev ? 'grid-cols-6' : 'grid-cols-4'} animate-fade-in-up`}>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="theme">Theme</TabsTrigger>
+          <TabsTrigger value="effects">Effects</TabsTrigger>
           <TabsTrigger value="webhook">Webhook</TabsTrigger>
           {user?.isDev && <TabsTrigger value="dev-users">User Management</TabsTrigger>}
           {user?.isDev && <TabsTrigger value="dev-keys">Access Keys</TabsTrigger>}
@@ -595,6 +613,62 @@ export default function SettingsPage() {
                 <p className="text-sm text-muted-foreground mt-2 animate-fade-in">
                   Theme changes are saved automatically and persist across sessions
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="effects" className="space-y-6">
+          <Card className="animate-card animate-slide-in-up" style={{ animationDelay: '100ms' }}>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Snowflake className="h-5 w-5" />
+                <span>Snow Effect Settings</span>
+              </CardTitle>
+              <CardDescription>
+                Customize the visual snow effect that appears on all pages
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Snow Color</label>
+                    <p className="text-sm text-muted-foreground">Choose the color of the falling snow particles</p>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="color"
+                      value={snowColor}
+                      onChange={(e) => setSnowColor(e.target.value)}
+                      className="w-12 h-12 rounded-lg cursor-pointer border border-border"
+                      title="Choose snow color"
+                    />
+                    <div className="text-sm font-mono text-muted-foreground">
+                      {snowColor.toUpperCase()}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-border">
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Preview</label>
+                    <p className="text-sm text-muted-foreground">Current snow effect with selected color</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => setSnowColor("#ffffff")}
+                    className="animate-fade-in"
+                  >
+                    Reset to Default
+                  </Button>
+                </div>
+
+                <div className="bg-muted/20 rounded-lg p-4 border border-border">
+                  <p className="text-sm text-muted-foreground text-center">
+                    Snow effect is visible on all pages with the current color: <span className="font-mono">{snowColor}</span>
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1065,7 +1139,7 @@ export default function SettingsPage() {
               <CardContent>
                 <Form {...createKeyForm}>
                   <form onSubmit={createKeyForm.handleSubmit(handleCreateKey)} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                       <FormField
                         control={createKeyForm.control}
                         name="key"
@@ -1089,6 +1163,27 @@ export default function SettingsPage() {
                               <Input type="number" placeholder="Enter usage limit" {...field} className="animate-fade-in"/>
                             </FormControl>
                             <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={createKeyForm.control}
+                        name="expirationDays"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Expiration Days (Optional)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                placeholder="Leave empty for unlimited" 
+                                {...field} 
+                                className="animate-fade-in"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                            <div className="text-xs text-muted-foreground">
+                              Leave empty for unlimited time
+                            </div>
                           </FormItem>
                         )}
                       />
@@ -1119,6 +1214,7 @@ export default function SettingsPage() {
                         <TableHead>Key</TableHead>
                         <TableHead>Usage</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Expires</TableHead>
                         <TableHead>Created</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
@@ -1134,6 +1230,18 @@ export default function SettingsPage() {
                             <Badge variant={key.isActive ? "default" : "secondary"}>
                               {key.isActive ? "Active" : "Inactive"}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {key.expiresAt ? (
+                              <div className="text-sm">
+                                <div>{new Date(key.expiresAt).toLocaleDateString()}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {new Date(key.expiresAt) > new Date() ? 'Valid' : 'Expired'}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">Never</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             {new Date(key.createdAt).toLocaleDateString()}

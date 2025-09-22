@@ -28,6 +28,7 @@ export const accessKeys = pgTable("access_keys", {
   isActive: boolean("is_active").notNull().default(true),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  expirationDate: timestamp("expiration_date"), // New field for expiration date
 });
 
 export const userSessions = pgTable("user_sessions", {
@@ -129,6 +130,8 @@ export const insertAccessKeySchema = createInsertSchema(accessKeys).omit({
   id: true,
   createdAt: true,
   usedCount: true,
+}).extend({
+  expirationDays: z.number().optional() // Add expirationDays to the schema
 });
 
 export const insertUserSessionSchema = createInsertSchema(userSessions).omit({
@@ -148,18 +151,6 @@ export const insertSettingsSchema = createInsertSchema(settings).omit({
 });
 
 export const insertRobloxLinkSchema = createInsertSchema(robloxLinks).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-  clickCount: true,
-});
-
-export const insertRobloxCredentialsSchema = createInsertSchema(robloxCredentials).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const createRobloxLinkSchema = createInsertSchema(robloxLinks).omit({
   id: true,
   userId: true,
   trackingId: true,

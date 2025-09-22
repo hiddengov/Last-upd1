@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Search, Filter, ChevronLeft, ChevronRight, Download, List, Eye, ArrowLeft } from "lucide-react";
 import Sidebar from "@/components/dashboard/sidebar";
+import SnowEffect from "@/components/ui/snow-effect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -96,9 +97,10 @@ export default function LogEntries() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen bg-background">
+      <div className="flex h-screen bg-background relative overflow-hidden">
+        <SnowEffect color="#ffffff" glow={true} density={60} speed={1.2} />
         <Sidebar />
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 relative z-10">
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-muted rounded w-48"></div>
             <div className="h-32 bg-muted rounded"></div>
@@ -110,12 +112,13 @@ export default function LogEntries() {
   }
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background relative overflow-hidden">
+      <SnowEffect color="#ffffff" glow={true} density={60} speed={1.2} />
       <Sidebar />
 
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto relative z-10">
         {/* Header */}
-        <header className="bg-card border-b border-border px-4 sm:px-6 py-4">
+        <header className="bg-card/80 backdrop-blur-md border-b border-border px-4 sm:px-6 py-4">
           <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
             <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-3">
               <Button

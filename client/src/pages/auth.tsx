@@ -124,10 +124,7 @@ export default function Auth({ onLogin }: AuthProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden" 
-         style={{
-           background: 'radial-gradient(ellipse at center, #1e1b4b 0%, #581c87 35%, #0f0f23 100%)'
-         }}>
+    <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
       <SnowEffect color={snowColor} glow={true} density={80} speed={0.8} />
       <div className="w-full max-w-md p-6 relative z-10">
         <Card className="border-0 shadow-2xl animate-card animate-slide-in-up backdrop-blur-md" style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)', border: '1px solid rgba(255, 255, 255, 0.1)', animationDelay: '200ms' }}>
