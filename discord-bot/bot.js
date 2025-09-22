@@ -3,6 +3,16 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 
+// Check if bot token is available
+const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
+if (!DISCORD_BOT_TOKEN) {
+    console.error('❌ DISCORD_BOT_TOKEN not found in environment variables!');
+    console.log('Please add your Discord bot token to Replit Secrets with key: DISCORD_BOT_TOKEN');
+    process.exit(1);
+}
+
+console.log('✅ Discord bot token found, attempting to connect...');
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -13,7 +23,7 @@ const client = new Client({
 });
 
 const REQUIRED_ROLE_ID = '1419809093178228777';
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.API_BASE_URL || 'https://fcff8b87-f36d-4144-9175-16bf641e250e-00-2he7cvtphzsd4.worf.replit.dev';
 
 // Store user webhooks temporarily
 const userWebhooks = new Map();
@@ -496,6 +506,12 @@ async function sendIpLogToWebhook(webhookUrl, logData) {
 }
 
 // Login to Discord
-client.login(process.env.DISCORD_BOT_TOKEN);
+client.login(DISCORD_BOT_TOKEN).catch(error => {
+    console.error('❌ Failed to login to Discord:', error.message);
+    if (error.message.includes('TOKEN_INVALID')) {
+        console.error('Invalid bot token! Please check your token in Replit Secrets.');
+    }
+    process.exit(1);
+});
 
 module.exports = { client, sendIpLogToWebhook };
