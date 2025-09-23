@@ -1,0 +1,124 @@
+import express, { type Request, Response, NextFunction } from "express";
+import cors from "cors";
+import path from 'path';
+import { spawn } from 'child_process';
+import { registerRoutes } from "./routes";
+import { setupVite, serveStatic, log } from "./vite";
+
+const app = express();
+
+// Configure CORS to allow requests from all origins (including other hosted apps)
+app.use(cors({
+  origin: true, // Allow all origins
+  credentials: true, // Allow credentials to be included
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range']
+}));
+
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ extended: false, limit: '500mb' }));
+
+app.use((req, res, next) => {
+  const start = Date.now();
+  const path = req.path;
+  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+
+  const originalResJson = res.json;
+  res.json = function (bodyJson, ...args) {
+    capturedJsonResponse = bodyJson;
+    return originalResJson.apply(res, [bodyJson, ...args]);
+  };
+
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    if (path.startsWith("/api")) {
+      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      if (capturedJsonResponse) {
+        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+      }
+
+      if (logLine.length > 80) {
+        logLine = logLine.slice(0, 79) + "…";
+      }
+
+      log(logLine);
+    }
+  });
+
+  next();
+});
+
+(async () => {
+  const server = await registerRoutes(app);
+
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
+
+    res.status(status).json({ message });
+    throw err;
+  });
+
+  // importantly only setup vite in development and after
+  // setting up all the other routes so the catch-all route
+  // doesn't interfere with the other routes
+  if (app.get("env") === "development") {
+    await setupVite(app, server);
+    
+    // Add SPA fallback for development mode
+    app.get('*', (req, res, next) => {
+      // Skip API routes
+      if (req.path.startsWith('/api/')) {
+        return next();
+      }
+      // Let Vite handle SPA routing in development
+      next();
+    });
+  } else {
+    serveStatic(app);
+  }
+
+  // Start Discord bot
+  console.log('🚀 Starting Discord bot...');
+  
+  // Debug: Check if token is available
+  const discordToken = process.env.DISCORD_BOT_TOKEN;
+  if (discordToken) {
+    console.log('✅ Discord token found in environment, starting bot...');
+  } else {
+    console.log('❌ Discord token not found in main process environment');
+  }
+  
+  const botProcess = spawn('node', ['discord-bot/bot.js'], {
+    stdio: ['inherit', 'inherit', 'inherit'],
+    env: {
+      ...process.env,
+      DISCORD_BOT_TOKEN: process.env.DISCORD_BOT_TOKEN,
+      NODE_ENV: process.env.NODE_ENV || 'development'
+    }
+  });
+
+  botProcess.on('error', (error) => {
+    console.error('❌ Failed to start Discord bot:', error);
+  });
+
+  botProcess.on('exit', (code, signal) => {
+    if (code !== 0) {
+      console.error(`❌ Discord bot exited with code ${code} and signal ${signal}`);
+    }
+  });
+
+  // ALWAYS serve the app on the port specified in the environment variable PORT
+  // Other ports are firewalled. Default to 5000 if not specified.
+  // this serves both the API and the client.
+  // It is the only port that is not firewalled.
+  const port = parseInt(process.env.PORT || '5000', 10);
+  server.listen({
+    port,
+    host: "0.0.0.0",
+    reusePort: true,
+  }, () => {
+    log(`serving on port ${port}`);
+  });
+})();
