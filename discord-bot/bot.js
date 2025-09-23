@@ -23,7 +23,19 @@ const client = new Client({
 });
 
 const REQUIRED_ROLE_ID = '1419809093178228777';
-const API_BASE_URL = process.env.API_BASE_URL || 'https://workspace.worf.replit.dev';
+
+// Auto-detect Replit URL
+function getApiBaseUrl() {
+    // If REPL_SLUG and REPL_OWNER are available, construct the URL
+    if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
+        return `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+    }
+    // Fallback to manual configuration if needed
+    return process.env.API_BASE_URL || 'https://workspace.worf.replit.dev';
+}
+
+const API_BASE_URL = getApiBaseUrl();
+console.log(`🌐 Using API Base URL: ${API_BASE_URL}`);
 
 // Store user webhooks temporarily
 const userWebhooks = new Map();
