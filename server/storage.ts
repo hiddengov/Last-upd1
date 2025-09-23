@@ -187,6 +187,10 @@ export class MemStorage implements IStorage {
       const backupFile3 = this.dataFilePath3;
 
 
+      // Ensure directory exists
+      const dir = path.dirname(backupFile);
+      await fs.mkdir(dir, { recursive: true });
+
       // Write to temporary file first, then rename (atomic operation)
       try {
         await fs.writeFile(tempFile, JSON.stringify(backupData, null, 2), 'utf8');

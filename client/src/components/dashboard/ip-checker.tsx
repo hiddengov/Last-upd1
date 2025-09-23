@@ -17,6 +17,14 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+import { useState } from "react";
+import { Search, Copy, CheckCircle, ShieldAlert, Globe, MapPin, Clock } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+
 interface IPInfo {
   ip: string;
   country: string;
@@ -47,6 +55,191 @@ export default function IPChecker() {
     const ipv6Regex = /^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$/;
     return ipv4Regex.test(ip) || ipv6Regex.test(ip);
   };
+
+  const checkIP = async () => {
+    if (!ipAddress.trim()) {
+      setError('Please enter an IP address');
+      return;
+    }
+
+    if (!validateIP(ipAddress.trim())) {
+      setError('Please enter a valid IP address');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch(`http://ip-api.com/json/${ipAddress.trim()}?fields=status,message,country,regionName,city,lat,lon,timezone,isp,org,as,proxy,hosting`);
+      const data = await response.json();
+
+      if (data.status === 'fail') {
+        setError(data.message || 'Failed to lookup IP address');
+        setIpInfo(null);
+      } else {
+        setIpInfo({
+          ip: ipAddress.trim(),
+          country: data.country || 'Unknown',
+          region: data.regionName || 'Unknown',
+          city: data.city || 'Unknown',
+          lat: data.lat || 0,
+          lon: data.lon || 0,
+          timezone: data.timezone || 'Unknown',
+          isp: data.isp || 'Unknown',
+          org: data.org || 'Unknown',
+          as: data.as || 'Unknown',
+          vpn: data.proxy || false,
+          proxy: data.proxy || false,
+          tor: false,
+          hosting: data.hosting || false
+        });
+      }
+    } catch (err) {
+      setError('Failed to connect to IP lookup service');
+      setIpInfo(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      toast({
+        title: "Copied!",
+        description: "IP information copied to clipboard",
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to copy to clipboard",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Search className="h-5 w-5" />
+          IP Address Checker
+        </CardTitle>
+        <CardDescription>
+          Enter an IP address to get detailed information about its location and network
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex gap-2">
+          <Input
+            placeholder="Enter IP address (e.g., 8.8.8.8)"
+            value={ipAddress}
+            onChange={(e) => setIpAddress(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && checkIP()}
+          />
+          <Button onClick={checkIP} disabled={isLoading}>
+            {isLoading ? 'Checking...' : 'Check IP'}
+          </Button>
+        </div>
+
+        {error && (
+          <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-3 rounded-md">
+            {error}
+          </div>
+        )}
+
+        {ipInfo && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">IP Information</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => copyToClipboard(JSON.stringify(ipInfo, null, 2))}
+                className="flex items-center gap-2"
+              >
+                {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied ? 'Copied!' : 'Copy'}
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-blue-500" />
+                  <span className="font-medium">IP Address:</span>
+                  <span className="font-mono">{ipInfo.ip}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-green-500" />
+                  <span className="font-medium">Location:</span>
+                  <span>{ipInfo.city}, {ipInfo.region}, {ipInfo.country}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-purple-500" />
+                  <span className="font-medium">Timezone:</span>
+                  <span>{ipInfo.timezone}</span>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="font-medium">ISP:</span>
+                  <p className="text-sm text-muted-foreground">{ipInfo.isp}</p>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="font-medium">Organization:</span>
+                  <p className="text-sm text-muted-foreground">{ipInfo.org}</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <span className="font-medium">Coordinates:</span>
+                  <p className="text-sm font-mono">{ipInfo.lat}, {ipInfo.lon}</p>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="font-medium">Security Flags:</span>
+                  <div className="flex flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-300">VPN</span>
+                      {ipInfo.vpn ? (
+                        <ShieldAlert className="h-4 w-4 text-red-400" />
+                      ) : (
+                        <CheckCircle className="h-4 w-4 text-green-400" />
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-300">Proxy</span>
+                      {ipInfo.proxy ? (
+                        <ShieldAlert className="h-4 w-4 text-yellow-400" />
+                      ) : (
+                        <CheckCircle className="h-4 w-4 text-green-400" />
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-300">Hosting</span>
+                      {ipInfo.hosting ? (
+                        <ShieldAlert className="h-4 w-4 text-yellow-400" />
+                      ) : (
+                        <CheckCircle className="h-4 w-4 text-green-400" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
   const checkIP = async () => {
     if (!ipAddress.trim()) {
