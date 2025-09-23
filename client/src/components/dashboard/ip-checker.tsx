@@ -16,8 +16,6 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-import { useState } from "react";
 import { Search, Copy, CheckCircle, ShieldAlert, Globe, MapPin, Clock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
