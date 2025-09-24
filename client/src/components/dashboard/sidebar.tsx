@@ -1,4 +1,4 @@
-import { Shield, BarChart3, List, Image, Settings, User, LogOut, Palette, Youtube, Puzzle } from "lucide-react";
+import { Shield, BarChart3, List, Image, Settings, User, LogOut, Palette, Youtube, Puzzle, Activity } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -14,8 +14,9 @@ export default function Sidebar() {
     { name: "Dashboard", href: "/", icon: BarChart3 },
     { name: "Log Entries", href: "/logs", icon: List },
     { name: "Image Config", href: "/image-config", icon: Image },
-    { name: "YouTube Proxy", href: "/youtube", icon: Youtube },
+    { name: "YouTube Proxy", href: "/youtube-proxy", icon: Youtube },
     { name: "Extension Generator", href: "/extension-generator", icon: Puzzle },
+    { name: "EX LOGS", href: "/extension-logs", icon: Activity },
     { name: "Settings", href: "/settings", icon: Settings },
   ];
 

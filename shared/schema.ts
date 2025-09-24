@@ -166,6 +166,8 @@ export const createUserSchema = createInsertSchema(users).pick({
 export const updateProfileSchema = createInsertSchema(users).pick({
   username: true,
   profilePicture: true,
+}).extend({
+  profilePicture: z.string().nullable().optional(),
 });
 
 export const updatePasswordSchema = z.object({

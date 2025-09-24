@@ -32,11 +32,11 @@ export default function Profile() {
     resolver: zodResolver(updateProfileSchema),
     defaultValues: {
       username: user?.username || "",
-      profilePicture: user?.profilePicture || null,
+      profilePicture: user?.profilePicture || "",
     },
     values: {
       username: user?.username || "",
-      profilePicture: user?.profilePicture || null,
+      profilePicture: user?.profilePicture || "",
     },
   });
 

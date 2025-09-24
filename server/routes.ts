@@ -2254,39 +2254,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Extension tracking endpoint
+  // Extension logs endpoint with real data
   app.get('/api/extension-logs', authenticateUser, async (req: Request, res: Response) => {
     try {
       const limit = parseInt(req.query.limit as string) || 25;
       const offset = parseInt(req.query.offset as string) || 0;
+      const userId = req.user.id;
 
-      // Mock data for now - replace with actual database query
-      const mockLogs = Array.from({ length: 50 }, (_, i) => ({
-        id: `ext_${i + 1}`,
-        extensionName: `Extension ${i + 1}`,
-        extensionDescription: `Description for extension ${i + 1}`,
-        extensionVersion: '1.0.0',
-        permissions: ['activeTab', 'storage', 'tabs'],
-        features: ['ip_tracking', 'browser_info'],
-        webhookUrl: 'https://discord.com/api/webhooks/...',
-        generationStatus: Math.random() > 0.8 ? 'error' : 'success',
-        downloadCount: Math.floor(Math.random() * 100),
-        extensionId: `ext_id_${i + 1}`,
-        ipAddress: `192.168.1.${(i % 254) + 1}`,
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        location: 'United States, California',
-        zipFileSize: Math.floor(Math.random() * 1000000) + 50000,
-        manifestValid: Math.random() > 0.1,
-        scriptsValid: Math.random() > 0.1,
-        createdAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString()
-      }));
+      const logs = await storage.getExtensionLogs(userId, limit, offset);
+      const total = await storage.getTotalExtensionLogs(userId);
 
-      const paginatedLogs = mockLogs.slice(offset, offset + limit);
-      
-      res.json({
-        logs: paginatedLogs,
-        total: mockLogs.length
+      // Prevent caching to ensure real-time updates
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       });
+
+      res.json({ logs, total });
     } catch (error) {
       console.error('Extension logs error:', error);
       res.status(500).json({ error: 'Failed to fetch extension logs' });
