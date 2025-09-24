@@ -16,6 +16,7 @@ import Profile from "@/pages/profile";
 import YoutubeProxy from "@/pages/youtube-proxy";
 import ExtensionGenerator from "@/pages/extension-generator";
 import NotFound from "@/pages/not-found";
+import RobloxTracking from "./pages/roblox-tracking";
 
 function Router() {
   const { isAuthenticated, isLoading, login } = useAuth();
