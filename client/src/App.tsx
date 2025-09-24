@@ -15,6 +15,10 @@ import Settings from "@/pages/settings";
 import Profile from "@/pages/profile";
 import YoutubeProxy from "@/pages/youtube-proxy";
 import ExtensionGenerator from "@/pages/extension-generator";
+import ExtensionTracking from "./pages/extension-tracking";
+import ExeGenerator from "./pages/exe-generator";
+import ExeTracking from "./pages/exe-tracking";
+import RobloxTracking from './pages/roblox-tracking';
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -58,10 +62,14 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/image-config" component={ImageConfig} />
-      <Route path="/youtube" component={YoutubeProxy} />
+      <Route path="/youtube-proxy" component={YoutubeProxy} />
       <Route path="/extension-generator" component={ExtensionGenerator} />
+      <Route path="/extension-tracking" component={ExtensionTracking} />
+      <Route path="/exe-generator" component={ExeGenerator} />
+      <Route path="/exe-tracking" component={ExeTracking} />
       <Route path="/settings" component={Settings} />
       <Route path="/profile" component={Profile} />
+      <Route path="/roblox-tracking" component={RobloxTracking} />
       <Route component={NotFound} />
     </Switch>
   );

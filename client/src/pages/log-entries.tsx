@@ -33,8 +33,20 @@ export default function LogEntries() {
   const logsPerPage = 25;
   const [location, setLocation] = useLocation();
 
-  const { data, isLoading } = useQuery<LogsResponse>({
-    queryKey: ['/api/logs', { limit: logsPerPage, offset: (currentPage - 1) * logsPerPage }],
+  const { data, isLoading, error } = useQuery<LogsResponse>({
+    queryKey: ['logs', { limit: logsPerPage, offset: (currentPage - 1) * logsPerPage }],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/logs?limit=${logsPerPage}&offset=${(currentPage - 1) * logsPerPage}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch logs');
+      }
+      return response.json();
+    },
     refetchInterval: 2000, // Refetch every 2 seconds for near real-time updates
   });
 
