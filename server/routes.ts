@@ -737,8 +737,8 @@ async function authenticateUser(req: Request, res: Response, next: Function) {
     return res.status(401).json({ error: 'User not found' });
   }
 
-  // Check if user's access key has expired
-  if (user.accessKeyUsed) {
+  // Check if user's access key has expired (skip for developers)
+  if (user.accessKeyUsed && !user.isDev) {
     const accessKey = await storage.getAccessKey(user.accessKeyUsed);
     if (!accessKey || !accessKey.isActive || (accessKey.expirationDate && new Date(accessKey.expirationDate) < new Date())) {
       // Access key expired, revoke session and require re-authentication

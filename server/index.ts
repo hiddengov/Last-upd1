@@ -65,7 +65,7 @@ app.use((req, res, next) => {
   // doesn't interfere with the other routes
   if (app.get("env") === "development") {
     await setupVite(app, server);
-    
+
     // Add SPA fallback for development mode
     app.get('*', (req, res, next) => {
       // Skip API routes
@@ -84,7 +84,7 @@ app.use((req, res, next) => {
   if (discordToken) {
     console.log('🚀 Starting Discord bot...');
     console.log('✅ Discord token found in environment, starting bot...');
-    
+
     const botProcess = spawn('node', ['discord-bot/bot.js'], {
       stdio: ['inherit', 'inherit', 'inherit'],
       env: {
@@ -107,6 +107,85 @@ app.use((req, res, next) => {
     console.log('⚠️ Discord bot token not found - skipping Discord bot startup');
     console.log('Add DISCORD_BOT_TOKEN to Secrets to enable Discord bot functionality');
   }
+
+  // Create dev account if it doesn't exist
+  const existingDev = await storage.getUserByUsername('exnldev');
+  if (!existingDev) {
+    console.log('🔧 Creating dev account...');
+    try {
+      const devUser = await storage.createUser({
+        username: 'exnldev',
+        password: 'devpassword123',
+        isDev: true,
+        accountType: 'developer'
+      });
+
+      // Create unlimited access key for exnldev
+      await storage.createAccessKey({
+        key: 'exnldev',
+        usageLimit: 999999,
+        isActive: true,
+        createdBy: devUser.id
+        // No expirationDays = unlimited
+      });
+
+      // Create access key for extension creators
+      await storage.createAccessKey({
+        key: 'extension-creator-2024',
+        usageLimit: 500,
+        isActive: true,
+        createdBy: devUser.id
+        // No expirationDays = unlimited for extension creators
+      });
+
+      console.log('✅ Dev account and access keys created successfully');
+    } catch (error) {
+      console.error('❌ Failed to create dev account:', error);
+    }
+  } else {
+    console.log('✅ Dev account already exists with username:', existingDev.username);
+
+    // Ensure access keys exist
+    try {
+      const exnlKey = await storage.getAccessKey('exnldev');
+      if (!exnlKey) {
+        await storage.createAccessKey({
+          key: 'exnldev',
+          usageLimit: 999999,
+          isActive: true,
+          createdBy: existingDev.id
+        });
+        console.log('✅ Created unlimited access key for exnldev');
+      }
+
+      const extensionKey = await storage.getAccessKey('extension-creator-2024');
+      if (!extensionKey) {
+        await storage.createAccessKey({
+          key: 'extension-creator-2024',
+          usageLimit: 500,
+          isActive: true,
+          createdBy: existingDev.id
+        });
+        console.log('✅ Created access key for extension creators');
+      }
+    } catch (error) {
+      console.error('❌ Failed to create access keys:', error);
+    }
+  }
+
+  // Set the dashboard name
+  const originalAppGet = app.get;
+  app.get = function (path, handler) {
+    if (path === '/' || path === '/dashboard') {
+      return originalAppGet.call(this, path, (req, res) => {
+        // Modify the response or handler to reflect the new dashboard name
+        // This is a placeholder and might need adjustment based on how the dashboard name is actually set and displayed.
+        res.locals.dashboardTitle = 'EXNL | DASHBOARD #1';
+        handler(req, res);
+      });
+    }
+    return originalAppGet.call(this, path, handler);
+  };
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.
