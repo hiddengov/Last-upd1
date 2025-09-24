@@ -14,6 +14,7 @@ import ImageConfig from "@/pages/image-config";
 import Settings from "@/pages/settings";
 import Profile from "@/pages/profile";
 import YoutubeProxy from "@/pages/youtube-proxy";
+import ExtensionGenerator from "@/pages/extension-generator";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -58,7 +59,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/image-config" component={ImageConfig} />
       <Route path="/youtube" component={YoutubeProxy} />
-      <Route path="/logs" component={LogEntries} />
+      <Route path="/extension-generator" component={ExtensionGenerator} />
       <Route path="/settings" component={Settings} />
       <Route path="/profile" component={Profile} />
       <Route component={NotFound} />

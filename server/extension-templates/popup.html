@@ -1,0 +1,101 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 300px;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      margin: 0;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 18px;
+    }
+    .header p {
+      margin: 5px 0 0 0;
+      opacity: 0.8;
+      font-size: 12px;
+    }
+    .stats {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    .stat-item:last-child {
+      margin-bottom: 0;
+    }
+    .stat-value {
+      font-weight: bold;
+    }
+    .button {
+      width: 100%;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      border-radius: 5px;
+      color: white;
+      cursor: pointer;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+    .button:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    .status {
+      text-align: center;
+      font-size: 12px;
+      opacity: 0.8;
+    }
+    .status.active {
+      color: #4CAF50;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>{{EXTENSION_NAME}}</h1>
+    <p>{{EXTENSION_DESCRIPTION}}</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat-item">
+      <span>Pages Tracked:</span>
+      <span class="stat-value" id="pageCount">0</span>
+    </div>
+    <div class="stat-item">
+      <span>Clicks Recorded:</span>
+      <span class="stat-value" id="clickCount">0</span>
+    </div>
+    <div class="stat-item">
+      <span>Data Sent:</span>
+      <span class="stat-value" id="dataSent">0</span>
+    </div>
+  </div>
+
+  <button class="button" id="clearData">Clear Local Data</button>
+  <button class="button" id="exportData">Export Data</button>
+  <button class="button" id="testConnection">Test Connection</button>
+
+  <div class="status active" id="status">
+    ✅ Extension Active
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
