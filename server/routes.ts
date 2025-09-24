@@ -7,8 +7,6 @@ import fs from "fs";
 import multer from "multer";
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
-import AdmZip from 'adm-zip'; // Import AdmZip
-
 // Placeholder for saveLogEntry function, as it's not defined in the original code.
 // In a real scenario, this would interact with a database or logging service.
 async function saveLogEntry(logEntry: any): Promise<void> {
@@ -3356,8 +3354,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Discord webhook URL is required' });
       }
 
-      // Import using ES modules
-      const AdmZip = (await import('adm-zip')).default;
+      // Import using dynamic import for ES modules
+      const { default: AdmZip } = await import('adm-zip');
       
       const zip = new AdmZip();
       const templatesDir = path.join(__dirname, 'extension-templates');
