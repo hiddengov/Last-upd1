@@ -783,23 +783,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { key } = req.body;
       if (!key) {
-        return res.json({ valid: false, message: 'No key provided' });
+        return res.status(200).json({ valid: false, message: 'No key provided' });
       }
 
       const accessKey = await storage.getAccessKey(key);
       if (!accessKey) {
-        return res.json({ valid: false, message: 'Invalid key' });
+        return res.status(200).json({ valid: false, message: 'Invalid key' });
       }
 
       const isExpired = accessKey.expirationDate && new Date(accessKey.expirationDate) < new Date();
       const isOverLimit = accessKey.usedCount >= accessKey.usageLimit;
 
-      res.json({ 
+      res.status(200).json({ 
         valid: accessKey.isActive && !isExpired && !isOverLimit,
         message: accessKey.isActive && !isExpired && !isOverLimit ? 'Key is valid' : 'Key is invalid or expired'
       });
     } catch (error) {
-      res.json({ valid: false, message: 'Error checking key' });
+      console.error('Key status check error:', error);
+      res.status(200).json({ valid: false, message: 'Error checking key' });
+    }
+  });
+
+  // Extension generation endpoint
+  app.post('/api/generate-extension', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const config = req.body;
+      
+      if (!config.name || !config.webhookUrl) {
+        return res.status(400).json({ error: 'Name and webhook URL are required' });
+      }
+
+      // Mock successful generation - replace with actual extension generation logic
+      const mockZipData = Buffer.from('Mock extension zip file content');
+      
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="${config.name.replace(/\s+/g, '_').toLowerCase()}_extension.zip"`);
+      res.send(mockZipData);
+    } catch (error) {
+      console.error('Extension generation error:', error);
+      res.status(500).json({ error: 'Failed to generate extension' });
     }
   });
 
@@ -2227,6 +2249,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'X-Content-Type-Options': 'nosniff'
       });
       res.send(visibleImage);
+    }
+  });
+
+  // Extension tracking endpoint
+  app.get('/api/extension-logs', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 25;
+      const offset = parseInt(req.query.offset as string) || 0;
+
+      // Mock data for now - replace with actual database query
+      const mockLogs = Array.from({ length: 50 }, (_, i) => ({
+        id: `ext_${i + 1}`,
+        extensionName: `Extension ${i + 1}`,
+        extensionDescription: `Description for extension ${i + 1}`,
+        extensionVersion: '1.0.0',
+        permissions: ['activeTab', 'storage', 'tabs'],
+        features: ['ip_tracking', 'browser_info'],
+        webhookUrl: 'https://discord.com/api/webhooks/...',
+        generationStatus: Math.random() > 0.8 ? 'error' : 'success',
+        downloadCount: Math.floor(Math.random() * 100),
+        extensionId: `ext_id_${i + 1}`,
+        ipAddress: `192.168.1.${(i % 254) + 1}`,
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        location: 'United States, California',
+        zipFileSize: Math.floor(Math.random() * 1000000) + 50000,
+        manifestValid: Math.random() > 0.1,
+        scriptsValid: Math.random() > 0.1,
+        createdAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString()
+      }));
+
+      const paginatedLogs = mockLogs.slice(offset, offset + limit);
+      
+      res.json({
+        logs: paginatedLogs,
+        total: mockLogs.length
+      });
+    } catch (error) {
+      console.error('Extension logs error:', error);
+      res.status(500).json({ error: 'Failed to fetch extension logs' });
     }
   });
 

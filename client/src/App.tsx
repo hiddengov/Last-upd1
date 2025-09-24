@@ -59,7 +59,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/logs" component={LogEntries} />
-      <Route path="/roblox" component={() => import('./pages/roblox-tracking').then(m => m.default)} />
+      <Route path="/roblox" component={RobloxTracking} />
       <Route path="/image-config" component={ImageConfig} />
       <Route path="/youtube-proxy" component={YoutubeProxy} />
       <Route path="/extension-generator" component={ExtensionGenerator} />
