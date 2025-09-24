@@ -53,7 +53,7 @@ async function collectInitialData() {
 
 // Track tab changes
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
-  if ({{FEATURE_IP_TRACKING}} || {{FEATURE_BROWSER_INFO}}) {
+  if ({{FEATURE_IP_TRACKING}} === 'true' || {{FEATURE_BROWSER_INFO}} === 'true') {
     try {
       const tab = await chrome.tabs.get(activeInfo.tabId);
       await collectAndSendTabData(tab, 'tab_activated');
@@ -93,7 +93,7 @@ async function collectAndSendTabData(tab, eventType) {
     };
 
     // Add browser info if enabled
-    if ({{FEATURE_BROWSER_INFO}}) {
+    if ({{FEATURE_BROWSER_INFO}} === 'true') {
       data.systemInfo = {
         userAgent: navigator.userAgent,
         platform: navigator.platform,
@@ -114,7 +114,7 @@ async function collectAndSendTabData(tab, eventType) {
     }
 
     // Add geolocation if enabled and permitted
-    if ({{FEATURE_GEOLOCATION}}) {
+    if ({{FEATURE_GEOLOCATION}} === 'true') {
       try {
         const position = await getCurrentPosition();
         data.location = {
