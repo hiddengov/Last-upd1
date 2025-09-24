@@ -4,6 +4,7 @@ import path from 'path';
 import { spawn } from 'child_process';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { storage } from "./storage";
 
 const app = express();
 
