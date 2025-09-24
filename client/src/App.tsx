@@ -16,7 +16,7 @@ import Profile from "@/pages/profile";
 import YoutubeProxy from "@/pages/youtube-proxy";
 import ExtensionGenerator from "@/pages/extension-generator";
 import NotFound from "@/pages/not-found";
-import RobloxTracking from "./pages/roblox-tracking";
+
 
 function Router() {
   const { isAuthenticated, isLoading, login } = useAuth();
@@ -59,7 +59,6 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/logs" component={LogEntries} />
-      <Route path="/roblox" component={RobloxTracking} />
       <Route path="/image-config" component={ImageConfig} />
       <Route path="/youtube-proxy" component={YoutubeProxy} />
       <Route path="/extension-generator" component={ExtensionGenerator} />
