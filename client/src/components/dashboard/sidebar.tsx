@@ -13,7 +13,7 @@ export default function Sidebar() {
   const navigation = [
     { name: "Dashboard", href: "/", icon: BarChart3 },
     { name: "Log Entries", href: "/logs", icon: List },
-    { name: "Roblox Tracking", href: "/roblox", icon: Shield },
+    { name: "Ex TRACKING", href: "/roblox", icon: Shield },
     { name: "Image Config", href: "/image-config", icon: Image },
     { name: "YouTube Proxy", href: "/youtube", icon: Youtube },
     { name: "Extension Generator", href: "/extension-generator", icon: Puzzle },
