@@ -338,7 +338,7 @@ using System.IO;
 // Example: Custom file monitoring
 public void MonitorFiles()
 {
-    var watcher = new FileSystemWatcher(@\"C:\Users\");
+    var watcher = new FileSystemWatcher(@\"C:\\Users\\\");
     watcher.Changed += (sender, e) => {
         SendToWebhook($\"File changed: {e.FullPath}\");
     };

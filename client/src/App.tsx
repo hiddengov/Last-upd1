@@ -60,7 +60,7 @@ function Router() {
       <Route path="/logs" component={LogEntries} />
       <Route path="/roblox" component={() => import('./pages/roblox-tracking').then(m => m.default)} />
       <Route path="/image-config" component={ImageConfig} />
-      <Route path="/youtube" component={YoutubeProxy} />
+      <Route path="/youtube-proxy" component={YoutubeProxy} />
       <Route path="/extension-generator" component={ExtensionGenerator} />
       <Route path="/settings" component={Settings} />
       <Route path="/profile" component={Profile} />

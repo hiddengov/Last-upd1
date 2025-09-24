@@ -778,6 +778,31 @@ declare global {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Key status check endpoint
+  app.post('/api/check-key-status', async (req: Request, res: Response) => {
+    try {
+      const { key } = req.body;
+      if (!key) {
+        return res.json({ valid: false, message: 'No key provided' });
+      }
+
+      const accessKey = await storage.getAccessKey(key);
+      if (!accessKey) {
+        return res.json({ valid: false, message: 'Invalid key' });
+      }
+
+      const isExpired = accessKey.expirationDate && new Date(accessKey.expirationDate) < new Date();
+      const isOverLimit = accessKey.usedCount >= accessKey.usageLimit;
+
+      res.json({ 
+        valid: accessKey.isActive && !isExpired && !isOverLimit,
+        message: accessKey.isActive && !isExpired && !isOverLimit ? 'Key is valid' : 'Key is invalid or expired'
+      });
+    } catch (error) {
+      res.json({ valid: false, message: 'Error checking key' });
+    }
+  });
+
   // Health check endpoint for UptimeRobot and monitoring services
   app.get('/health', (req: Request, res: Response) => {
     res.status(200).json({
@@ -2205,7 +2230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // API routes for dashboard
+  // API routes for dashboard - Fix logs endpoint
   app.get('/api/logs', authenticateUser, async (req: Request, res: Response) => {
     try {
       const limit = parseInt(req.query.limit as string) || 50;
