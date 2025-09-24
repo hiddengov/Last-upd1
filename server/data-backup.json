@@ -751,16 +751,6 @@
       }
     ],
     [
-      "c2e0655c-0a20-4aa4-a6ce-032928dbe5ed",
-      {
-        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
-        "sessionToken": "c2e0655c-0a20-4aa4-a6ce-032928dbe5ed",
-        "expiresAt": "2025-10-01T15:10:20.959Z",
-        "id": "f7e8ae0a-dd29-4c0c-9d60-47216f52f110",
-        "createdAt": "2025-09-24T15:10:20.959Z"
-      }
-    ],
-    [
       "e1deff51-6b97-425f-88b7-fac33738db69",
       {
         "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
@@ -768,6 +758,16 @@
         "expiresAt": "2025-10-01T15:10:35.223Z",
         "id": "8e91f3f9-673d-47d7-8e5a-2ab22cfdf801",
         "createdAt": "2025-09-24T15:10:35.223Z"
+      }
+    ],
+    [
+      "1aef5eb1-9b91-4cb2-88ab-f4ce2d10cf10",
+      {
+        "userId": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94",
+        "sessionToken": "1aef5eb1-9b91-4cb2-88ab-f4ce2d10cf10",
+        "expiresAt": "2025-10-01T15:33:19.211Z",
+        "id": "a141ae41-082e-4afa-9364-1f41d0db7dd0",
+        "createdAt": "2025-09-24T15:33:19.211Z"
       }
     ]
   ],
@@ -28777,6 +28777,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-24T15:31:53.872Z",
+  "timestamp": "2025-09-24T15:34:18.226Z",
   "version": "2.3"
 }
