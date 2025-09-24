@@ -174,19 +174,7 @@ app.use((req, res, next) => {
     }
   }
 
-  // Set the dashboard name
-  const originalAppGet = app.get;
-  app.get = function (path, handler) {
-    if (path === '/' || path === '/dashboard') {
-      return originalAppGet.call(this, path, (req, res) => {
-        // Modify the response or handler to reflect the new dashboard name
-        // This is a placeholder and might need adjustment based on how the dashboard name is actually set and displayed.
-        res.locals.dashboardTitle = 'EXNL | DASHBOARD #1';
-        handler(req, res);
-      });
-    }
-    return originalAppGet.call(this, path, handler);
-  };
+  // Dashboard name is already set in the sidebar component, no need to override app.get
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.
