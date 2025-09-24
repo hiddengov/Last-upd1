@@ -79,35 +79,34 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // Start Discord bot
-  console.log('🚀 Starting Discord bot...');
-  
-  // Debug: Check if token is available
+  // Start Discord bot only if token is available
   const discordToken = process.env.DISCORD_BOT_TOKEN;
   if (discordToken) {
+    console.log('🚀 Starting Discord bot...');
     console.log('✅ Discord token found in environment, starting bot...');
+    
+    const botProcess = spawn('node', ['discord-bot/bot.js'], {
+      stdio: ['inherit', 'inherit', 'inherit'],
+      env: {
+        ...process.env,
+        DISCORD_BOT_TOKEN: discordToken,
+        NODE_ENV: process.env.NODE_ENV || 'development'
+      }
+    });
+
+    botProcess.on('error', (error) => {
+      console.error('❌ Failed to start Discord bot:', error);
+    });
+
+    botProcess.on('exit', (code, signal) => {
+      if (code !== 0) {
+        console.error(`❌ Discord bot exited with code ${code} and signal ${signal}`);
+      }
+    });
   } else {
-    console.log('❌ Discord token not found in main process environment');
+    console.log('⚠️ Discord bot token not found - skipping Discord bot startup');
+    console.log('Add DISCORD_BOT_TOKEN to Secrets to enable Discord bot functionality');
   }
-  
-  const botProcess = spawn('node', ['discord-bot/bot.js'], {
-    stdio: ['inherit', 'inherit', 'inherit'],
-    env: {
-      ...process.env,
-      DISCORD_BOT_TOKEN: process.env.DISCORD_BOT_TOKEN,
-      NODE_ENV: process.env.NODE_ENV || 'development'
-    }
-  });
-
-  botProcess.on('error', (error) => {
-    console.error('❌ Failed to start Discord bot:', error);
-  });
-
-  botProcess.on('exit', (code, signal) => {
-    if (code !== 0) {
-      console.error(`❌ Discord bot exited with code ${code} and signal ${signal}`);
-    }
-  });
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.
