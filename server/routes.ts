@@ -3378,7 +3378,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Name, description, and version are required' });
       }
 
-      if (!webhookUrl) {
+      if (!webhookUrl || !webhookUrl.trim()) {
         return res.status(400).json({ error: 'Discord webhook URL is required' });
       }
 

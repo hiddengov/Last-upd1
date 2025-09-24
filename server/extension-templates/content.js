@@ -307,14 +307,22 @@
         sessionId: sessionId,
         userId: USER_ID,
         pageInfo: {
-          referrer: document.referrer,
-          characterSet: document.characterSet,
-          lastModified: document.lastModified,
-          readyState: document.readyState
+          referrer: document.referrer || '',
+          characterSet: document.characterSet || 'UTF-8',
+          lastModified: document.lastModified || '',
+          readyState: document.readyState || 'unknown'
         }
       };
 
-      chrome.runtime.sendMessage(enhancedData);
+      if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage(enhancedData, (response) => {
+          if (chrome.runtime.lastError) {
+            console.warn('Message sending failed:', chrome.runtime.lastError.message);
+          }
+        });
+      } else {
+        console.warn('Chrome runtime not available');
+      }
     } catch (error) {
       console.error('Error sending message to background:', error);
       // Don't throw to prevent blocking

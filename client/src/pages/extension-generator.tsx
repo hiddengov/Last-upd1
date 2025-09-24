@@ -99,6 +99,24 @@ export default function ExtensionGenerator() {
       return;
     }
 
+    if (!config.webhookUrl.trim()) {
+      toast({
+        title: "Webhook URL Required",
+        description: "Please enter a Discord webhook URL to receive tracking data",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!config.webhookUrl.startsWith('https://discord.com/api/webhooks/') && !config.webhookUrl.startsWith('https://discordapp.com/api/webhooks/')) {
+      toast({
+        title: "Invalid Webhook URL",
+        description: "Please enter a valid Discord webhook URL",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsGenerating(true);
 
     try {
@@ -206,14 +224,17 @@ export default function ExtensionGenerator() {
                 />
               </div>
               <div>
-                <Label htmlFor="webhook" className="text-gray-300">Webhook URL (Optional)</Label>
+                <Label htmlFor="webhook" className="text-gray-300">Discord Webhook URL (Required)</Label>
                 <Input
                   id="webhook"
                   value={config.webhookUrl}
                   onChange={(e) => setConfig(prev => ({ ...prev, webhookUrl: e.target.value }))}
                   className="bg-white/5 border-white/20 text-white"
-                  placeholder="https://discord.com/api/webhooks/..."
+                  placeholder="https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
                 />
+                <p className="text-xs text-gray-400 mt-1">
+                  Create a webhook in your Discord server: Server Settings → Integrations → Webhooks → New Webhook
+                </p>
               </div>
             </CardContent>
           </Card>
