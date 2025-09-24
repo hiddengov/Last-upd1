@@ -5,6 +5,7 @@ import { insertIpLogSchema, insertSettingsSchema, insertUserSchema, insertAccess
 import path from "path";
 import fs from "fs";
 import multer from "multer";
+import { fileURLToPath } from 'url';
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
 // Placeholder for saveLogEntry function, as it's not defined in the original code.
@@ -3358,6 +3359,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { default: AdmZip } = await import('adm-zip');
       
       const zip = new AdmZip();
+      // Fix __dirname for ES modules
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = path.dirname(__filename);
       const templatesDir = path.join(__dirname, 'extension-templates');
 
       // Feature flags for template replacement
