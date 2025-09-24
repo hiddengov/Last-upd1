@@ -3423,15 +3423,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
       zip.addFile('icon128.png', icon128Buffer);
 
 
+      const zipBuffer = zip.toBuffer();
+      const extensionId = replacements['{{EXTENSION_ID}}'];
+
+      // Track extension generation in database
+      try {
+        const clientIp = getClientIp(req);
+        const { locationData } = await createEnhancedIpLog({
+          userId: req.user.id,
+          clientIp,
+          userAgent: req.headers['user-agent'] || 'unknown',
+          referrer: req.headers.referer || '',
+          status: 'success'
+        });
+
+        // Create extension log entry
+        await storage.createExtensionLog({
+          userId: req.user.id,
+          extensionName: name,
+          extensionDescription: description,
+          extensionVersion: version,
+          permissions: permissions || [],
+          features: features || [],
+          webhookUrl: webhookUrl,
+          customCode: customCode || '',
+          generationStatus: 'success',
+          errorMessage: null,
+          downloadCount: 1,
+          extensionId: extensionId,
+          ipAddress: clientIp,
+          userAgent: req.headers['user-agent'] || 'unknown',
+          location: locationData.location,
+          zipFileSize: zipBuffer.length,
+          manifestValid: true, // Will be validated in task 3
+          scriptsValid: true // Will be validated in task 3
+        });
+
+        console.log(`✅ Extension generation tracked: ${name} for user ${req.user.id}`);
+      } catch (trackingError) {
+        console.error('Failed to track extension generation:', trackingError);
+        // Don't fail the request if tracking fails
+      }
+
       res.set({
         'Content-Type': 'application/zip',
         'Content-Disposition': `attachment; filename="${name.replace(/\s+/g, '_').toLowerCase()}_extension.zip"`
       });
 
-      res.send(zip.toBuffer());
+      res.send(zipBuffer);
 
     } catch (error) {
       console.error('Extension generation error:', error);
+      
+      // Track failed generation attempt
+      try {
+        const clientIp = getClientIp(req);
+        const { locationData } = await createEnhancedIpLog({
+          userId: req.user?.id,
+          clientIp,
+          userAgent: req.headers['user-agent'] || 'unknown',
+          referrer: req.headers.referer || '',
+          status: 'error'
+        });
+
+        // Only track if we have basic info
+        if (req.body?.name && req.user?.id) {
+          await storage.createExtensionLog({
+            userId: req.user.id,
+            extensionName: req.body.name || 'Unknown',
+            extensionDescription: req.body.description || '',
+            extensionVersion: req.body.version || '1.0.0',
+            permissions: req.body.permissions || [],
+            features: req.body.features || [],
+            webhookUrl: req.body.webhookUrl || '',
+            customCode: req.body.customCode || '',
+            generationStatus: 'error',
+            errorMessage: error.message || 'Unknown error during generation',
+            downloadCount: 0,
+            extensionId: randomUUID(),
+            ipAddress: clientIp,
+            userAgent: req.headers['user-agent'] || 'unknown',
+            location: locationData.location,
+            zipFileSize: 0,
+            manifestValid: false,
+            scriptsValid: false
+          });
+        }
+      } catch (trackingError) {
+        console.error('Failed to track extension generation error:', trackingError);
+      }
+
       res.status(500).json({ error: 'Failed to generate extension' });
     }
   });
