@@ -815,8 +815,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Name, description, and version are required' });
       }
 
-      if (!webhookUrl || !webhookUrl.trim()) {
-        return res.status(400).json({ error: 'Discord webhook URL is required' });
+      if (!webhookUrl || !webhookUrl.trim() || !webhookUrl.startsWith('https://discord.com/api/webhooks/')) {
+        return res.status(400).json({ error: 'Valid Discord webhook URL is required (must start with https://discord.com/api/webhooks/)' });
       }
 
       if (!Array.isArray(permissions)) {
@@ -3783,39 +3783,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userAgent = req.headers['user-agent'] || '';
       const extensionData = req.body;
 
-      // Create log entry for extension tracking
-      const logEntry = {
-        id: randomUUID(),
-        ip: clientIp,
-        userAgent,
-        timestamp: new Date().toISOString(),
-        country: 'Unknown',
-        city: 'Unknown',
-        isp: 'Unknown',
-        source: 'extension',
+      // Get enhanced location and device info
+      const locationData = await getLocationFromIp(clientIp);
+      const deviceInfo = parseDeviceInfo(userAgent);
+
+      // Create comprehensive extension log entry
+      const extensionLog = {
+        userId: extensionData.userId || null,
         extensionName: extensionData.extensionName || 'Unknown Extension',
-        extensionData: extensionData
+        extensionDescription: `Extension activity tracking for ${extensionData.extensionName || 'Unknown'}`,
+        extensionVersion: extensionData.extensionVersion || '1.0.0',
+        permissions: extensionData.permissions || [],
+        features: extensionData.features || [],
+        webhookUrl: extensionData.webhookUrl || '',
+        customCode: JSON.stringify(extensionData.data || {}),
+        generationStatus: 'success',
+        errorMessage: null,
+        downloadCount: 1,
+        extensionId: extensionData.extensionId || randomUUID(),
+        ipAddress: clientIp,
+        userAgent,
+        location: locationData.location,
+        zipFileSize: 0,
+        manifestValid: true,
+        scriptsValid: true
       };
 
-      // Try to get location data
-      try {
-        // Using ip-api.com as a free service for GeoIP lookup
-        const geoResponse = await fetch(`http://ip-api.com/json/${clientIp}`);
-        const geoData = await geoResponse.json();
+      // Save to extension logs
+      await storage.createExtensionLog(extensionLog);
 
-        if (geoData.status === 'success') {
-          logEntry.country = geoData.country || 'Unknown';
-          logEntry.city = geoData.city || 'Unknown';
-          logEntry.isp = geoData.isp || 'Unknown';
-        }
-      } catch (geoError) {
-        console.log('Failed to get geo data for extension tracking');
-      }
+      // Also create an IP log entry for tracking
+      await storage.createIpLog({
+        userId: extensionData.userId,
+        ipAddress: clientIp,
+        userAgent,
+        referrer: 'Extension Activity',
+        location: locationData.location,
+        status: 'extension_activity',
+        country: locationData.country,
+        region: locationData.region,
+        city: locationData.city,
+        latitude: locationData.latitude.toString(),
+        longitude: locationData.longitude.toString(),
+        timezone: locationData.timezone,
+        isp: locationData.isp,
+        organization: locationData.organization,
+        coordinates: locationData.coordinates,
+        isVpn: locationData.isVpn,
+        isProxy: locationData.isProxy,
+        threatLevel: locationData.threatLevel,
+        vpnProvider: locationData.vpnProvider,
+        realLocation: locationData.realLocation,
+        deviceType: deviceInfo.deviceType,
+        browserName: deviceInfo.browserName,
+        browserVersion: deviceInfo.browserVersion,
+        operatingSystem: deviceInfo.operatingSystem,
+        osVersion: deviceInfo.osVersion,
+        deviceBrand: deviceInfo.deviceBrand,
+        deviceModel: deviceInfo.deviceModel,
+        architecture: deviceInfo.architecture,
+        engine: deviceInfo.engine,
+        engineVersion: deviceInfo.engineVersion,
+        isBot: deviceInfo.isBot,
+        isSuspicious: deviceInfo.isSuspicious,
+        securityFlags: deviceInfo.securityFlags,
+        capabilities: deviceInfo.capabilities,
+        fingerprint: deviceInfo.fingerprint
+      });
 
-      // Save the log entry (assuming saveLogEntry function exists and handles storage)
-      await saveLogEntry(logEntry); // This function needs to be implemented
+      console.log(`🔌 Extension activity tracked: ${extensionData.extensionName} from ${clientIp}`);
 
-      res.json({ success: true, tracked: true });
+      res.json({ 
+        success: true, 
+        tracked: true,
+        logId: extensionLog.extensionId,
+        location: locationData.location,
+        deviceInfo: deviceInfo.deviceType
+      });
 
     } catch (error) {
       console.error('Extension tracking error:', error);
