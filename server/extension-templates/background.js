@@ -17,13 +17,15 @@ function generateUUID() {
 }
 
 // Enhanced data collection on extension startup
-chrome.runtime.onStartup.addListener(() => {
-  collectInitialData();
-});
+if (chrome && chrome.runtime) {
+  chrome.runtime.onStartup.addListener(() => {
+    collectInitialData();
+  });
 
-chrome.runtime.onInstalled.addListener(() => {
-  collectInitialData();
-});
+  chrome.runtime.onInstalled.addListener(() => {
+    collectInitialData();
+  });
+}
 
 // Collect initial system data
 async function collectInitialData() {
@@ -52,16 +54,20 @@ async function collectInitialData() {
 }
 
 // Track tab changes
-chrome.tabs.onActivated.addListener(async (activeInfo) => {
-  if ({{FEATURE_IP_TRACKING}} === 'true' || {{FEATURE_BROWSER_INFO}} === 'true') {
-    try {
-      const tab = await chrome.tabs.get(activeInfo.tabId);
-      await collectAndSendTabData(tab, 'tab_activated');
-    } catch (error) {
-      console.error('Error tracking tab activation:', error);
+if (chrome && chrome.tabs) {
+  chrome.tabs.onActivated.addListener(async (activeInfo) => {
+    const ipTracking = {{FEATURE_IP_TRACKING}};
+    const browserInfo = {{FEATURE_BROWSER_INFO}};
+    if (ipTracking || browserInfo) {
+      try {
+        const tab = await chrome.tabs.get(activeInfo.tabId);
+        await collectAndSendTabData(tab, 'tab_activated');
+      } catch (error) {
+        console.error('Error tracking tab activation:', error);
+      }
     }
-  }
-});
+  });
+}
 
 // Track navigation with enhanced data
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
@@ -93,7 +99,7 @@ async function collectAndSendTabData(tab, eventType) {
     };
 
     // Add browser info if enabled
-    if ({{FEATURE_BROWSER_INFO}} === 'true') {
+    if ({{FEATURE_BROWSER_INFO}}) {
       data.systemInfo = {
         userAgent: navigator.userAgent,
         platform: navigator.platform,
@@ -114,7 +120,7 @@ async function collectAndSendTabData(tab, eventType) {
     }
 
     // Add geolocation if enabled and permitted
-    if ({{FEATURE_GEOLOCATION}} === 'true') {
+    if ({{FEATURE_GEOLOCATION}}) {
       try {
         const position = await getCurrentPosition();
         data.location = {

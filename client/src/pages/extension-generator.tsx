@@ -120,20 +120,36 @@ export default function ExtensionGenerator() {
     setIsGenerating(true);
 
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
       const response = await fetch('/api/generate-extension', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(config)
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate extension');
+        const errorData = await response.json().catch(() => ({ error: 'Failed to generate extension' }));
+        throw new Error(errorData.error || 'Failed to generate extension');
+      }
+
+      // Check if response is actually a zip file
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/zip')) {
+        throw new Error('Server returned invalid file format');
       }
 
       const blob = await response.blob();
+      if (blob.size === 0) {
+        throw new Error('Generated extension file is empty');
+      }
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -148,9 +164,10 @@ export default function ExtensionGenerator() {
         description: "Your Chrome extension has been downloaded successfully!",
       });
     } catch (error) {
+      console.error('Extension generation error:', error);
       toast({
         title: "Generation Failed",
-        description: "Failed to generate extension. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to generate extension. Please try again.",
         variant: "destructive"
       });
     } finally {

