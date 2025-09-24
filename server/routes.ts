@@ -3344,7 +3344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate Chrome extension endpoint
-  app.post('/api/generate-extension', requireAuth, async (req: Request, res: Response) => {
+  app.post('/api/generate-extension', authenticateUser, async (req: Request, res: Response) => {
     try {
       const { name, description, version, permissions, features, webhookUrl, customCode } = req.body;
 
@@ -3352,12 +3352,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Name, description, and version are required' });
       }
 
-      const AdmZip = require('adm-zip');
-      const fs = require('fs');
-      const path = require('path');
+      if (!webhookUrl) {
+        return res.status(400).json({ error: 'Discord webhook URL is required' });
+      }
 
+      // Import using ES modules
+      const AdmZip = (await import('adm-zip')).default;
+      
       const zip = new AdmZip();
-      // Assuming 'extension-templates' directory exists in the same level as this file
       const templatesDir = path.join(__dirname, 'extension-templates');
 
       // Feature flags for template replacement
@@ -3377,9 +3379,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         '{{EXTENSION_DESCRIPTION}}': description,
         '{{EXTENSION_VERSION}}': version,
         '{{PERMISSIONS}}': JSON.stringify(permissions),
-        '{{WEBHOOK_URL}}': webhookUrl || '',
+        '{{WEBHOOK_URL}}': webhookUrl,
         '{{CUSTOM_CODE}}': customCode || '// No custom code provided',
         '{{TRACKING_SERVER}}': `${req.protocol}://${req.get('host')}`,
+        '{{USER_ID}}': req.user.id,
+        '{{EXTENSION_ID}}': randomUUID(),
         ...featureFlags
       };
 
