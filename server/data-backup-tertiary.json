@@ -32815,6 +32815,32 @@
         "expiresAt": "2025-10-22T15:17:40.364Z",
         "createdBy": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94"
       }
+    ],
+    [
+      "exnldev",
+      {
+        "id": "b28c9c40-f100-453e-8da9-bc354daab366",
+        "key": "exnldev",
+        "usageLimit": 999999,
+        "usedCount": 0,
+        "isActive": true,
+        "createdAt": "2025-09-24T19:45:46.001Z",
+        "expiresAt": null,
+        "createdBy": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94"
+      }
+    ],
+    [
+      "extension-creator-2024",
+      {
+        "id": "7476b21b-74b0-47a6-b092-3ff0d945c2f7",
+        "key": "extension-creator-2024",
+        "usageLimit": 500,
+        "usedCount": 0,
+        "isActive": true,
+        "createdAt": "2025-09-24T19:45:47.937Z",
+        "expiresAt": null,
+        "createdBy": "c20c9ff7-22ad-49bc-b8fa-90e48c9b0d94"
+      }
     ]
   ],
   "robloxLinks": [
@@ -35215,6 +35241,6 @@
       }
     ]
   ],
-  "timestamp": "2025-09-24T19:44:49.703Z",
+  "timestamp": "2025-09-24T19:46:26.292Z",
   "version": "2.3"
 }
