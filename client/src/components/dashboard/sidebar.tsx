@@ -1,4 +1,4 @@
-import { Shield, BarChart3, List, Image, Settings, User, LogOut, Palette, Youtube, Puzzle, Activity, Monitor, Gamepad2 } from "lucide-react";
+import { Shield, BarChart3, List, Image, Settings, User, LogOut, Palette, Youtube, Puzzle } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -13,14 +13,11 @@ export default function Sidebar() {
   const navigation = [
     { name: "Dashboard", href: "/", icon: BarChart3 },
     { name: "Log Entries", href: "/logs", icon: List },
+    { name: "Roblox Tracking", href: "/roblox", icon: Shield },
     { name: "Image Config", href: "/image-config", icon: Image },
-    { name: "YouTube Proxy", href: "/youtube-proxy", icon: Youtube },
+    { name: "YouTube Proxy", href: "/youtube", icon: Youtube },
     { name: "Extension Generator", href: "/extension-generator", icon: Puzzle },
-    { name: "Extension Tracking", href: "/extension-tracking", icon: Activity },
-    { name: "EXE Generator", href: "/exe-generator", icon: Monitor },
-    { name: "EXE Tracking", href: "/exe-tracking", icon: Shield },
     { name: "Settings", href: "/settings", icon: Settings },
-    { name: "Roblox Tracking", href: "/roblox-tracking", icon: Gamepad2 },
   ];
 
   return (
