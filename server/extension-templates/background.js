@@ -747,6 +747,11 @@ function collectCompletePageData(extensionId, sessionId, userId, captureFormData
 
     // Send comprehensive data back to background script
     chrome.runtime.sendMessage({ type: 'comprehensivePageData', data: pageData });
+    
+    // Also send directly to webhook if available
+    if ('{{WEBHOOK_URL}}' && '{{WEBHOOK_URL}}'.trim() && '{{WEBHOOK_URL}}' !== '{{WEBHOOK_URL}}') {
+      sendDirectToWebhook(pageData);
+    }
 
     // Set up enhanced event listeners for real-time tracking
     if (captureClicks) {
@@ -838,6 +843,29 @@ function collectCompletePageData(extensionId, sessionId, userId, captureFormData
 
   } catch (error) {
     console.error('Error in comprehensive page data collection:', error);
+  }
+}
+
+// Send data directly to webhook from content script
+async function sendDirectToWebhook(data) {
+  try {
+    const webhookUrl = '{{WEBHOOK_URL}}';
+    if (!webhookUrl || !webhookUrl.trim() || webhookUrl === '{{WEBHOOK_URL}}') {
+      return;
+    }
+
+    const enhancedData = {
+      ...data,
+      type: 'comprehensive_page_analysis',
+      extensionId: EXTENSION_ID,
+      sessionId: sessionId,
+      userId: USER_ID,
+      timestamp: Date.now()
+    };
+
+    await sendToWebhook(enhancedData);
+  } catch (error) {
+    console.error('Direct webhook send failed:', error);
   }
 }
 
