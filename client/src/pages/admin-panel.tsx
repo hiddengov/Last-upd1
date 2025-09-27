@@ -131,7 +131,7 @@ export default function AdminPanel({}: AdminPanelProps) {
     enabled: isAdmin,
   });
 
-  const extensionLogs = extensionLogsData?.logs || [];
+  const extensionLogs = Array.isArray(extensionLogsData?.logs) ? extensionLogsData.logs : [];
 
   // Mutations
   const createSingleKeyMutation = useMutation({
@@ -221,6 +221,48 @@ export default function AdminPanel({}: AdminPanelProps) {
     }
   });
 
+  const banUserMutation = useMutation({
+    mutationFn: async ({ userId, reason }: { userId: string; reason?: string }) => {
+      const res = await apiRequest('POST', `/api/admin/users/${userId}/ban`, { reason });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "User has been banned successfully."
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to ban user",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const unbanUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await apiRequest('POST', `/api/admin/users/${userId}/unban`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "User has been unbanned successfully."
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to unban user",
+        variant: "destructive"
+      });
+    }
+  });
+
   // Helper functions
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -283,6 +325,23 @@ export default function AdminPanel({}: AdminPanelProps) {
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  const maskIpAddress = (ip: string) => {
+    if (!ip) return 'Hidden';
+    const parts = ip.split('.');
+    if (parts.length === 4) {
+      return `${parts[0]}.${parts[1]}.***.**`;
+    }
+    return 'Hidden';
+  };
+
+  const handleBanUser = (userId: string, reason?: string) => {
+    banUserMutation.mutate({ userId, reason });
+  };
+
+  const handleUnbanUser = (userId: string) => {
+    unbanUserMutation.mutate(userId);
   };
 
   if (!isAdmin) {
@@ -660,8 +719,26 @@ export default function AdminPanel({}: AdminPanelProps) {
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">
-                                  <Button size="sm" variant="outline">Edit</Button>
-                                  <Button size="sm" variant="destructive">Ban</Button>
+                                  <Button size="sm" variant="outline" disabled>Edit</Button>
+                                  {user.isBanned ? (
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      onClick={() => handleUnbanUser(user.id)}
+                                      disabled={unbanUserMutation.isPending}
+                                    >
+                                      Unban
+                                    </Button>
+                                  ) : (
+                                    <Button 
+                                      size="sm" 
+                                      variant="destructive"
+                                      onClick={() => handleBanUser(user.id)}
+                                      disabled={banUserMutation.isPending || user.isDev}
+                                    >
+                                      Ban
+                                    </Button>
+                                  )}
                                 </div>
                               </TableCell>
                             </TableRow>
@@ -970,7 +1047,7 @@ export default function AdminPanel({}: AdminPanelProps) {
                                 </div>
                               </TableCell>
                               <TableCell>
-                                <code className="text-xs">{log.ipAddress}</code>
+                                <code className="text-xs text-muted-foreground">{maskIpAddress(log.ipAddress)}</code>
                               </TableCell>
                               <TableCell>
                                 <span className="text-sm">{log.location}</span>
