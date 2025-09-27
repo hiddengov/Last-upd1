@@ -1,4 +1,4 @@
-import { Shield, BarChart3, List, Image, Settings, User, LogOut, Palette, Youtube, Puzzle, Activity } from "lucide-react";
+import { Shield, BarChart3, List, Image, Settings, User, LogOut, Palette, Youtube, Puzzle, Activity, ShieldCheck } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -19,6 +19,12 @@ export default function Sidebar() {
     { name: "EX LOGS", href: "/extension-logs", icon: Activity },
     { name: "Settings", href: "/settings", icon: Settings },
   ];
+
+  const adminNavigation = [
+    { name: "ADMIN PANEL", href: "/admin-panel", icon: ShieldCheck },
+  ];
+
+  const isAdmin = user?.isDev || user?.accountType === 'admin' || user?.accountType === 'developer';
 
   return (
     <aside className="w-64 bg-black/20 backdrop-blur-md border-r border-white/10 flex flex-col relative z-20">
@@ -59,6 +65,35 @@ export default function Sidebar() {
               </Link>
             </li>
           ))}
+          
+          {/* Admin Navigation */}
+          {isAdmin && (
+            <>
+              <li className="pt-2">
+                <div className="border-t border-white/10 pt-2">
+                  <div className="text-xs text-gray-400 uppercase tracking-wide px-3 pb-2 font-semibold">
+                    Admin Access
+                  </div>
+                </div>
+              </li>
+              {adminNavigation.map((item) => (
+                <li key={item.name}>
+                  <Link
+                    href={item.href}
+                    className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
+                      location === item.href
+                        ? "bg-red-600/80 text-white backdrop-blur-sm shadow-lg"
+                        : "text-red-300 hover:text-white hover:bg-red-600/20 border border-red-600/30"
+                    }`}
+                    data-testid={`link-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    <span className="font-semibold">{item.name}</span>
+                  </Link>
+                </li>
+              ))}
+            </>
+          )}
         </ul>
       </nav>
 

@@ -5,6 +5,7 @@ interface User {
   username: string;
   theme: string;
   isDev: boolean;
+  accountType: string;
 }
 
 interface AuthContextType {
