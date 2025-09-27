@@ -187,6 +187,27 @@ export const insertAccessKeySchema = createInsertSchema(accessKeys).omit({
   expirationDays: z.number().optional() // Add expirationDays to the schema
 });
 
+// Admin-specific schemas for key management
+export const adminCreateKeySchema = z.object({
+  key: z.string().min(1, "Key is required").max(100, "Key must be 100 characters or less"),
+  usageLimit: z.number().int().min(1, "Usage limit must be at least 1").max(1000000, "Usage limit too high"),
+  expirationDays: z.number().int().min(1).max(3650, "Expiration days must be between 1 and 3650").optional(),
+});
+
+export const adminCreateBulkKeysSchema = z.object({
+  keyPrefix: z.string().min(1, "Key prefix is required").max(50, "Key prefix must be 50 characters or less").regex(/^[a-zA-Z0-9_-]+$/, "Key prefix can only contain letters, numbers, underscores, and hyphens"),
+  keyCount: z.number().int().min(1, "Key count must be at least 1").max(1000, "Maximum 1,000 keys per request"),
+  usageLimit: z.number().int().min(1, "Usage limit must be at least 1").max(1000000, "Usage limit too high"),
+  expirationDays: z.number().int().min(1).max(3650, "Expiration days must be between 1 and 3650").optional(),
+});
+
+export const adminWebhookSchema = z.object({
+  webhookUrl: z.string().url("Must be a valid URL").refine(
+    (url) => url.startsWith('https://discord.com/api/webhooks/'),
+    "Must be a valid Discord webhook URL"
+  ).optional().or(z.literal("")).or(z.null()),
+});
+
 export const insertUserSessionSchema = createInsertSchema(userSessions).omit({
   id: true,
   createdAt: true,

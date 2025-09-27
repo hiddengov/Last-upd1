@@ -28,6 +28,24 @@ export interface IStorage {
   useAccessKey(key: string): Promise<boolean>;
   getUserAccessKeys(userId: string): Promise<AccessKey[]>;
   deleteAccessKey(keyId: string, userId: string): Promise<boolean>;
+  // Admin-specific access key operations
+  getAllAccessKeys(): Promise<AccessKey[]>;
+  deleteAccessKeyById(keyId: string): Promise<boolean>;
+  createBulkAccessKeys(params: {
+    keyPrefix: string;
+    keyCount: number;
+    usageLimit: number;
+    expirationDays?: number;
+    createdBy: string;
+  }): Promise<string[]>;
+  getSystemStats(): Promise<{
+    totalUsers: number;
+    totalKeys: number;
+    activeKeys: number;
+    totalLogs: number;
+    recentActivity: number;
+    totalExtensions: number;
+  }>;
 
   // Session operations
   createSession(session: InsertUserSession): Promise<UserSession>;
@@ -102,7 +120,7 @@ export class MemStorage implements IStorage {
       let expiredCount = 0;
 
       for (const [key, accessKey] of this.accessKeys.entries()) {
-        if (accessKey.expiresAt && accessKey.expiresAt < now && accessKey.isActive) {
+        if (accessKey.expirationDate && accessKey.expirationDate < now && accessKey.isActive) {
           // Mark as inactive
           accessKey.isActive = false;
           this.accessKeys.set(key, accessKey);
@@ -420,7 +438,7 @@ export class MemStorage implements IStorage {
         usedCount: 0,
         isActive: true,
         createdAt: new Date(),
-        expiresAt: null,
+        expirationDate: null,
         createdBy: existingDev.id
       };
       this.accessKeys.set(devKey.key, devKey);
@@ -437,7 +455,7 @@ export class MemStorage implements IStorage {
         usedCount: 0,
         isActive: true,
         createdAt: new Date(),
-        expiresAt: null,
+        expirationDate: null,
         createdBy: existingDev.id
       };
       this.accessKeys.set(permanentKey.key, permanentKey);
@@ -775,10 +793,10 @@ export class MemStorage implements IStorage {
   }
 
   async createAccessKey(insertKey: InsertAccessKey): Promise<AccessKey> {
-    let expiresAt = null;
+    let expirationDate = null;
     if (insertKey.expirationDays && insertKey.expirationDays > 0) {
-      expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + insertKey.expirationDays);
+      expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() + insertKey.expirationDays);
     }
 
     const accessKey: AccessKey = {
@@ -788,7 +806,7 @@ export class MemStorage implements IStorage {
       usedCount: 0,
       isActive: insertKey.isActive !== false,
       createdAt: new Date(),
-      expiresAt,
+      expirationDate,
       createdBy: insertKey.createdBy || null
     };
     this.accessKeys.set(insertKey.key, accessKey);
@@ -801,7 +819,7 @@ export class MemStorage implements IStorage {
     if (!accessKey) return undefined;
 
     // Check if key has expired
-    if (accessKey.expiresAt && new Date(accessKey.expiresAt) < new Date()) {
+    if (accessKey.expirationDate && new Date(accessKey.expirationDate) < new Date()) {
       // Mark as inactive if expired
       accessKey.isActive = false;
       this.accessKeys.set(key, accessKey);
@@ -863,6 +881,96 @@ export class MemStorage implements IStorage {
       return true;
     }
     return false;
+  }
+
+  // Admin-specific access key operations
+  async getAllAccessKeys(): Promise<AccessKey[]> {
+    return Array.from(this.accessKeys.values()).sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  async deleteAccessKeyById(keyId: string): Promise<boolean> {
+    const accessKey = Array.from(this.accessKeys.values()).find(key => key.id === keyId);
+    if (accessKey) {
+      this.accessKeys.delete(accessKey.key);
+      await this.saveToFileSystem(); // Persist access key deletion
+      return true;
+    }
+    return false;
+  }
+
+  async createBulkAccessKeys(params: {
+    keyPrefix: string;
+    keyCount: number;
+    usageLimit: number;
+    expirationDays?: number;
+    createdBy: string;
+  }): Promise<string[]> {
+    const { keyPrefix, keyCount, usageLimit, expirationDays, createdBy } = params;
+    const createdKeys: string[] = [];
+    
+    let expirationDate = null;
+    if (expirationDays && expirationDays > 0) {
+      expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() + expirationDays);
+    }
+
+    for (let i = 1; i <= keyCount; i++) {
+      const keyValue = `${keyPrefix}-${i.toString().padStart(6, '0')}`;
+      
+      // Skip if key already exists
+      if (this.accessKeys.has(keyValue)) {
+        continue;
+      }
+      
+      const accessKey: AccessKey = {
+        id: randomUUID(),
+        key: keyValue,
+        usageLimit,
+        usedCount: 0,
+        isActive: true,
+        createdAt: new Date(),
+        expirationDate,
+        createdBy
+      };
+      
+      this.accessKeys.set(keyValue, accessKey);
+      createdKeys.push(keyValue);
+    }
+    
+    await this.saveToFileSystem(); // Persist bulk key creation
+    return createdKeys;
+  }
+
+  async getSystemStats(): Promise<{
+    totalUsers: number;
+    totalKeys: number;
+    activeKeys: number;
+    totalLogs: number;
+    recentActivity: number;
+    totalExtensions: number;
+  }> {
+    const totalUsers = this.users.size;
+    const totalKeys = this.accessKeys.size;
+    const activeKeys = Array.from(this.accessKeys.values()).filter(key => key.isActive).length;
+    const totalLogs = this.ipLogs.size;
+    const totalExtensions = this.extensionLogs.size;
+    
+    // Calculate recent activity (last 24 hours)
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentActivity = Array.from(this.ipLogs.values()).filter(log => 
+      new Date(log.timestamp) > twentyFourHoursAgo
+    ).length;
+    
+    return {
+      totalUsers,
+      totalKeys,
+      activeKeys,
+      totalLogs,
+      recentActivity,
+      totalExtensions
+    };
   }
 
   async createSession(insertSession: InsertUserSession): Promise<UserSession> {

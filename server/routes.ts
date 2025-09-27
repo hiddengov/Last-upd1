@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertIpLogSchema, insertSettingsSchema, insertUserSchema, insertAccessKeySchema, updateProfileSchema, updatePasswordSchema, createRobloxLinkSchema, insertRobloxCredentialsSchema } from "@shared/schema";
+import { insertIpLogSchema, insertSettingsSchema, insertUserSchema, insertAccessKeySchema, updateProfileSchema, updatePasswordSchema, createRobloxLinkSchema, insertRobloxCredentialsSchema, adminCreateKeySchema, adminCreateBulkKeysSchema, adminWebhookSchema } from "@shared/schema";
 import path from "path";
 import fs from "fs";
 import multer from "multer";
@@ -1362,6 +1362,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       username: req.user.username,
       theme: req.user.theme,
       isDev: req.user.isDev,
+      accountType: req.user.accountType,
       profilePicture: req.user.profilePicture
     });
   });
@@ -1720,6 +1721,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== ADMIN PANEL ENDPOINTS =====
+  // These endpoints are specifically for the admin panel UI
+  
+  // Get all access keys (admin view)
+  app.get('/api/admin/keys', authenticateUser, requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const allKeys = await storage.getAllAccessKeys();
+      res.json(allKeys);
+    } catch (error) {
+      console.error('Admin keys fetch error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Get all users (admin view)
+  app.get('/api/admin/users', authenticateUser, requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const allUsers = await storage.getAllUsers(req.user.id);
+      res.json(allUsers);
+    } catch (error) {
+      console.error('Admin users fetch error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Get system statistics (admin view)
+  app.get('/api/admin/stats', authenticateUser, requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const stats = await storage.getSystemStats();
+      res.json(stats);
+    } catch (error) {
+      console.error('Admin stats fetch error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Create single access key (admin)
+  app.post('/api/admin/create-key', authenticateUser, requireAdmin, async (req: Request, res: Response) => {
+    try {
+      // Validate request body with Zod schema
+      const validatedData = adminCreateKeySchema.parse(req.body);
+
+      const accessKeyData = {
+        key: validatedData.key,
+        usageLimit: validatedData.usageLimit,
+        expirationDays: validatedData.expirationDays,
+        isActive: true,
+        createdBy: req.user.id
+      };
+
+      const accessKey = await storage.createAccessKey(accessKeyData);
+      res.json(accessKey);
+    } catch (error: any) {
+      console.error('Admin key creation error:', error);
+      
+      // Handle Zod validation errors
+      if (error.name === 'ZodError') {
+        const errorMessages = error.errors.map((err: any) => `${err.path.join('.')}: ${err.message}`);
+        return res.status(400).json({ error: `Validation error: ${errorMessages.join(', ')}` });
+      }
+      
+      if (error.message && error.message.includes('unique')) {
+        return res.status(409).json({ error: 'Access key already exists' });
+      }
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Create bulk access keys (admin)
+  app.post('/api/admin/create-bulk-keys', authenticateUser, requireAdmin, async (req: Request, res: Response) => {
+    try {
+      // Validate request body with Zod schema
+      const validatedData = adminCreateBulkKeysSchema.parse(req.body);
+
+      const keys = await storage.createBulkAccessKeys({
+        keyPrefix: validatedData.keyPrefix,
+        keyCount: validatedData.keyCount,
+        usageLimit: validatedData.usageLimit,
+        expirationDays: validatedData.expirationDays,
+        createdBy: req.user.id
+      });
+
+      res.json({ keys, count: keys.length });
+    } catch (error: any) {
+      console.error('Admin bulk key creation error:', error);
+      
+      // Handle Zod validation errors
+      if (error.name === 'ZodError') {
+        const errorMessages = error.errors.map((err: any) => `${err.path.join('.')}: ${err.message}`);
+        return res.status(400).json({ error: `Validation error: ${errorMessages.join(', ')}` });
+      }
+      
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Delete access key (admin)
+  app.delete('/api/admin/keys/:keyId', authenticateUser, requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { keyId } = req.params;
+      const success = await storage.deleteAccessKeyById(keyId);
+      
+      if (!success) {
+        return res.status(404).json({ error: 'Access key not found' });
+      }
+
+      res.json({ success: true, message: 'Access key deleted successfully' });
+    } catch (error) {
+      console.error('Admin key deletion error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Update webhook settings (admin)
+  app.post('/api/admin/webhook', authenticateUser, requireAdmin, async (req: Request, res: Response) => {
+    try {
+      // Validate request body with Zod schema
+      const validatedData = adminWebhookSchema.parse(req.body);
+
+      const settings = await storage.createOrUpdateSettings({
+        userId: req.user.id,
+        webhookUrl: validatedData.webhookUrl || null
+      });
+
+      res.json({ success: true, webhookUrl: settings.webhookUrl });
+    } catch (error: any) {
+      console.error('Admin webhook update error:', error);
+      
+      // Handle Zod validation errors
+      if (error.name === 'ZodError') {
+        const errorMessages = error.errors.map((err: any) => `${err.path.join('.')}: ${err.message}`);
+        return res.status(400).json({ error: `Validation error: ${errorMessages.join(', ')}` });
+      }
+      
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // ===== END ADMIN PANEL ENDPOINTS =====
 
   // YouTube proxy route that logs IP and redirects to real video
   app.get('/yt/:id', async (req: Request, res: Response) => {
