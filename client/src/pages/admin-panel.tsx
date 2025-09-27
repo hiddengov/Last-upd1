@@ -738,7 +738,7 @@ export default function AdminPanel({}: AdminPanelProps) {
                                         <Button 
                                           size="sm" 
                                           variant="destructive"
-                                          disabled={user.id === req?.user?.id || (user.isDev && user.accountType === 'admin')}
+                                          disabled={user.isDev || user.accountType === 'admin' || user.accountType === 'developer'}
                                         >
                                           Ban
                                         </Button>
