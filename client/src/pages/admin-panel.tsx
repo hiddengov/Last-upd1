@@ -66,6 +66,7 @@ export default function AdminPanel({}: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState("key-management");
   const [bulkKeysDialogOpen, setBulkKeysDialogOpen] = useState(false);
   const [generatedKeys, setGeneratedKeys] = useState<string[]>([]);
+  const [banReason, setBanReason] = useState("");
 
   // Check if user is admin/dev
   const isAdmin = user?.isDev || user?.accountType === 'admin' || user?.accountType === 'developer';
@@ -222,8 +223,8 @@ export default function AdminPanel({}: AdminPanelProps) {
   });
 
   const banUserMutation = useMutation({
-    mutationFn: async ({ userId, reason }: { userId: string; reason?: string }) => {
-      const res = await apiRequest('POST', `/api/admin/users/${userId}/ban`, { reason });
+    mutationFn: async ({ userId, reason }: { userId: string; reason: string }) => {
+      const res = await apiRequest('POST', `/api/dev/users/${userId}/ban`, { reason });
       return res.json();
     },
     onSuccess: () => {
@@ -244,7 +245,7 @@ export default function AdminPanel({}: AdminPanelProps) {
 
   const unbanUserMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const res = await apiRequest('POST', `/api/admin/users/${userId}/unban`);
+      const res = await apiRequest('POST', `/api/dev/users/${userId}/unban`);
       return res.json();
     },
     onSuccess: () => {
@@ -336,8 +337,9 @@ export default function AdminPanel({}: AdminPanelProps) {
     return 'Hidden';
   };
 
-  const handleBanUser = (userId: string, reason?: string) => {
+  const handleBanUser = (userId: string, reason: string) => {
     banUserMutation.mutate({ userId, reason });
+    setBanReason(""); // Clear the reason after banning
   };
 
   const handleUnbanUser = (userId: string) => {
@@ -730,14 +732,48 @@ export default function AdminPanel({}: AdminPanelProps) {
                                       Unban
                                     </Button>
                                   ) : (
-                                    <Button 
-                                      size="sm" 
-                                      variant="destructive"
-                                      onClick={() => handleBanUser(user.id)}
-                                      disabled={banUserMutation.isPending || user.isDev}
-                                    >
-                                      Ban
-                                    </Button>
+                                    <Dialog>
+                                      <DialogTrigger asChild>
+                                        <Button 
+                                          size="sm" 
+                                          variant="destructive"
+                                          disabled={user.isDev || user.accountType === 'admin'}
+                                        >
+                                          Ban
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent>
+                                        <DialogHeader>
+                                          <DialogTitle>Ban User</DialogTitle>
+                                          <DialogDescription>
+                                            Enter a reason for banning {user.username}:
+                                          </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="space-y-4">
+                                          <div>
+                                            <Label htmlFor="banReason">Ban Reason</Label>
+                                            <Input
+                                              id="banReason"
+                                              placeholder="Enter reason for ban..."
+                                              onChange={(e) => setBanReason(e.target.value)}
+                                            />
+                                          </div>
+                                        </div>
+                                        <DialogFooter>
+                                          <Button
+                                            variant="destructive"
+                                            onClick={() => {
+                                              if (banReason.trim()) {
+                                                handleBanUser(user.id, banReason);
+                                              }
+                                            }}
+                                            disabled={banUserMutation.isPending || !banReason.trim()}
+                                          >
+                                            Ban User
+                                          </Button>
+                                        </DialogFooter>
+                                      </DialogContent>
+                                    </Dialog>
                                   )}
                                 </div>
                               </TableCell>
