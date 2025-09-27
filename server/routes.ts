@@ -1750,7 +1750,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/stats', authenticateUser, requireAdmin, async (req: Request, res: Response) => {
     try {
       const stats = await storage.getSystemStats();
-      res.json(stats);
+      // Add extension statistics
+      const extensionStats = await storage.getExtensionStats();
+      const combinedStats = {
+        ...stats,
+        ...extensionStats
+      };
+      res.json(combinedStats);
     } catch (error) {
       console.error('Admin stats fetch error:', error);
       res.status(500).json({ error: 'Internal server error' });

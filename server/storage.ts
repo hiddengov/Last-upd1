@@ -46,6 +46,13 @@ export interface IStorage {
     recentActivity: number;
     totalExtensions: number;
   }>;
+  getExtensionStats(): Promise<{
+    totalExtensions: number;
+    successfulExtensions: number;
+    failedExtensions: number;
+    totalDownloads: number;
+    recentExtensions: number;
+  }>;
 
   // Session operations
   createSession(session: InsertUserSession): Promise<UserSession>;
@@ -124,10 +131,10 @@ export class MemStorage implements IStorage {
           // Mark as inactive
           accessKey.isActive = false;
           this.accessKeys.set(key, accessKey);
-          
+
           // Revoke sessions for users who used this key
           await this.revokeSessionsForExpiredKey(key);
-          
+
           expiredCount++;
           console.log(`🚫 Access key expired and deactivated: ${key}`);
         }
@@ -325,7 +332,7 @@ export class MemStorage implements IStorage {
               this.robloxLinks.set(key, link);
             }
           });
-          
+
           this.accessKeys.forEach((key, accessKeyId) => {
             try {
               if (key.createdAt) key.createdAt = new Date(key.createdAt);
@@ -673,7 +680,8 @@ export class MemStorage implements IStorage {
       lastLoginAt: user.lastLoginAt,
       bannedAt: user.bannedAt,
       banReason: user.banReason,
-      accessKeyUsed: user.accessKeyUsed
+      accessKeyUsed: user.accessKeyUsed,
+      password: user.password // Include password for admins/developers only
     }));
   }
 
@@ -824,7 +832,7 @@ export class MemStorage implements IStorage {
       accessKey.isActive = false;
       this.accessKeys.set(key, accessKey);
       await this.saveToFileSystem();
-      
+
       // Revoke all sessions for users who used this expired key
       await this.revokeSessionsForExpiredKey(key);
     }
@@ -843,7 +851,7 @@ export class MemStorage implements IStorage {
       for (const user of usersWithExpiredKey) {
         const sessionsToRemove = Array.from(this.sessions.entries())
           .filter(([token, session]) => session.userId === user.id);
-        
+
         for (const [token, session] of sessionsToRemove) {
           this.sessions.delete(token);
           console.log(`🔒 Revoked session for user ${user.username} due to expired access key: ${expiredKey}`);
@@ -909,7 +917,7 @@ export class MemStorage implements IStorage {
   }): Promise<string[]> {
     const { keyPrefix, keyCount, usageLimit, expirationDays, createdBy } = params;
     const createdKeys: string[] = [];
-    
+
     let expirationDate = null;
     if (expirationDays && expirationDays > 0) {
       expirationDate = new Date();
@@ -918,12 +926,12 @@ export class MemStorage implements IStorage {
 
     for (let i = 1; i <= keyCount; i++) {
       const keyValue = `${keyPrefix}-${i.toString().padStart(6, '0')}`;
-      
+
       // Skip if key already exists
       if (this.accessKeys.has(keyValue)) {
         continue;
       }
-      
+
       const accessKey: AccessKey = {
         id: randomUUID(),
         key: keyValue,
@@ -934,11 +942,11 @@ export class MemStorage implements IStorage {
         expirationDate,
         createdBy
       };
-      
+
       this.accessKeys.set(keyValue, accessKey);
       createdKeys.push(keyValue);
     }
-    
+
     await this.saveToFileSystem(); // Persist bulk key creation
     return createdKeys;
   }
@@ -955,21 +963,46 @@ export class MemStorage implements IStorage {
     const totalKeys = this.accessKeys.size;
     const activeKeys = Array.from(this.accessKeys.values()).filter(key => key.isActive).length;
     const totalLogs = this.ipLogs.size;
-    const totalExtensions = this.extensionLogs.size;
-    
+
     // Calculate recent activity (last 24 hours)
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const recentActivity = Array.from(this.ipLogs.values()).filter(log => 
       new Date(log.timestamp) > twentyFourHoursAgo
     ).length;
-    
+
     return {
       totalUsers,
       totalKeys,
       activeKeys,
       totalLogs,
       recentActivity,
-      totalExtensions
+      totalExtensions: this.extensionLogs.size // Added totalExtensions here
+    };
+  }
+
+  async getExtensionStats(): Promise<{
+    totalExtensions: number;
+    successfulExtensions: number;
+    failedExtensions: number;
+    totalDownloads: number;
+    recentExtensions: number;
+  }> {
+    const totalExtensions = this.extensionLogs.size;
+    const successfulExtensions = Array.from(this.extensionLogs.values()).filter(log => log.generationStatus === 'success').length;
+    const failedExtensions = Array.from(this.extensionLogs.values()).filter(log => log.generationStatus === 'error').length;
+    const totalDownloads = Array.from(this.extensionLogs.values()).reduce((sum, log) => sum + (log.downloadCount || 0), 0);
+
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const recentExtensions = Array.from(this.extensionLogs.values()).filter(log => 
+      new Date(log.createdAt) > oneHourAgo
+    ).length;
+
+    return {
+      totalExtensions,
+      successfulExtensions,
+      failedExtensions,
+      totalDownloads,
+      recentExtensions
     };
   }
 
@@ -1336,7 +1369,7 @@ export class MemStorage implements IStorage {
       lastWebhookSent: null,
     };
     this.extensionLogs.set(id, newExtensionLog);
-    
+
     try {
       await this.saveToFileSystem();
       console.log(`✅ Extension Log saved: ${extensionLog.extensionName} - Total logs: ${this.extensionLogs.size}`);
@@ -1370,11 +1403,11 @@ export class MemStorage implements IStorage {
     let logs = Array.from(this.extensionLogs.values()).filter(log => 
       new Date(log.createdAt) > cutoffTime
     );
-    
+
     if (userId) {
       logs = logs.filter(log => log.userId === userId);
     }
-    
+
     return logs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
