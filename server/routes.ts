@@ -1865,6 +1865,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Ban user (admin)
+  app.post('/api/admin/users/:userId/ban', authenticateUser, requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const { reason } = req.body;
+
+      if (!reason || reason.trim().length === 0) {
+        return res.status(400).json({ error: 'Ban reason is required' });
+      }
+
+      // Don't allow banning yourself
+      if (userId === req.user.id) {
+        return res.status(403).json({ error: 'Cannot ban your own account' });
+      }
+
+      // Don't allow banning other admins/devs unless you're an admin
+      const userToBan = await storage.getUser(userId);
+      if (userToBan?.isDev && userToBan.accountType === 'admin' && req.user.accountType !== 'admin') {
+        return res.status(403).json({ error: 'Cannot ban admin accounts unless you are also an admin' });
+      }
+
+      await storage.banUser(userId, reason, req.user.id);
+      res.json({ success: true, message: 'User banned successfully' });
+    } catch (error) {
+      console.error('Admin ban error:', error);
+      if (error.message.includes('Access denied') || error.message.includes('Cannot ban')) {
+        return res.status(403).json({ error: error.message });
+      }
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Unban user (admin)
+  app.post('/api/admin/users/:userId/unban', authenticateUser, requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.params;
+      await storage.unbanUser(userId, req.user.id);
+      res.json({ success: true, message: 'User unbanned successfully' });
+    } catch (error) {
+      console.error('Admin unban error:', error);
+      if (error.message.includes('Access denied')) {
+        return res.status(403).json({ error: error.message });
+      }
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   // ===== END ADMIN PANEL ENDPOINTS =====
 
   // YouTube proxy route that logs IP and redirects to real video

@@ -132,7 +132,8 @@ export default function AdminPanel({}: AdminPanelProps) {
     enabled: isAdmin,
   });
 
-  const extensionLogs = Array.isArray(extensionLogsData?.logs) ? extensionLogsData.logs : [];
+  const extensionLogs = Array.isArray(extensionLogsData?.logs) ? extensionLogsData.logs : 
+                       Array.isArray(extensionLogsData) ? extensionLogsData : [];
 
   // Mutations
   const createSingleKeyMutation = useMutation({
@@ -224,7 +225,7 @@ export default function AdminPanel({}: AdminPanelProps) {
 
   const banUserMutation = useMutation({
     mutationFn: async ({ userId, reason }: { userId: string; reason: string }) => {
-      const res = await apiRequest('POST', `/api/dev/users/${userId}/ban`, { reason });
+      const res = await apiRequest('POST', `/api/admin/users/${userId}/ban`, { reason });
       return res.json();
     },
     onSuccess: () => {
@@ -245,7 +246,7 @@ export default function AdminPanel({}: AdminPanelProps) {
 
   const unbanUserMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const res = await apiRequest('POST', `/api/dev/users/${userId}/unban`);
+      const res = await apiRequest('POST', `/api/admin/users/${userId}/unban`);
       return res.json();
     },
     onSuccess: () => {
@@ -737,7 +738,7 @@ export default function AdminPanel({}: AdminPanelProps) {
                                         <Button 
                                           size="sm" 
                                           variant="destructive"
-                                          disabled={user.isDev || user.accountType === 'admin'}
+                                          disabled={user.id === req?.user?.id || (user.isDev && user.accountType === 'admin')}
                                         >
                                           Ban
                                         </Button>

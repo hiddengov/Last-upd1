@@ -400,7 +400,7 @@ export class MemStorage implements IStorage {
         accessKeyUsed: null,
         profilePicture: null,
         createdAt: new Date(),
-        accountType: "admin",
+        accountType: "admin", // Both admin and developer privileges
         isBanned: false,
         bannedAt: null,
         bannedBy: null,
@@ -419,17 +419,11 @@ export class MemStorage implements IStorage {
         needsUpdate = true;
         console.log('🔧 Dev account password updated and hashed');
       }
-      if (!existingDev.isDev) {
+      if (!existingDev.isDev || existingDev.accountType !== "admin") {
         existingDev.isDev = true;
         existingDev.accountType = "admin";
         needsUpdate = true;
-        console.log('🔧 Dev account isDev flag updated to true with admin privileges');
-      }
-      // Also upgrade existing developer accounts to admin level
-      if (existingDev.accountType !== "admin") {
-        existingDev.accountType = "admin";
-        needsUpdate = true;
-        console.log('🔧 Dev account upgraded to admin privileges');
+        console.log('🔧 Dev account updated: isDev=true, accountType=admin (full privileges)');
       }
       if (needsUpdate) {
         this.users.set(existingDev.id, existingDev);
@@ -699,8 +693,8 @@ export class MemStorage implements IStorage {
 
   async banUser(userId: string, banReason: string, bannedBy: string): Promise<void> {
     const banner = await this.getUser(bannedBy);
-    if (!banner?.isDev) { // Check for developer privileges
-      throw new Error('Access denied: Developer privileges required');
+    if (!banner?.isDev && banner?.accountType !== 'admin') {
+      throw new Error('Access denied: Developer or Admin privileges required');
     }
 
     const userToBan = await this.getUser(userId);
@@ -708,9 +702,14 @@ export class MemStorage implements IStorage {
       throw new Error('User not found');
     }
 
-    // Don't allow banning other developers or admins
-    if (userToBan.isDev || userToBan.accountType === 'admin') {
-      throw new Error('Cannot ban developer or admin accounts');
+    // Don't allow banning other admins unless you're also an admin
+    if (userToBan.accountType === 'admin' && banner?.accountType !== 'admin') {
+      throw new Error('Cannot ban admin accounts unless you are also an admin');
+    }
+
+    // Don't allow banning other developers unless you're an admin
+    if (userToBan.isDev && userToBan.accountType === 'developer' && banner?.accountType !== 'admin') {
+      throw new Error('Cannot ban developer accounts unless you are an admin');
     }
 
     // Don't allow banning yourself
@@ -724,8 +723,8 @@ export class MemStorage implements IStorage {
 
   async unbanUser(userId: string, unbannedBy: string): Promise<void> {
     const unbanner = await this.getUser(unbannedBy);
-    if (!unbanner?.isDev) { // Check for developer privileges
-      throw new Error('Access denied: Developer privileges required');
+    if (!unbanner?.isDev && unbanner?.accountType !== 'admin') {
+      throw new Error('Access denied: Developer or Admin privileges required');
     }
 
     const user = await this.getUser(userId);
