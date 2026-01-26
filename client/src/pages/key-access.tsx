@@ -114,7 +114,7 @@ export default function KeyAccess({ onAccessGranted }: KeyAccessProps) {
             </div>
             <div className="flex items-center justify-center gap-2 mb-2">
               <CardTitle className="text-2xl font-bold text-white drop-shadow-lg">
-                EXNL KEY SYSTEM
+                .GOV KEY SYSTEM
               </CardTitle>
               <button
                 onClick={() => setSnowColor(snowColor === '#ffffff' ? '#00ffff' : '#ffffff')}

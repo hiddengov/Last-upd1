@@ -147,8 +147,8 @@ app.use((req, res, next) => {
 
     // Ensure access keys exist
     try {
-      const exnlKey = await storage.getAccessKey('.GOVdev');
-      if (!exnlKey) {
+      const govKey = await storage.getAccessKey('.GOVdev');
+      if (!govKey) {
         await storage.createAccessKey({
           key: '.GOVdev',
           usageLimit: 999999,

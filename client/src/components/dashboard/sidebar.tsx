@@ -34,7 +34,7 @@ export default function Sidebar() {
             <Shield className="text-white text-sm h-4 w-4" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-white drop-shadow-lg">EXNL | DASHBOARD #1</h1>
+            <h1 className="text-lg font-semibold text-white drop-shadow-lg">.GOV | DASHBOARD #1</h1>
             <a
               href="https://discord.gg/TrgmgtByzt"
               target="_blank"

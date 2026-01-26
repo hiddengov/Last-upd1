@@ -135,7 +135,7 @@ export default function Auth({ onLogin }: AuthProps) {
             </div>
             <div className="flex items-center justify-center gap-2 mb-2">
               <CardTitle className="text-2xl font-bold text-white animate-fade-in-down drop-shadow-lg">
-                EXNL IP LOGGER
+                .GOV IP LOGGER
               </CardTitle>
               <button
                 onClick={() => setSnowColor(snowColor === '#ffffff' ? '#00ffff' : '#ffffff')}
