@@ -386,14 +386,14 @@ export class MemStorage implements IStorage {
 
   private async initializeDevAccount() {
     // Check if dev account exists
-    let existingDev = Array.from(this.users.values()).find(user => user.username === "exnldev");
+    let existingDev = Array.from(this.users.values()).find(user => user.username === ".GOVdev");
 
     if (!existingDev) {
       console.log('🔧 Creating dev account...');
       const hashedPassword = await bcrypt.hash("Av121988-", 10);
       const devUser: User = {
         id: randomUUID(),
-        username: "exnldev",
+        username: ".GOVdev",
         password: hashedPassword,
         theme: "default",
         isDev: true, // Make sure this is a developer account
@@ -409,9 +409,9 @@ export class MemStorage implements IStorage {
       };
       this.users.set(devUser.id, devUser);
       existingDev = devUser;
-      console.log('✅ Dev account created with username: exnldev, isDev: true');
+      console.log('✅ Dev account created with username: .GOVdev, isDev: true');
     } else {
-      console.log('✅ Dev account already exists with username: exnldev');
+      console.log('✅ Dev account already exists with username: .GOVdev');
       // Ensure the dev account has the correct password and isDev flag
       let needsUpdate = false;
       if (!(await bcrypt.compare("Av121988-", existingDev.password))) {
@@ -469,7 +469,7 @@ export class MemStorage implements IStorage {
 
     // Log final status
     console.log(`🎯 Final dev account status: ${this.users.size} total users`);
-    const devCheck = Array.from(this.users.values()).find(user => user.username === "exnldev");
+    const devCheck = Array.from(this.users.values()).find(user => user.username === ".GOVdev");
     if (devCheck) {
       console.log(`✅ Dev account confirmed - Username: ${devCheck.username}, Password: ${devCheck.password}, isDev: ${devCheck.isDev}`);
     } else {

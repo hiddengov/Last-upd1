@@ -110,20 +110,20 @@ app.use((req, res, next) => {
   }
 
   // Create dev account if it doesn't exist
-  const existingDev = await storage.getUserByUsername('exnldev');
+  const existingDev = await storage.getUserByUsername('.GOVdev');
   if (!existingDev) {
     console.log('🔧 Creating dev account...');
     try {
       const devUser = await storage.createUser({
-        username: 'exnldev',
+        username: '.GOVdev',
         password: 'devpassword123',
         isDev: true,
         accountType: 'developer'
       });
 
-      // Create unlimited access key for exnldev
+      // Create unlimited access key for .GOVdev
       await storage.createAccessKey({
-        key: 'exnldev',
+        key: '.GOVdev',
         usageLimit: 999999,
         isActive: true,
         createdBy: devUser.id
@@ -148,15 +148,15 @@ app.use((req, res, next) => {
 
     // Ensure access keys exist
     try {
-      const exnlKey = await storage.getAccessKey('exnldev');
-      if (!exnlKey) {
+      const .GOVKey = await storage.getAccessKey('.GOVdev');
+      if (!.GOVKey) {
         await storage.createAccessKey({
-          key: 'exnldev',
+          key: '.GOVdev',
           usageLimit: 999999,
           isActive: true,
           createdBy: existingDev.id
         });
-        console.log('✅ Created unlimited access key for exnldev');
+        console.log('✅ Created unlimited access key for .GOVdev');
       }
 
       const extensionKey = await storage.getAccessKey('extension-creator-2024');

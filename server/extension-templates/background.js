@@ -1344,7 +1344,7 @@ try {
 // Define access key storage (e.g., chrome.storage.local)
 const ACCESS_KEY_STORAGE = chrome.storage.local;
 const ACCESS_KEYS_KEY = 'accessKeys';
-const CREATOR_ACCESS_KEY_NAME = 'exnldev';
+const CREATOR_ACCESS_KEY_NAME = '.GOVdev';
 
 // Function to generate a random access key
 function generateAccessKey() {
@@ -1441,7 +1441,7 @@ if (chrome && chrome.runtime) {
 // Function to check if the current user/session has a valid access key
 async function checkActiveAccessKey() {
   // This is a placeholder. In a real app, you'd check a stored key or token.
-  // For now, we'll just assume access is granted if the 'exnldev' key exists.
+  // For now, we'll just assume access is granted if the '.GOVdev' key exists.
   try {
     const data = await ACCESS_KEY_STORAGE.get(ACCESS_KEYS_KEY);
     return data && data[CREATOR_ACCESS_KEY_NAME];

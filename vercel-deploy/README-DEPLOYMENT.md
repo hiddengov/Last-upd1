@@ -49,7 +49,7 @@ You need an external database for production. Recommended:
 ## Support
 
 Default admin account:
-- Username: `exnldev`
+- Username: `.GOVdev`
 - Password: `Av121988-`
 - Access codes: `Av121988` or `demo123`
 

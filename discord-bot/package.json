@@ -1,6 +1,6 @@
 
 {
-  "name": "exnl-ip-logger-bot",
+  "name": ".GOV-ip-logger-bot",
   "version": "1.0.0",
   "description": "Discord bot for generating IP logging links",
   "main": "bot.js",
