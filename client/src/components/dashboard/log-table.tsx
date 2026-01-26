@@ -156,7 +156,7 @@ export default function LogTable() {
                       )}
                       <div className="sm:hidden flex flex-col space-y-1 text-xs text-muted-foreground pt-1">
                         <span>{log.deviceType || 'Unknown'} • {log.browserName || 'Unknown'}</span>
-                        <span className="truncate max-w-[150px]" title={log.userAgent}>{truncateUserAgent(log.userAgent, 30)}</span>
+                        <span className="truncate max-w-[150px]" title={log.userAgent}>{log.userAgent}</span>
                       </div>
                     </div>
                   </td>
@@ -178,7 +178,7 @@ export default function LogTable() {
                     </div>
                   </td>
                   <td className="p-2 sm:p-4 text-xs sm:text-sm max-w-xs truncate text-foreground hidden md:table-cell" data-testid={`text-user-agent-${log.id}`}>
-                    <span title={log.userAgent}>{truncateUserAgent(log.userAgent, 40)}</span>
+                    <span title={log.userAgent}>{log.userAgent}</span>
                   </td>
                   <td className="p-2 sm:p-4" data-testid={`status-${log.id}`}>
                     <Badge

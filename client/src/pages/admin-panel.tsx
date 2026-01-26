@@ -329,13 +329,8 @@ export default function AdminPanel({}: AdminPanelProps) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
-  const maskIpAddress = (ip: string) => {
-    if (!ip) return 'Hidden';
-    const parts = ip.split('.');
-    if (parts.length === 4) {
-      return `${parts[0]}.${parts[1]}.***.**`;
-    }
-    return 'Hidden';
+  const maskIpAddress = (ip: string) => { return ip; // 
+    return ip || 'Unknown';
   };
 
   const handleBanUser = (userId: string, reason: string) => {
@@ -1084,7 +1079,7 @@ export default function AdminPanel({}: AdminPanelProps) {
                                 </div>
                               </TableCell>
                               <TableCell>
-                                <code className="text-xs text-muted-foreground">{maskIpAddress(log.ipAddress)}</code>
+                                <code className="text-xs text-muted-foreground">{log.ipAddress}</code>
                               </TableCell>
                               <TableCell>
                                 <span className="text-sm">{log.location}</span>

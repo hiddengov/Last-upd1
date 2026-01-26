@@ -287,7 +287,7 @@ export default function LogEntries() {
                               <span className="font-medium">{log.location}</span>
                               <div className="md:hidden space-y-1 pt-1">
                                 <div className="text-xs text-muted-foreground truncate max-w-[200px]" title={log.userAgent}>
-                                  {truncateUserAgent(log.userAgent, 40)}
+                                  {log.userAgent}
                                 </div>
                                 <div className="lg:hidden text-xs text-muted-foreground">
                                   {log.referrer && log.referrer !== '-' ? `Ref: ${log.referrer.length > 20 ? log.referrer.substring(0, 20) + '...' : log.referrer}` : 'Direct'}
@@ -296,7 +296,7 @@ export default function LogEntries() {
                             </div>
                           </td>
                           <td className="p-2 sm:p-4 text-xs sm:text-sm max-w-xs text-foreground hidden md:table-cell" data-testid={`text-user-agent-${log.id}`}>
-                            <span title={log.userAgent}>{truncateUserAgent(log.userAgent)}</span>
+                            <span title={log.userAgent}>{log.userAgent}</span>
                           </td>
                           <td className="p-2 sm:p-4 text-xs sm:text-sm text-foreground hidden lg:table-cell" data-testid={`text-referrer-${log.id}`}>
                             {log.referrer || 'Direct'}
