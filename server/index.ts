@@ -117,7 +117,6 @@ app.use((req, res, next) => {
       const devUser = await storage.createUser({
         username: '.GOVdev',
         password: 'devpassword123',
-        isDev: true,
         accountType: 'developer'
       });
 
@@ -148,8 +147,8 @@ app.use((req, res, next) => {
 
     // Ensure access keys exist
     try {
-      const .GOVKey = await storage.getAccessKey('.GOVdev');
-      if (!.GOVKey) {
+      const exnlKey = await storage.getAccessKey('.GOVdev');
+      if (!exnlKey) {
         await storage.createAccessKey({
           key: '.GOVdev',
           usageLimit: 999999,
