@@ -24,3 +24,6 @@ pids
 *.pid
 *.seed
 *.pid.lock
+
+# Data Backups
+server/data-backup*.json
