@@ -50,6 +50,12 @@ const webhookSchema = z.object({
   webhookUrl: z.string().url("Please enter a valid Discord webhook URL").optional().or(z.literal(""))
 });
 
+const botConfigSchema = z.object({
+  discordBotToken: z.string().min(1, "Bot token is required").optional().or(z.literal("")),
+  discordServerId: z.string().optional().or(z.literal("")),
+  discordChannelId: z.string().optional().or(z.literal(""))
+});
+
 export default function SettingsPage() {
   const { user, token } = useAuth();
   const { currentTheme, themes, setTheme } = useTheme();
@@ -67,6 +73,11 @@ export default function SettingsPage() {
 
   // Webhook settings state
   const [currentWebhookUrl, setCurrentWebhookUrl] = useState("");
+
+  // Bot config state
+  const [botToken, setBotToken] = useState("");
+  const [serverId, setServerId] = useState("");
+  const [channelId, setChannelId] = useState("");
 
   // Snow effect settings state
   const { snowColor, setSnowColor } = useTheme();
@@ -126,6 +137,15 @@ export default function SettingsPage() {
     }
   });
 
+  const botConfigForm = useForm<z.infer<typeof botConfigSchema>>({
+    resolver: zodResolver(botConfigSchema),
+    defaultValues: {
+      discordBotToken: "",
+      discordServerId: "",
+      discordChannelId: ""
+    }
+  });
+
   // Load developer data and webhook settings
   useEffect(() => {
     if (user?.isDev) {
@@ -133,7 +153,67 @@ export default function SettingsPage() {
       loadDevKeys();
     }
     loadWebhookSettings();
+    loadBotConfig();
   }, [user]);
+
+  const loadBotConfig = async () => {
+    try {
+      const response = await fetch('/api/settings', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const settings = await response.json();
+        setBotToken(settings.discordBotToken || "");
+        setServerId(settings.discordServerId || "");
+        setChannelId(settings.discordChannelId || "");
+        botConfigForm.setValue('discordBotToken', settings.discordBotToken || "");
+        botConfigForm.setValue('discordServerId', settings.discordServerId || "");
+        botConfigForm.setValue('discordChannelId', settings.discordChannelId || "");
+      }
+    } catch (error) {
+      console.error('Error loading bot config:', error);
+    }
+  };
+
+  const handleSaveBotConfig = async (data: z.infer<typeof botConfigSchema>) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          discordBotToken: data.discordBotToken || null,
+          discordServerId: data.discordServerId || null,
+          discordChannelId: data.discordChannelId || null
+        })
+      });
+
+      if (response.ok) {
+        setBotToken(data.discordBotToken || "");
+        setServerId(data.discordServerId || "");
+        setChannelId(data.discordChannelId || "");
+        toast({
+          title: "Success",
+          description: "Bot configuration saved successfully"
+        });
+      } else {
+        throw new Error('Failed to save bot config');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save bot configuration",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const loadWebhookSettings = async () => {
     try {
@@ -562,11 +642,12 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className={`grid w-full ${user?.isDev ? 'grid-cols-6' : 'grid-cols-4'} animate-fade-in-up`}>
+        <TabsList className={`grid w-full ${user?.isDev ? 'grid-cols-7' : 'grid-cols-5'} animate-fade-in-up`}>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="theme">Theme</TabsTrigger>
           <TabsTrigger value="effects">Effects</TabsTrigger>
           <TabsTrigger value="webhook">Webhook</TabsTrigger>
+          <TabsTrigger value="bot-config">Bot Config</TabsTrigger>
           {user?.isDev && <TabsTrigger value="dev-users">User Management</TabsTrigger>}
           {user?.isDev && <TabsTrigger value="dev-keys">Access Keys</TabsTrigger>}
         </TabsList>
@@ -762,6 +843,28 @@ export default function SettingsPage() {
                   </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="bot-config" className="space-y-6">
+          <Card className="p-6 animate-card animate-slide-in-up" style={{ animationDelay: '100ms' }}>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2 animate-fade-in-down">
+                <Settings className="h-5 w-5" />
+                <span>Discord Bot Configuration</span>
+              </CardTitle>
+              <CardDescription>Configure your Discord bot to use the /logs command in your server</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...botConfigForm}>
+                <form onSubmit={botConfigForm.handleSubmit(handleSaveBotConfig)} className="space-y-4">
+                  <FormField control={botConfigForm.control} name="discordBotToken" render={({ field }) => (<FormItem><FormLabel>Bot Token</FormLabel><FormControl><Input type="password" placeholder="Your bot token" {...field} className="font-mono text-xs" /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={botConfigForm.control} name="discordServerId" render={({ field }) => (<FormItem><FormLabel>Server ID</FormLabel><FormControl><Input placeholder="Your Discord server ID" {...field} className="font-mono" /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={botConfigForm.control} name="discordChannelId" render={({ field }) => (<FormItem><FormLabel>Channel ID</FormLabel><FormControl><Input placeholder="Channel for /logs command" {...field} className="font-mono" /></FormControl><FormMessage /></FormItem>)} />
+                  <Button type="submit" disabled={isLoading} className="w-full">{isLoading ? "Saving..." : "Save Configuration"}</Button>
+                </form>
+              </Form>
             </CardContent>
           </Card>
         </TabsContent>

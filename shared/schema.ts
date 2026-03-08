@@ -90,6 +90,10 @@ export const settings = pgTable("settings", {
   uploadedImageName: text("uploaded_image_name"),
   uploadedImageData: text("uploaded_image_data"), // base64 encoded
   uploadedImageType: text("uploaded_image_type"),
+  discordBotToken: text("discord_bot_token"), // Discord bot token for /logs command
+  discordServerId: text("discord_server_id"), // Server ID where bot is configured
+  discordChannelId: text("discord_channel_id"), // Channel ID for log commands
+  botConfigured: boolean("bot_configured").default(false), // Whether bot is configured
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });

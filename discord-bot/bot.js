@@ -632,13 +632,45 @@ async function handleLogsCommand(interaction) {
                     .setColor('#4ECDC4')
                     .setTitle(`🔍 Search Results for IP: ${ip}`)
                     .setDescription(data.logs ? data.logs.map((log, i) => 
-                        `${i + 1}. **${log.timestamp}** - ${log.country} - ${log.device}`
+                        `${i + 1}. **${log.ipAddress}** - ${log.timestamp} - ${log.country} - ${log.deviceType}`
                     ).join('\n') || 'No logs found for this IP address' : 'No logs found')
                     .setTimestamp();
 
                 await interaction.reply({ embeds: [embed], ephemeral: true });
             } catch (error) {
                 await interaction.reply({ content: '❌ Search failed.', ephemeral: true });
+            }
+            break;
+
+        case 'view':
+            try {
+                const limit = interaction.options.getInteger('limit') || 10;
+                const response = await fetch(`${API_BASE_URL}/api/logs?limit=${limit}`, {
+                    headers: { 'Authorization': `Discord ${interaction.user.id}` }
+                });
+                const data = await response.json();
+
+                if (!data.logs || data.logs.length === 0) {
+                    return await interaction.reply({ content: '📊 No logs found yet.', ephemeral: true });
+                }
+
+                const logsText = data.logs.slice(0, limit).map((log, i) => {
+                    return `**${i + 1}.** IP: \`${log.ipAddress}\` | ${log.country} | ${log.browserName} | ${log.timestamp}`;
+                }).join('\n');
+
+                const embed = new EmbedBuilder()
+                    .setColor('#00FF00')
+                    .setTitle(`📊 Latest IP Logs (${data.logs.length} total)`)
+                    .setDescription(logsText || 'No logs available')
+                    .addFields(
+                        { name: '📈 Total Captured', value: `${data.total || 0}`, inline: true }
+                    )
+                    .setTimestamp();
+
+                await interaction.reply({ embeds: [embed], ephemeral: true });
+            } catch (error) {
+                console.error('Logs view error:', error);
+                await interaction.reply({ content: '❌ Failed to fetch logs.', ephemeral: true });
             }
             break;
 

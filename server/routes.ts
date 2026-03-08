@@ -2953,7 +2953,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         webhookUrl: settings.webhookUrl,
         uploadedImageName: settings.uploadedImageName,
-        hasUploadedImage: !!settings.uploadedImageData
+        hasUploadedImage: !!settings.uploadedImageData,
+        discordBotToken: settings.discordBotToken,
+        discordServerId: settings.discordServerId,
+        discordChannelId: settings.discordChannelId
       });
     } catch (error) {
       console.error('Error updating settings:', error);
