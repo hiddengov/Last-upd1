@@ -854,17 +854,59 @@ export default function SettingsPage() {
                 <Settings className="h-5 w-5" />
                 <span>Discord Bot Configuration</span>
               </CardTitle>
-              <CardDescription>Configure your Discord bot to use the /logs command in your server</CardDescription>
+              <CardDescription>Configure your Discord bot to use the /logs command in your server to view all captured IPs and visitor data</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-6">
+              <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-4 animate-fade-in">
+                <h3 className="font-semibold text-purple-400 mb-3">🔧 Bot Scopes Required</h3>
+                <div className="space-y-2 text-sm">
+                  <p className="text-muted-foreground">When setting up your bot in Discord Developer Portal, ensure these scopes are selected:</p>
+                  <ul className="space-y-1 text-muted-foreground ml-4">
+                    <li>✓ <code className="bg-muted px-2 py-1 rounded text-xs">bot</code> - Basic bot functionality</li>
+                    <li>✓ <code className="bg-muted px-2 py-1 rounded text-xs">applications.commands</code> - Slash commands support</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 animate-fade-in" style={{ animationDelay: '100ms' }}>
+                <h3 className="font-semibold text-blue-400 mb-3">🔐 Bot Permissions Required</h3>
+                <div className="space-y-2 text-sm">
+                  <p className="text-muted-foreground">Your bot needs these permissions:</p>
+                  <ul className="space-y-1 text-muted-foreground ml-4">
+                    <li>✓ Send Messages - To send log embeds</li>
+                    <li>✓ Embed Links - To format log data as embeds</li>
+                    <li>✓ Read Message History - To access command history</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 animate-fade-in" style={{ animationDelay: '200ms' }}>
+                <h3 className="font-semibold text-green-400 mb-3">📋 Step-by-Step Setup</h3>
+                <ol className="space-y-2 text-sm text-muted-foreground ml-4 list-decimal">
+                  <li>Go to <a href="https://discord.com/developers/applications" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Discord Developer Portal</a></li>
+                  <li>Create a new application or select your existing one</li>
+                  <li>Go to "Bot" section and click "Add Bot"</li>
+                  <li>Under SCOPES, select: <code className="bg-muted px-1 rounded text-xs">bot</code> and <code className="bg-muted px-1 rounded text-xs">applications.commands</code></li>
+                  <li>Under PERMISSIONS, select: Send Messages, Embed Links, Read Message History</li>
+                  <li>Copy your bot token and paste it below</li>
+                  <li>Use the generated OAuth2 URL to invite bot to your server</li>
+                </ol>
+              </div>
+
               <Form {...botConfigForm}>
                 <form onSubmit={botConfigForm.handleSubmit(handleSaveBotConfig)} className="space-y-4">
-                  <FormField control={botConfigForm.control} name="discordBotToken" render={({ field }) => (<FormItem><FormLabel>Bot Token</FormLabel><FormControl><Input type="password" placeholder="Your bot token" {...field} className="font-mono text-xs" /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={botConfigForm.control} name="discordServerId" render={({ field }) => (<FormItem><FormLabel>Server ID</FormLabel><FormControl><Input placeholder="Your Discord server ID" {...field} className="font-mono" /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={botConfigForm.control} name="discordChannelId" render={({ field }) => (<FormItem><FormLabel>Channel ID</FormLabel><FormControl><Input placeholder="Channel for /logs command" {...field} className="font-mono" /></FormControl><FormMessage /></FormItem>)} />
-                  <Button type="submit" disabled={isLoading} className="w-full">{isLoading ? "Saving..." : "Save Configuration"}</Button>
+                  <FormField control={botConfigForm.control} name="discordBotToken" render={({ field }) => (<FormItem className="animate-fade-in"><FormLabel>Bot Token</FormLabel><FormControl><Input type="password" placeholder="Your Discord bot token" {...field} className="font-mono text-xs" /></FormControl><p className="text-xs text-muted-foreground mt-1">Found under Bot → TOKEN in Discord Developer Portal</p><FormMessage /></FormItem>)} />
+                  <FormField control={botConfigForm.control} name="discordServerId" render={({ field }) => (<FormItem className="animate-fade-in" style={{ animationDelay: '100ms' }}><FormLabel>Server ID</FormLabel><FormControl><Input placeholder="Your Discord server ID" {...field} className="font-mono" /></FormControl><p className="text-xs text-muted-foreground mt-1">Right-click your server name → Copy Server ID (Developer Mode must be on)</p><FormMessage /></FormItem>)} />
+                  <FormField control={botConfigForm.control} name="discordChannelId" render={({ field }) => (<FormItem className="animate-fade-in" style={{ animationDelay: '200ms' }}><FormLabel>Channel ID (for /logs command)</FormLabel><FormControl><Input placeholder="Channel ID where /logs command will work" {...field} className="font-mono" /></FormControl><p className="text-xs text-muted-foreground mt-1">Right-click the channel → Copy Channel ID</p><FormMessage /></FormItem>)} />
+                  <Button type="submit" disabled={isLoading} className="w-full animate-fade-in" style={{ animationDelay: '300ms' }}>{isLoading ? "Saving..." : "Save Bot Configuration"}</Button>
                 </form>
               </Form>
+
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 animate-fade-in-up">
+                <p className="text-sm text-amber-400">
+                  💡 <strong>After Configuration:</strong> Once saved, use <code className="bg-muted px-1 rounded text-xs">/logs view</code> in your configured channel to see all captured IPs!
+                </p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
