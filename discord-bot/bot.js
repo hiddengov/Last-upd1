@@ -172,6 +172,53 @@ async function registerSlashCommands() {
                 subcommand
                     .setName('tracking')
                     .setDescription('View active tracking links')
+            )
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName('stats')
+                    .setDescription('View log statistics and analytics')
+            )
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName('geo')
+                    .setDescription('View geographic distribution of IPs')
+            )
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName('devices')
+                    .setDescription('View device and browser statistics')
+            )
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName('countries')
+                    .setDescription('View logs by country')
+                    .addStringOption(option =>
+                        option.setName('country')
+                            .setDescription('Filter by country name')
+                            .setRequired(false)
+                    )
+            )
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName('recent')
+                    .setDescription('View most recent logs')
+                    .addIntegerOption(option =>
+                        option.setName('limit')
+                            .setDescription('Number of logs to show (1-50)')
+                            .setMinValue(1)
+                            .setMaxValue(50)
+                            .setRequired(false)
+                    )
+            )
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName('delete')
+                    .setDescription('Delete logs for a specific IP')
+                    .addStringOption(option =>
+                        option.setName('ip')
+                            .setDescription('IP address to delete logs for')
+                            .setRequired(true)
+                    )
             ),
 
         // User Management Commands
@@ -723,6 +770,188 @@ async function handleLogsCommand(interaction) {
                 await interaction.reply({ embeds: [embed], ephemeral: true });
             } catch (error) {
                 await interaction.reply({ content: '❌ Failed to fetch tracking links.', ephemeral: true });
+            }
+            break;
+
+        case 'stats':
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/logs`, {
+                    headers: { 'Authorization': `Discord ${interaction.user.id}` }
+                });
+                const data = await response.json();
+                const logs = data.logs || [];
+
+                const uniqueIPs = new Set(logs.map(l => l.ipAddress)).size;
+                const countries = [...new Set(logs.map(l => l.country))].length;
+                const devices = [...new Set(logs.map(l => l.deviceType))].length;
+
+                const embed = new EmbedBuilder()
+                    .setColor('#3498DB')
+                    .setTitle('📊 Log Statistics')
+                    .addFields(
+                        { name: '📈 Total Logs', value: `${data.total || logs.length}`, inline: true },
+                        { name: '🌐 Unique IPs', value: `${uniqueIPs}`, inline: true },
+                        { name: '🗺️ Countries', value: `${countries}`, inline: true },
+                        { name: '💻 Device Types', value: `${devices}`, inline: true }
+                    )
+                    .setTimestamp();
+
+                await interaction.reply({ embeds: [embed], ephemeral: true });
+            } catch (error) {
+                await interaction.reply({ content: '❌ Failed to fetch statistics.', ephemeral: true });
+            }
+            break;
+
+        case 'geo':
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/logs`, {
+                    headers: { 'Authorization': `Discord ${interaction.user.id}` }
+                });
+                const data = await response.json();
+                const logs = data.logs || [];
+
+                const geoMap = {};
+                logs.forEach(log => {
+                    const country = log.country || 'Unknown';
+                    geoMap[country] = (geoMap[country] || 0) + 1;
+                });
+
+                const topCountries = Object.entries(geoMap)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 10)
+                    .map(([country, count]) => `🌍 **${country}**: ${count}`)
+                    .join('\n');
+
+                const embed = new EmbedBuilder()
+                    .setColor('#27AE60')
+                    .setTitle('🌍 Geographic Distribution')
+                    .setDescription(topCountries || 'No geographic data available')
+                    .setTimestamp();
+
+                await interaction.reply({ embeds: [embed], ephemeral: true });
+            } catch (error) {
+                await interaction.reply({ content: '❌ Failed to fetch geographic data.', ephemeral: true });
+            }
+            break;
+
+        case 'devices':
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/logs`, {
+                    headers: { 'Authorization': `Discord ${interaction.user.id}` }
+                });
+                const data = await response.json();
+                const logs = data.logs || [];
+
+                const deviceMap = {};
+                const browserMap = {};
+
+                logs.forEach(log => {
+                    const device = log.deviceType || 'Unknown';
+                    const browser = log.browserName || 'Unknown';
+                    deviceMap[device] = (deviceMap[device] || 0) + 1;
+                    browserMap[browser] = (browserMap[browser] || 0) + 1;
+                });
+
+                const topDevices = Object.entries(deviceMap)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([device, count]) => `📱 **${device}**: ${count}`)
+                    .join('\n');
+
+                const topBrowsers = Object.entries(browserMap)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5)
+                    .map(([browser, count]) => `🌐 **${browser}**: ${count}`)
+                    .join('\n');
+
+                const embed = new EmbedBuilder()
+                    .setColor('#E67E22')
+                    .setTitle('💻 Device & Browser Statistics')
+                    .addFields(
+                        { name: '📱 Devices', value: topDevices || 'No data', inline: true },
+                        { name: '🌐 Top Browsers', value: topBrowsers || 'No data', inline: true }
+                    )
+                    .setTimestamp();
+
+                await interaction.reply({ embeds: [embed], ephemeral: true });
+            } catch (error) {
+                await interaction.reply({ content: '❌ Failed to fetch device statistics.', ephemeral: true });
+            }
+            break;
+
+        case 'countries':
+            try {
+                const country = interaction.options.getString('country');
+                const response = await fetch(`${API_BASE_URL}/api/logs`, {
+                    headers: { 'Authorization': `Discord ${interaction.user.id}` }
+                });
+                const data = await response.json();
+                let logs = data.logs || [];
+
+                if (country) {
+                    logs = logs.filter(l => l.country && l.country.toLowerCase().includes(country.toLowerCase()));
+                }
+
+                const logsText = logs.slice(0, 15).map((log, i) => 
+                    `**${i + 1}.** \`${log.ipAddress}\` - ${log.country} - ${log.city}`
+                ).join('\n');
+
+                const embed = new EmbedBuilder()
+                    .setColor('#9B59B6')
+                    .setTitle(`🗺️ Logs by Country${country ? ` (${country})` : ''}`)
+                    .setDescription(logsText || 'No logs found')
+                    .addFields({ name: '📊 Total Found', value: `${logs.length}`, inline: true })
+                    .setTimestamp();
+
+                await interaction.reply({ embeds: [embed], ephemeral: true });
+            } catch (error) {
+                await interaction.reply({ content: '❌ Failed to fetch country data.', ephemeral: true });
+            }
+            break;
+
+        case 'recent':
+            try {
+                const limit = interaction.options.getInteger('limit') || 15;
+                const response = await fetch(`${API_BASE_URL}/api/logs?limit=${limit}`, {
+                    headers: { 'Authorization': `Discord ${interaction.user.id}` }
+                });
+                const data = await response.json();
+
+                const logsText = (data.logs || []).map((log, i) => 
+                    `**${i + 1}.** \`${log.ipAddress}\` | ${log.country} | ${log.browserName} | <t:${Math.floor(new Date(log.timestamp).getTime() / 1000)}:R>`
+                ).join('\n');
+
+                const embed = new EmbedBuilder()
+                    .setColor('#1ABC9C')
+                    .setTitle(`📋 Recent Logs (Last ${limit})`)
+                    .setDescription(logsText || 'No logs available')
+                    .setTimestamp();
+
+                await interaction.reply({ embeds: [embed], ephemeral: true });
+            } catch (error) {
+                await interaction.reply({ content: '❌ Failed to fetch recent logs.', ephemeral: true });
+            }
+            break;
+
+        case 'delete':
+            try {
+                const ip = interaction.options.getString('ip');
+                const response = await fetch(`${API_BASE_URL}/api/logs/delete/${ip}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Discord ${interaction.user.id}` }
+                });
+
+                if (response.ok) {
+                    const embed = new EmbedBuilder()
+                        .setColor('#E74C3C')
+                        .setTitle('🗑️ Logs Deleted')
+                        .setDescription(`All logs for IP \`${ip}\` have been deleted.`)
+                        .setTimestamp();
+                    await interaction.reply({ embeds: [embed], ephemeral: true });
+                } else {
+                    await interaction.reply({ content: `❌ Failed to delete logs for IP ${ip}`, ephemeral: true });
+                }
+            } catch (error) {
+                await interaction.reply({ content: '❌ Failed to delete logs.', ephemeral: true });
             }
             break;
     }
