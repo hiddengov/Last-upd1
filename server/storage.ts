@@ -1,5 +1,5 @@
 import { type User, type InsertUser, type IpLog, type InsertIpLog, type Settings, type InsertSettings, type AccessKey, type InsertAccessKey, type UserSession, type InsertUserSession, type RobloxLink, type InsertRobloxLink, type RobloxCredentials, type InsertRobloxCredentials, type ExtensionLog, type InsertExtensionLog } from "@shared/schema";
-import { randomUUID } from "crypto";
+import { randomUUID, randomBytes } from "crypto";
 import { desc, eq } from "drizzle-orm";
 import { users, ipLogs, settings, accessKeys, userSessions, robloxLinks, robloxCredentials, extensionLogs } from "@shared/schema";
 import fs from 'fs/promises'; // Use fs.promises for async operations
@@ -10,7 +10,9 @@ export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByRecoveryKey(username: string, recoveryKey: string): Promise<User | undefined>;
+  createUser(user: InsertUser & { email?: string }): Promise<User & { plainRecoveryKey: string }>;
   updateUserTheme(userId: string, theme: string): Promise<void>;
   updateUserProfile(userId: string, profileData: { username?: string; profilePicture?: string }): Promise<User>;
   updateUserPassword(userId: string, currentPassword: string, newPassword: string): Promise<void>;
@@ -21,6 +23,11 @@ export interface IStorage {
   banUser(userId: string, banReason: string, bannedBy: string): Promise<void>;
   unbanUser(userId: string, unbannedBy: string): Promise<void>;
   deleteUser(userId: string, deletedBy: string): Promise<void>;
+  updateUserEmail(userId: string, email: string): Promise<void>;
+  recoverAccountWithKey(username: string, recoveryKey: string, newPassword: string): Promise<User>;
+  setPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<void>;
+  consumePasswordResetToken(username: string, token: string, newPassword: string): Promise<User>;
+  updateUserLastLogin(userId: string): Promise<void>;
 
   // Access key operations
   createAccessKey(key: InsertAccessKey): Promise<AccessKey>;
@@ -487,13 +494,77 @@ export class MemStorage implements IStorage {
     );
   }
 
-  async createUser(insertUser: { username: string; password: string; accessKeyUsed?: string; accountType?: string }): Promise<User> {
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    for (const user of this.users.values()) {
+      if (user.email && user.email.toLowerCase() === email.toLowerCase()) return user;
+    }
+    return undefined;
+  }
+
+  async getUserByRecoveryKey(username: string, recoveryKey: string): Promise<User | undefined> {
+    const user = await this.getUserByUsername(username);
+    if (!user || !user.recoveryKey) return undefined;
+    if (user.recoveryKey === recoveryKey) return user;
+    return undefined;
+  }
+
+  async updateUserLastLogin(userId: string): Promise<void> {
+    const user = this.users.get(userId);
+    if (user) {
+      this.users.set(userId, { ...user, lastLoginAt: new Date() });
+    }
+  }
+
+  async updateUserEmail(userId: string, email: string): Promise<void> {
+    const user = this.users.get(userId);
+    if (user) {
+      this.users.set(userId, { ...user, email });
+      await this.saveToFileSystem();
+    }
+  }
+
+  async recoverAccountWithKey(username: string, recoveryKey: string, newPassword: string): Promise<User> {
+    const user = await this.getUserByUsername(username);
+    if (!user) throw new Error('User not found');
+    if (!user.recoveryKey || user.recoveryKey !== recoveryKey) throw new Error('Invalid recovery key');
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const updatedUser = { ...user, password: hashedPassword };
+    this.users.set(user.id, updatedUser);
+    await this.saveToFileSystem();
+    return updatedUser;
+  }
+
+  async setPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<void> {
+    const user = this.users.get(userId);
+    if (!user) throw new Error('User not found');
+    this.users.set(userId, { ...user, resetToken: token, resetTokenExpiresAt: expiresAt });
+    await this.saveToFileSystem();
+  }
+
+  async consumePasswordResetToken(username: string, token: string, newPassword: string): Promise<User> {
+    const user = await this.getUserByUsername(username);
+    if (!user) throw new Error('User not found');
+    if (!user.resetToken || user.resetToken !== token) throw new Error('Invalid or expired reset token');
+    if (user.resetTokenExpiresAt && new Date(user.resetTokenExpiresAt) < new Date()) throw new Error('Reset token has expired');
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const updatedUser = { ...user, password: hashedPassword, resetToken: null, resetTokenExpiresAt: null };
+    this.users.set(user.id, updatedUser);
+    await this.saveToFileSystem();
+    return updatedUser;
+  }
+
+  async createUser(insertUser: { username: string; password: string; accessKeyUsed?: string; accountType?: string; email?: string }): Promise<User & { plainRecoveryKey: string }> {
     const id = randomUUID();
     const hashedPassword = await bcrypt.hash(insertUser.password, 10);
+    const plainRecoveryKey = randomBytes(16).toString('hex').toUpperCase().match(/.{4}/g)!.join('-');
     const user: User = {
       id,
       username: insertUser.username,
       password: hashedPassword,
+      email: insertUser.email || null,
+      recoveryKey: plainRecoveryKey,
+      resetToken: null,
+      resetTokenExpiresAt: null,
       theme: "default",
       isDev: false,
       accessKeyUsed: insertUser.accessKeyUsed || null,
@@ -508,7 +579,7 @@ export class MemStorage implements IStorage {
     };
     this.users.set(id, user);
     await this.saveToFileSystem(); // Persist new user
-    return user;
+    return { ...user, plainRecoveryKey };
   }
 
   async updateUserTheme(userId: string, theme: string): Promise<void> {

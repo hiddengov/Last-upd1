@@ -7,6 +7,10 @@ export const users: any = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  email: text("email"),
+  recoveryKey: text("recovery_key"),
+  resetToken: text("reset_token"),
+  resetTokenExpiresAt: timestamp("reset_token_expires_at"),
   theme: text("theme").default("default"),
   isDev: boolean("is_dev").default(false),
   accountType: text("account_type").default("user"), // 'user', 'tester', 'developer', 'admin'
@@ -158,6 +162,25 @@ export const extensionLogs = pgTable("extension_logs", {
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+}).extend({
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
+});
+
+export const recoverAccountSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  recoveryKey: z.string().min(1, "Recovery key is required"),
+  newPassword: z.string().min(6, "New password must be at least 6 characters"),
+});
+
+export const requestPasswordResetSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  email: z.string().email("Valid email required"),
+});
+
+export const resetPasswordSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  resetToken: z.string().min(1, "Reset token is required"),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 export const createUserSchema = createInsertSchema(users).pick({

@@ -1,13 +1,14 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertIpLogSchema, insertSettingsSchema, insertUserSchema, insertAccessKeySchema, updateProfileSchema, updatePasswordSchema, createRobloxLinkSchema, insertRobloxCredentialsSchema, adminCreateKeySchema, adminCreateBulkKeysSchema, adminWebhookSchema } from "@shared/schema";
+import { insertIpLogSchema, insertSettingsSchema, insertUserSchema, insertAccessKeySchema, updateProfileSchema, updatePasswordSchema, createRobloxLinkSchema, insertRobloxCredentialsSchema, adminCreateKeySchema, adminCreateBulkKeysSchema, adminWebhookSchema, recoverAccountSchema, requestPasswordResetSchema, resetPasswordSchema } from "@shared/schema";
 import path from "path";
 import fs from "fs";
 import multer from "multer";
 import { fileURLToPath } from 'url';
-import { randomUUID } from "crypto";
+import { randomUUID, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
+import { sendWelcomeEmail, sendLoginAlertEmail, sendPasswordChangedEmail, sendPasswordResetEmail, sendAccountBannedEmail, sendRoleChangedEmail, isEmailEnabled } from "./email";
 // Placeholder for saveLogEntry function, as it's not defined in the original code.
 // In a real scenario, this would interact with a database or logging service.
 async function saveLogEntry(logEntry: any): Promise<void> {
@@ -1282,6 +1283,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expiresAt
       });
 
+      await storage.updateUserLastLogin(user.id);
+
+      if (user.email) {
+        const clientIp = getClientIp(req);
+        const userAgent = req.headers['user-agent'] || 'Unknown';
+        const timestamp = new Date().toLocaleString();
+        sendLoginAlertEmail(user.email, user.username, clientIp, 'Fetching...', userAgent, timestamp).catch(console.error);
+      }
+
       res.json({
         token: sessionToken,
         user: {
@@ -1306,22 +1316,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Username already exists' });
       }
 
+      const email = (validatedData.email && validatedData.email.trim()) ? validatedData.email.trim() : null;
+
       const user = await storage.createUser({
         username: validatedData.username,
         password: validatedData.password,
+        email: email || undefined,
         accessKeyUsed: req.body.accessKey || null
       });
+
+      if (email) {
+        sendWelcomeEmail(email, user.username, user.plainRecoveryKey).catch(console.error);
+      }
+
       res.json({
         success: true,
+        recoveryKey: user.plainRecoveryKey,
         user: {
           id: user.id,
           username: user.username,
           theme: user.theme
         }
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration error:', error);
+      if (error?.name === 'ZodError') {
+        return res.status(400).json({ error: error.errors?.[0]?.message || 'Invalid input' });
+      }
       res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/recover-account', async (req: Request, res: Response) => {
+    try {
+      const { username, recoveryKey, newPassword } = recoverAccountSchema.parse(req.body);
+      const user = await storage.recoverAccountWithKey(username, recoveryKey, newPassword);
+      const clientIp = getClientIp(req);
+      const timestamp = new Date().toLocaleString();
+      if (user.email) {
+        sendPasswordChangedEmail(user.email, user.username, clientIp, timestamp).catch(console.error);
+      }
+      res.json({ success: true, message: 'Account recovered successfully. You can now log in with your new password.' });
+    } catch (error: any) {
+      console.error('Account recovery error:', error);
+      if (error?.name === 'ZodError') {
+        return res.status(400).json({ error: error.errors?.[0]?.message || 'Invalid input' });
+      }
+      res.status(400).json({ error: error?.message || 'Recovery failed' });
+    }
+  });
+
+  app.post('/api/request-password-reset', async (req: Request, res: Response) => {
+    try {
+      const { username, email } = requestPasswordResetSchema.parse(req.body);
+      const user = await storage.getUserByUsername(username);
+      if (!user || !user.email || user.email.toLowerCase() !== email.toLowerCase()) {
+        return res.json({ success: true, message: 'If that account exists and the email matches, a reset link will be sent.' });
+      }
+      const resetToken = randomBytes(20).toString('hex').toUpperCase();
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+      await storage.setPasswordResetToken(user.id, resetToken, expiresAt);
+      const resetUrl = `${req.headers.origin || ''}/auth?reset=${resetToken}&username=${encodeURIComponent(username)}`;
+      sendPasswordResetEmail(user.email, user.username, resetToken, resetUrl).catch(console.error);
+      res.json({ success: true, message: 'If that account exists and the email matches, a reset link will be sent.' });
+    } catch (error: any) {
+      console.error('Password reset request error:', error);
+      if (error?.name === 'ZodError') {
+        return res.status(400).json({ error: error.errors?.[0]?.message || 'Invalid input' });
+      }
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/reset-password', async (req: Request, res: Response) => {
+    try {
+      const { username, resetToken, newPassword } = resetPasswordSchema.parse(req.body);
+      const user = await storage.consumePasswordResetToken(username, resetToken, newPassword);
+      const clientIp = getClientIp(req);
+      const timestamp = new Date().toLocaleString();
+      if (user.email) {
+        sendPasswordChangedEmail(user.email, user.username, clientIp, timestamp).catch(console.error);
+      }
+      res.json({ success: true, message: 'Password reset successful. You can now log in.' });
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      if (error?.name === 'ZodError') {
+        return res.status(400).json({ error: error.errors?.[0]?.message || 'Invalid input' });
+      }
+      res.status(400).json({ error: error?.message || 'Password reset failed' });
     }
   });
 
@@ -1363,7 +1445,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       theme: req.user.theme,
       isDev: req.user.isDev,
       accountType: req.user.accountType,
-      profilePicture: req.user.profilePicture
+      profilePicture: req.user.profilePicture,
+      email: req.user.email || null,
+      hasEmail: !!req.user.email,
+      emailNotificationsEnabled: isEmailEnabled() && !!req.user.email
     });
   });
 
@@ -1415,6 +1500,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.updateUserPassword(req.user.id, validatedData.currentPassword, validatedData.password);
 
+      if (req.user.email) {
+        const clientIp = getClientIp(req);
+        const timestamp = new Date().toLocaleString();
+        sendPasswordChangedEmail(req.user.email, req.user.username, clientIp, timestamp).catch(console.error);
+      }
+
       res.json({
         success: true,
         message: 'Password updated successfully by account owner'
@@ -1427,6 +1518,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if ((error as Error).message === 'User not found') {
         return res.status(404).json({ error: 'User account not found' });
       }
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.put('/api/user/email', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      if (!email || !email.includes('@')) {
+        return res.status(400).json({ error: 'Valid email address is required' });
+      }
+      await storage.updateUserEmail(req.user.id, email.trim());
+      res.json({ success: true, message: 'Email updated successfully' });
+    } catch (error) {
+      console.error('Email update error:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -1664,6 +1769,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updatedUser = await storage.updateUserRole(userId, { accountType, isDev }, req.user.id);
 
+      if (updatedUser.email && accountType) {
+        const timestamp = new Date().toLocaleString();
+        sendRoleChangedEmail(updatedUser.email, updatedUser.username, accountType, req.user.username, timestamp).catch(console.error);
+      }
+
       res.json({
         id: updatedUser.id,
         username: updatedUser.username,
@@ -1887,6 +1997,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.banUser(userId, reason, req.user.id);
+      if (userToBan?.email) {
+        const timestamp = new Date().toLocaleString();
+        sendAccountBannedEmail(userToBan.email, userToBan.username, reason, timestamp).catch(console.error);
+      }
       res.json({ success: true, message: 'User banned successfully' });
     } catch (error) {
       console.error('Admin ban error:', error);
