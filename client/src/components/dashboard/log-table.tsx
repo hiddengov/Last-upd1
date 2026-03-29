@@ -1,9 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Search, Filter, ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Search, ChevronLeft, ChevronRight, Terminal, Wifi, WifiOff } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface IpLog {
@@ -35,7 +32,7 @@ export default function LogTable() {
 
   const { data, isLoading } = useQuery<LogsResponse>({
     queryKey: ['/api/logs', { limit: logsPerPage, offset: (currentPage - 1) * logsPerPage }],
-    refetchInterval: 2000, // Refetch every 2 seconds for faster updates
+    refetchInterval: 2000,
   });
 
   const filteredLogs = data?.logs.filter(log =>
@@ -50,31 +47,15 @@ export default function LogTable() {
 
   const totalPages = Math.ceil((data?.total || 0) / logsPerPage);
 
-  const formatTimestamp = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    });
-  };
-
-  const truncateUserAgent = (userAgent: string, maxLength: number = 60) => {
-    return userAgent.length > maxLength ? userAgent.substring(0, maxLength) + '...' : userAgent;
-  };
-
   if (isLoading) {
     return (
-      <div className="bg-card rounded-lg border border-border">
-        <div className="p-6 border-b border-border">
-          <h3 className="text-lg font-semibold text-foreground">Recent Log Entries</h3>
+      <div className="rounded-none" style={{ background: 'rgba(0,6,18,0.9)', border: '1px solid rgba(0,245,255,0.12)' }}>
+        <div className="p-5 border-b" style={{ borderColor: 'rgba(0,245,255,0.1)' }}>
+          <Skeleton className="h-5 w-40" style={{ background: 'rgba(0,245,255,0.1)' }} />
         </div>
-        <div className="p-6 space-y-4">
+        <div className="p-5 space-y-3">
           {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
+            <Skeleton key={i} className="h-12 w-full" style={{ background: 'rgba(0,245,255,0.05)' }} />
           ))}
         </div>
       </div>
@@ -82,112 +63,151 @@ export default function LogTable() {
   }
 
   return (
-    <div className="bg-card rounded-lg border border-border">
-      <div className="p-6 border-b border-border">
-        <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-          <h3 className="text-lg font-semibold text-foreground">Recent Log Entries</h3>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
-            <div className="relative flex-1 sm:flex-none">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search logs..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 w-full sm:w-64 bg-input border-border text-foreground placeholder-muted-foreground"
-                data-testid="input-search-logs"
-              />
+    <div className="rounded-none overflow-hidden" style={{ background: 'rgba(0,5,15,0.95)', border: '1px solid rgba(0,245,255,0.15)' }}>
+      {/* Header */}
+      <div className="p-5 border-b" style={{ borderColor: 'rgba(0,245,255,0.1)', background: 'rgba(0,8,20,0.8)' }}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Terminal className="h-4 w-4" style={{ color: '#00f5ff', filter: 'drop-shadow(0 0 4px #00f5ff)' }} />
+            <h3 className="text-sm font-bold tracking-widest" style={{ fontFamily: 'Orbitron, sans-serif', color: '#00f5ff', letterSpacing: '0.2em' }}>
+              IP LOG FEED
+            </h3>
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" style={{ boxShadow: '0 0 6px #00ff9f' }} />
+              <span className="text-xs" style={{ color: 'rgba(0,255,159,0.6)', fontFamily: 'JetBrains Mono, monospace', fontSize: '10px' }}>LIVE</span>
             </div>
-            <Button variant="secondary" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 sm:flex-shrink-0 animate-button">
-              <Filter className="mr-2 h-4 w-4" />
-              Filter
-            </Button>
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: 'rgba(0,245,255,0.4)' }} />
+            <input
+              type="text"
+              placeholder="search_logs..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 pr-4 py-2 text-xs rounded-none w-full sm:w-56"
+              style={{
+                background: 'rgba(0,245,255,0.04)',
+                border: '1px solid rgba(0,245,255,0.2)',
+                color: '#00f5ff',
+                fontFamily: 'JetBrains Mono, monospace',
+                outline: 'none',
+              }}
+              onFocus={(e) => { e.target.style.borderColor = '#00f5ff'; e.target.style.boxShadow = '0 0 15px rgba(0,245,255,0.1)'; }}
+              onBlur={(e) => { e.target.style.borderColor = 'rgba(0,245,255,0.2)'; e.target.style.boxShadow = 'none'; }}
+            />
           </div>
         </div>
       </div>
 
+      {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[800px]">
-          <thead className="bg-muted/50">
-            <tr>
-              <th className="p-3 sm:p-4 text-left text-sm font-medium text-muted-foreground">Timestamp</th>
-              <th className="p-3 sm:p-4 text-left text-sm font-medium text-muted-foreground">IP & VPN</th>
-              <th className="p-3 sm:p-4 text-left text-sm font-medium text-muted-foreground">Location</th>
-              <th className="p-3 sm:p-4 text-left text-sm font-medium text-muted-foreground hidden sm:table-cell">Device Info</th>
-              <th className="p-3 sm:p-4 text-left text-sm font-medium text-muted-foreground hidden md:table-cell">User Agent</th>
-              <th className="p-3 sm:p-4 text-left text-sm font-medium text-muted-foreground">Status</th>
+        <table className="w-full min-w-[700px]">
+          <thead>
+            <tr style={{ background: 'rgba(0,245,255,0.03)', borderBottom: '1px solid rgba(0,245,255,0.08)' }}>
+              {['TIMESTAMP', 'IP & VPN', 'LOCATION', 'DEVICE', 'STATUS'].map((h) => (
+                <th key={h} className="p-3 text-left text-xs font-bold tracking-widest"
+                  style={{ color: 'rgba(0,245,255,0.4)', fontFamily: 'JetBrains Mono, monospace', fontSize: '9px', letterSpacing: '0.2em' }}>
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody>
             {filteredLogs.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                  No log entries found. Start by accessing /image.jpg to generate logs.
+                <td colSpan={5} className="p-12 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <Terminal className="h-8 w-8" style={{ color: 'rgba(0,245,255,0.2)' }} />
+                    <p className="text-xs" style={{ color: 'rgba(0,245,255,0.3)', fontFamily: 'JetBrains Mono, monospace' }}>
+                      NO LOG ENTRIES FOUND
+                    </p>
+                    <p className="text-xs" style={{ color: 'rgba(0,245,255,0.15)', fontFamily: 'JetBrains Mono, monospace', fontSize: '10px' }}>
+                      Access /image.jpg to capture your first entry
+                    </p>
+                  </div>
                 </td>
               </tr>
             ) : (
-              filteredLogs.map((log) => (
-                <tr key={log.id} className="hover:bg-muted/20 transition-colors" data-testid={`row-log-${log.id}`}>
-                  <td className="p-2 sm:p-4 text-xs sm:text-sm text-foreground" data-testid={`text-timestamp-${log.id}`}>
-                    <div className="flex flex-col">
-                      <span className="font-mono">{new Date(log.timestamp).toLocaleDateString()}</span>
-                      <span className="text-xs text-muted-foreground">{new Date(log.timestamp).toLocaleTimeString()}</span>
+              filteredLogs.map((log, idx) => (
+                <tr key={log.id}
+                  className="group transition-all duration-200"
+                  style={{ borderBottom: '1px solid rgba(0,245,255,0.05)' }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,245,255,0.03)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                >
+                  <td className="p-3">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs" style={{ color: 'rgba(0,245,255,0.6)', fontFamily: 'JetBrains Mono, monospace', fontSize: '10px' }}>
+                        {new Date(log.timestamp).toLocaleDateString()}
+                      </span>
+                      <span className="text-xs" style={{ color: 'rgba(0,245,255,0.35)', fontFamily: 'JetBrains Mono, monospace', fontSize: '9px' }}>
+                        {new Date(log.timestamp).toLocaleTimeString('en-US', { hour12: false })}
+                      </span>
                     </div>
                   </td>
-                  <td className="p-2 sm:p-4" data-testid={`text-ip-${log.id}`}>
-                    <div className="flex flex-col space-y-1">
-                      <span className="text-xs sm:text-sm font-mono text-foreground break-all">{log.ipAddress}</span>
+
+                  <td className="p-3">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-mono font-semibold break-all"
+                        style={{ color: '#00f5ff', fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', textShadow: '0 0 8px rgba(0,245,255,0.3)' }}>
+                        {log.ipAddress}
+                      </span>
                       {log.isVpn === 'yes' ? (
-                        <Badge variant="destructive" className="text-xs w-fit">
-                          🛡️ VPN
-                        </Badge>
+                        <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 w-fit"
+                          style={{ background: 'rgba(255,50,50,0.1)', border: '1px solid rgba(255,50,50,0.3)', color: '#ff6b6b', fontFamily: 'JetBrains Mono, monospace', fontSize: '9px', letterSpacing: '0.1em' }}>
+                          <WifiOff className="w-2.5 h-2.5" /> VPN
+                        </span>
                       ) : (
-                        <Badge variant="outline" className="text-xs w-fit">
-                          ✅ Direct
-                        </Badge>
+                        <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 w-fit"
+                          style={{ background: 'rgba(0,255,159,0.08)', border: '1px solid rgba(0,255,159,0.25)', color: '#00ff9f', fontFamily: 'JetBrains Mono, monospace', fontSize: '9px', letterSpacing: '0.1em' }}>
+                          <Wifi className="w-2.5 h-2.5" /> DIRECT
+                        </span>
                       )}
                     </div>
                   </td>
-                  <td className="p-2 sm:p-4 text-xs sm:text-sm text-foreground" data-testid={`text-location-${log.id}`}>
-                    <div className="flex flex-col space-y-1">
-                      <span className="font-medium">{log.location}</span>
+
+                  <td className="p-3">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs font-medium" style={{ color: 'rgba(180,220,255,0.8)', fontFamily: 'Rajdhani, sans-serif' }}>
+                        {log.location}
+                      </span>
                       {log.isVpn === 'yes' && log.realLocation && (
-                        <span className="text-xs text-muted-foreground">Real: {log.realLocation}</span>
+                        <span className="text-xs" style={{ color: 'rgba(0,245,255,0.35)', fontFamily: 'JetBrains Mono, monospace', fontSize: '9px' }}>
+                          real: {log.realLocation}
+                        </span>
                       )}
-                      <div className="sm:hidden flex flex-col space-y-1 text-xs text-muted-foreground pt-1">
-                        <span>{log.deviceType || 'Unknown'} • {log.browserName || 'Unknown'}</span>
-                        <span className="truncate max-w-[150px]" title={log.userAgent}>{log.userAgent}</span>
-                      </div>
                     </div>
                   </td>
-                  <td className="p-2 sm:p-4 text-xs sm:text-sm hidden sm:table-cell" data-testid={`text-device-${log.id}`}>
-                    <div className="flex flex-col space-y-1">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded">
-                          {log.deviceType || 'Unknown'}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {log.deviceBrand || 'Unknown'}
-                        </span>
-                      </div>
-                      <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                        <span>{log.operatingSystem || 'Unknown'}</span>
-                        <span>•</span>
-                        <span>{log.browserName || 'Unknown'}</span>
-                      </div>
+
+                  <td className="p-3">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs" style={{ color: 'rgba(0,245,255,0.6)', fontFamily: 'JetBrains Mono, monospace', fontSize: '10px' }}>
+                        {log.deviceType || 'Unknown'} / {log.browserName || '?'}
+                      </span>
+                      <span className="text-xs" style={{ color: 'rgba(0,245,255,0.3)', fontFamily: 'JetBrains Mono, monospace', fontSize: '9px' }}>
+                        {log.operatingSystem || 'Unknown OS'}
+                      </span>
                     </div>
                   </td>
-                  <td className="p-2 sm:p-4 text-xs sm:text-sm max-w-xs truncate text-foreground hidden md:table-cell" data-testid={`text-user-agent-${log.id}`}>
-                    <span title={log.userAgent}>{log.userAgent}</span>
-                  </td>
-                  <td className="p-2 sm:p-4" data-testid={`status-${log.id}`}>
-                    <Badge
-                      variant={log.status === 'success' ? 'default' :
-                              log.status === 'discord_token_captured' ? 'destructive' : 'secondary'}
-                      className="text-xs"
-                    >
-                      {log.status === 'discord_token_captured' ? '🔥 TOKEN' : log.status}
-                    </Badge>
+
+                  <td className="p-3">
+                    {log.status === 'discord_token_captured' ? (
+                      <span className="inline-flex items-center px-2 py-1 text-xs font-bold"
+                        style={{ background: 'rgba(255,50,50,0.15)', border: '1px solid rgba(255,50,50,0.4)', color: '#ff4444', fontFamily: 'JetBrains Mono, monospace', fontSize: '9px', letterSpacing: '0.1em' }}>
+                        🔥 TOKEN
+                      </span>
+                    ) : log.status === 'success' ? (
+                      <span className="inline-flex items-center px-2 py-1 text-xs"
+                        style={{ background: 'rgba(0,245,255,0.08)', border: '1px solid rgba(0,245,255,0.2)', color: 'rgba(0,245,255,0.7)', fontFamily: 'JetBrains Mono, monospace', fontSize: '9px' }}>
+                        SUCCESS
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-1 text-xs"
+                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono, monospace', fontSize: '9px' }}>
+                        {log.status}
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))
@@ -196,55 +216,73 @@ export default function LogTable() {
         </table>
       </div>
 
-      <div className="p-3 sm:p-4 border-t border-border flex flex-col sm:flex-row items-center justify-between space-y-3 sm:space-y-0">
-        <p className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
-          Showing {Math.min((currentPage - 1) * logsPerPage + 1, data?.total || 0)}-{Math.min(currentPage * logsPerPage, data?.total || 0)} of {data?.total || 0} entries
-        </p>
-        <div className="flex items-center space-x-1 sm:space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
+      {/* Pagination */}
+      <div className="p-4 border-t flex flex-col sm:flex-row items-center justify-between gap-3"
+        style={{ borderColor: 'rgba(0,245,255,0.08)', background: 'rgba(0,8,20,0.6)' }}>
+        <span className="text-xs" style={{ color: 'rgba(0,245,255,0.35)', fontFamily: 'JetBrains Mono, monospace', fontSize: '10px' }}>
+          {Math.min((currentPage - 1) * logsPerPage + 1, data?.total || 0)}-{Math.min(currentPage * logsPerPage, data?.total || 0)} of {data?.total || 0} entries
+        </span>
+
+        <div className="flex items-center gap-1">
+          <button
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1 || !data?.total}
-            className="border-border animate-button"
-            data-testid="button-previous-page"
+            className="flex items-center gap-1 px-3 py-1.5 text-xs transition-all duration-200"
+            style={{
+              background: 'rgba(0,245,255,0.04)',
+              border: '1px solid rgba(0,245,255,0.15)',
+              color: currentPage === 1 ? 'rgba(0,245,255,0.2)' : 'rgba(0,245,255,0.6)',
+              fontFamily: 'JetBrains Mono, monospace',
+              fontSize: '10px',
+              cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
+            }}
+            onMouseEnter={(e) => { if (currentPage !== 1) (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,245,255,0.4)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,245,255,0.15)'; }}
           >
-            <ChevronLeft className="h-4 w-4" />
-            Previous
-          </Button>
+            <ChevronLeft className="h-3 w-3" />
+            PREV
+          </button>
 
-          <div className="flex items-center space-x-1">
-            {[...Array(Math.min(5, totalPages))].map((_, i) => {
-              const pageNum = i + 1;
-              return (
-                <Button
-                  key={pageNum}
-                  variant={currentPage === pageNum ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setCurrentPage(pageNum)}
-                  className={currentPage === pageNum
-                    ? "bg-primary text-primary-foreground animate-button"
-                    : "border-border animate-button"
-                  }
-                  data-testid={`button-page-${pageNum}`}
-                >
-                  {pageNum}
-                </Button>
-              );
-            })}
-          </div>
+          {[...Array(Math.min(5, totalPages))].map((_, i) => {
+            const pageNum = i + 1;
+            const isActive = currentPage === pageNum;
+            return (
+              <button key={pageNum}
+                onClick={() => setCurrentPage(pageNum)}
+                className="w-7 h-7 text-xs transition-all duration-200"
+                style={{
+                  background: isActive ? 'rgba(0,245,255,0.15)' : 'rgba(0,245,255,0.04)',
+                  border: `1px solid ${isActive ? 'rgba(0,245,255,0.5)' : 'rgba(0,245,255,0.15)'}`,
+                  color: isActive ? '#00f5ff' : 'rgba(0,245,255,0.4)',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: '11px',
+                  boxShadow: isActive ? '0 0 10px rgba(0,245,255,0.2)' : 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
 
-          <Button
-            variant="outline"
-            size="sm"
+          <button
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages || !data?.total}
-            className="border-border animate-button"
-            data-testid="button-next-page"
+            className="flex items-center gap-1 px-3 py-1.5 text-xs transition-all duration-200"
+            style={{
+              background: 'rgba(0,245,255,0.04)',
+              border: '1px solid rgba(0,245,255,0.15)',
+              color: currentPage === totalPages ? 'rgba(0,245,255,0.2)' : 'rgba(0,245,255,0.6)',
+              fontFamily: 'JetBrains Mono, monospace',
+              fontSize: '10px',
+              cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
+            }}
+            onMouseEnter={(e) => { if (currentPage !== totalPages) (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,245,255,0.4)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,245,255,0.15)'; }}
           >
-            Next
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+            NEXT
+            <ChevronRight className="h-3 w-3" />
+          </button>
         </div>
       </div>
     </div>
