@@ -20,6 +20,9 @@ import {
   Hash,
   Languages,
   Sparkles,
+  ArrowLeft,
+  RefreshCw,
+  AlertTriangle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -34,44 +37,91 @@ interface Engine {
   category: string;
   icon: any;
   url: (q: string) => string;
+  // Optional iframe-friendly URL (some sites refuse iframing on their main domain)
+  embedUrl?: (q: string) => string;
+  // True if we know it works inside an iframe
+  embedSafe?: boolean;
   color: string;
 }
 
 const ENGINES: Engine[] = [
-  { id: "google", name: "Google", category: "Web", icon: Globe, color: "#4285f4", url: (q) => `https://www.google.com/search?q=${encodeURIComponent(q)}` },
-  { id: "ddg", name: "DuckDuckGo", category: "Web", icon: Search, color: "#de5833", url: (q) => `https://duckduckgo.com/?q=${encodeURIComponent(q)}` },
-  { id: "bing", name: "Bing", category: "Web", icon: Search, color: "#008373", url: (q) => `https://www.bing.com/search?q=${encodeURIComponent(q)}` },
-  { id: "brave", name: "Brave", category: "Web", icon: Search, color: "#fb542b", url: (q) => `https://search.brave.com/search?q=${encodeURIComponent(q)}` },
-  { id: "ecosia", name: "Ecosia", category: "Web", icon: Search, color: "#36a47f", url: (q) => `https://www.ecosia.org/search?q=${encodeURIComponent(q)}` },
+  // Google blocks iframing — fall back to DuckDuckGo lite results when embedded
+  { id: "google", name: "Google", category: "Web", icon: Globe, color: "#4285f4",
+    url: (q) => `https://www.google.com/search?q=${encodeURIComponent(q)}`,
+    embedUrl: (q) => `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`, embedSafe: true },
+  { id: "ddg", name: "DuckDuckGo", category: "Web", icon: Search, color: "#de5833",
+    url: (q) => `https://duckduckgo.com/?q=${encodeURIComponent(q)}`,
+    embedUrl: (q) => `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`, embedSafe: true },
+  { id: "bing", name: "Bing", category: "Web", icon: Search, color: "#008373",
+    url: (q) => `https://www.bing.com/search?q=${encodeURIComponent(q)}`,
+    embedUrl: (q) => `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`, embedSafe: true },
+  { id: "brave", name: "Brave", category: "Web", icon: Search, color: "#fb542b",
+    url: (q) => `https://search.brave.com/search?q=${encodeURIComponent(q)}`,
+    embedUrl: (q) => `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`, embedSafe: true },
+  { id: "ecosia", name: "Ecosia", category: "Web", icon: Search, color: "#36a47f",
+    url: (q) => `https://www.ecosia.org/search?q=${encodeURIComponent(q)}`,
+    embedUrl: (q) => `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`, embedSafe: true },
 
-  { id: "youtube", name: "YouTube", category: "Video", icon: Youtube, color: "#ff0033", url: (q) => `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}` },
-  { id: "vimeo", name: "Vimeo", category: "Video", icon: Film, color: "#1ab7ea", url: (q) => `https://vimeo.com/search?q=${encodeURIComponent(q)}` },
+  // Video — use no-cookie embed where possible. YouTube search results page blocks iframes.
+  { id: "youtube", name: "YouTube", category: "Video", icon: Youtube, color: "#ff0033",
+    url: (q) => `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`,
+    embedUrl: (q) => `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(q)}`, embedSafe: true },
+  { id: "vimeo", name: "Vimeo", category: "Video", icon: Film, color: "#1ab7ea",
+    url: (q) => `https://vimeo.com/search?q=${encodeURIComponent(q)}` },
 
-  { id: "github", name: "GitHub", category: "Code", icon: Github, color: "#ffffff", url: (q) => `https://github.com/search?q=${encodeURIComponent(q)}` },
-  { id: "stackoverflow", name: "Stack Overflow", category: "Code", icon: Code2, color: "#f48024", url: (q) => `https://stackoverflow.com/search?q=${encodeURIComponent(q)}` },
-  { id: "mdn", name: "MDN Docs", category: "Code", icon: BookOpen, color: "#83d0f2", url: (q) => `https://developer.mozilla.org/en-US/search?q=${encodeURIComponent(q)}` },
-  { id: "npm", name: "npm", category: "Code", icon: Hash, color: "#cb3837", url: (q) => `https://www.npmjs.com/search?q=${encodeURIComponent(q)}` },
+  { id: "github", name: "GitHub", category: "Code", icon: Github, color: "#ffffff",
+    url: (q) => `https://github.com/search?q=${encodeURIComponent(q)}` },
+  { id: "stackoverflow", name: "Stack Overflow", category: "Code", icon: Code2, color: "#f48024",
+    url: (q) => `https://stackoverflow.com/search?q=${encodeURIComponent(q)}` },
+  { id: "mdn", name: "MDN Docs", category: "Code", icon: BookOpen, color: "#83d0f2",
+    url: (q) => `https://developer.mozilla.org/en-US/search?q=${encodeURIComponent(q)}` },
+  { id: "npm", name: "npm", category: "Code", icon: Hash, color: "#cb3837",
+    url: (q) => `https://www.npmjs.com/search?q=${encodeURIComponent(q)}` },
 
-  { id: "reddit", name: "Reddit", category: "Social", icon: MessageSquare, color: "#ff4500", url: (q) => `https://www.reddit.com/search/?q=${encodeURIComponent(q)}` },
-  { id: "twitter", name: "X / Twitter", category: "Social", icon: Hash, color: "#ffffff", url: (q) => `https://twitter.com/search?q=${encodeURIComponent(q)}` },
+  { id: "reddit", name: "Reddit", category: "Social", icon: MessageSquare, color: "#ff4500",
+    url: (q) => `https://www.reddit.com/search/?q=${encodeURIComponent(q)}` },
+  { id: "twitter", name: "X / Twitter", category: "Social", icon: Hash, color: "#ffffff",
+    url: (q) => `https://twitter.com/search?q=${encodeURIComponent(q)}` },
 
-  { id: "wikipedia", name: "Wikipedia", category: "Reference", icon: BookOpen, color: "#ffffff", url: (q) => `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(q)}` },
-  { id: "translate", name: "Translate", category: "Reference", icon: Languages, color: "#4285f4", url: (q) => `https://translate.google.com/?text=${encodeURIComponent(q)}` },
+  // Wikipedia and translate.googleapis variants embed cleanly
+  { id: "wikipedia", name: "Wikipedia", category: "Reference", icon: BookOpen, color: "#ffffff",
+    url: (q) => `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(q)}`,
+    embedUrl: (q) => `https://en.m.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(q)}`, embedSafe: true },
+  { id: "translate", name: "Translate", category: "Reference", icon: Languages, color: "#4285f4",
+    url: (q) => `https://translate.google.com/?text=${encodeURIComponent(q)}` },
 
-  { id: "images", name: "Google Images", category: "Media", icon: ImageIcon, color: "#34a853", url: (q) => `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(q)}` },
-  { id: "unsplash", name: "Unsplash", category: "Media", icon: ImageIcon, color: "#ffffff", url: (q) => `https://unsplash.com/s/photos/${encodeURIComponent(q)}` },
-  { id: "spotify", name: "Spotify", category: "Media", icon: Music, color: "#1db954", url: (q) => `https://open.spotify.com/search/${encodeURIComponent(q)}` },
+  { id: "images", name: "Google Images", category: "Media", icon: ImageIcon, color: "#34a853",
+    url: (q) => `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(q)}` },
+  { id: "unsplash", name: "Unsplash", category: "Media", icon: ImageIcon, color: "#ffffff",
+    url: (q) => `https://unsplash.com/s/photos/${encodeURIComponent(q)}` },
+  { id: "spotify", name: "Spotify", category: "Media", icon: Music, color: "#1db954",
+    url: (q) => `https://open.spotify.com/search/${encodeURIComponent(q)}` },
 
-  { id: "news", name: "Google News", category: "News", icon: Newspaper, color: "#4285f4", url: (q) => `https://news.google.com/search?q=${encodeURIComponent(q)}` },
+  { id: "news", name: "Google News", category: "News", icon: Newspaper, color: "#4285f4",
+    url: (q) => `https://news.google.com/search?q=${encodeURIComponent(q)}` },
 
-  { id: "maps", name: "Google Maps", category: "Other", icon: MapIcon, color: "#34a853", url: (q) => `https://www.google.com/maps/search/${encodeURIComponent(q)}` },
-  { id: "amazon", name: "Amazon", category: "Other", icon: ShoppingCart, color: "#ff9900", url: (q) => `https://www.amazon.com/s?k=${encodeURIComponent(q)}` },
+  // Maps has a special embed endpoint that works inside iframes
+  { id: "maps", name: "Google Maps", category: "Other", icon: MapIcon, color: "#34a853",
+    url: (q) => `https://www.google.com/maps/search/${encodeURIComponent(q)}`,
+    embedUrl: (q) => `https://maps.google.com/maps?q=${encodeURIComponent(q)}&output=embed`, embedSafe: true },
+  { id: "amazon", name: "Amazon", category: "Other", icon: ShoppingCart, color: "#ff9900",
+    url: (q) => `https://www.amazon.com/s?k=${encodeURIComponent(q)}` },
 ];
 
 const CATEGORIES = ["All", "Web", "Video", "Code", "Social", "Reference", "Media", "News", "Other"];
 
 const HISTORY_KEY = "gov_v8_search_history";
 const FAV_KEY = "gov_v8_search_favs";
+
+interface ActiveEmbed {
+  engineId: string;
+  engineName: string;
+  color: string;
+  query: string;
+  src: string;
+  externalUrl: string;
+  knownSafe: boolean;
+}
 
 export default function WebSearchEmbed({ open, onClose }: WebSearchEmbedProps) {
   const [query, setQuery] = useState("");
@@ -80,6 +130,11 @@ export default function WebSearchEmbed({ open, onClose }: WebSearchEmbedProps) {
   const [history, setHistory] = useState<string[]>([]);
   const [favs, setFavs] = useState<string[]>([]);
   const [mounted, setMounted] = useState(false);
+  const [active, setActive] = useState<ActiveEmbed | null>(null);
+  const [iframeLoaded, setIframeLoaded] = useState(false);
+  const [embedFailed, setEmbedFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const loadTimeoutRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -99,20 +154,85 @@ export default function WebSearchEmbed({ open, onClose }: WebSearchEmbedProps) {
     }
   }, [open]);
 
-  // Ctrl key closes the panel
+  // Ctrl key closes the panel (or backs out of an active embed first)
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Control") {
         e.preventDefault();
-        onClose();
+        if (active) {
+          closeActive();
+        } else {
+          onClose();
+        }
       } else if (e.key === "Escape") {
-        onClose();
+        if (active) {
+          closeActive();
+        } else {
+          onClose();
+        }
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose]);
+  }, [open, onClose, active]);
+
+  const closeActive = () => {
+    if (loadTimeoutRef.current) {
+      window.clearTimeout(loadTimeoutRef.current);
+      loadTimeoutRef.current = null;
+    }
+    setActive(null);
+    setIframeLoaded(false);
+    setEmbedFailed(false);
+  };
+
+  const openInActive = (engine: Engine) => {
+    if (!query.trim()) {
+      toast({ title: "ENTER A QUERY", description: "Type something to search first.", variant: "destructive" });
+      return;
+    }
+    saveToHistory(query);
+    const externalUrl = engine.url(query);
+    const src = engine.embedUrl ? engine.embedUrl(query) : externalUrl;
+    setIframeLoaded(false);
+    setEmbedFailed(false);
+    setReloadKey((k) => k + 1);
+    setActive({
+      engineId: engine.id,
+      engineName: engine.name,
+      color: engine.color,
+      query,
+      src,
+      externalUrl,
+      knownSafe: !!engine.embedSafe,
+    });
+    if (loadTimeoutRef.current) window.clearTimeout(loadTimeoutRef.current);
+    // If iframe doesn't fire onLoad in 4s, treat it as blocked (X-Frame-Options / CSP)
+    loadTimeoutRef.current = window.setTimeout(() => {
+      setEmbedFailed((curr) => (iframeLoaded ? curr : true));
+    }, 4000) as unknown as number;
+  };
+
+  const reloadActive = () => {
+    if (!active) return;
+    setIframeLoaded(false);
+    setEmbedFailed(false);
+    setReloadKey((k) => k + 1);
+    if (loadTimeoutRef.current) window.clearTimeout(loadTimeoutRef.current);
+    loadTimeoutRef.current = window.setTimeout(() => {
+      setEmbedFailed((curr) => (iframeLoaded ? curr : true));
+    }, 4000) as unknown as number;
+  };
+
+  const handleIframeLoad = () => {
+    setIframeLoaded(true);
+    setEmbedFailed(false);
+    if (loadTimeoutRef.current) {
+      window.clearTimeout(loadTimeoutRef.current);
+      loadTimeoutRef.current = null;
+    }
+  };
 
   const saveToHistory = (q: string) => {
     const trimmed = q.trim();
@@ -129,12 +249,12 @@ export default function WebSearchEmbed({ open, onClose }: WebSearchEmbedProps) {
   };
 
   const handleOpen = (engine: Engine) => {
-    if (!query.trim()) {
-      toast({ title: "ENTER A QUERY", description: "Type something to search first.", variant: "destructive" });
-      return;
-    }
-    saveToHistory(query);
-    window.open(engine.url(query), "_blank", "noopener,noreferrer");
+    openInActive(engine);
+  };
+
+  const popOutActive = () => {
+    if (!active) return;
+    window.open(active.externalUrl, "_blank", "noopener,noreferrer");
   };
 
   const handleCopy = async (engine: Engine) => {
@@ -175,7 +295,7 @@ export default function WebSearchEmbed({ open, onClose }: WebSearchEmbedProps) {
       onTransitionEnd={() => { if (!open) setMounted(false); }}
     >
       <div
-        className={`relative w-full max-w-4xl mt-8 transition-all duration-200 ${open ? "scale-100 translate-y-0" : "scale-95 -translate-y-4"}`}
+        className={`relative w-full mt-8 transition-all duration-200 ${active ? "max-w-7xl" : "max-w-4xl"} ${open ? "scale-100 translate-y-0" : "scale-95 -translate-y-4"}`}
         style={{
           background: "linear-gradient(135deg, rgba(0,8,12,0.98), rgba(0,5,10,0.98))",
           border: "1px solid rgba(0, 245, 255, 0.35)",
@@ -188,6 +308,185 @@ export default function WebSearchEmbed({ open, onClose }: WebSearchEmbedProps) {
         <div className="absolute top-0 right-5 w-4 h-4 border-t-2 border-r-2" style={{ borderColor: "#00f5ff" }} />
         <div className="absolute bottom-5 left-0 w-4 h-4 border-b-2 border-l-2" style={{ borderColor: "#00f5ff" }} />
         <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2" style={{ borderColor: "#00f5ff" }} />
+
+        {active && (
+          <div className="flex flex-col" style={{ height: "85vh" }}>
+            {/* embed header / fake browser bar */}
+            <div className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: "rgba(0,245,255,0.18)" }}>
+              <button
+                onClick={closeActive}
+                title="Back to engines (Ctrl)"
+                className="w-9 h-9 flex items-center justify-center transition-all duration-150 hover:scale-110"
+                style={{
+                  background: "rgba(0,245,255,0.06)",
+                  border: "1px solid rgba(0,245,255,0.4)",
+                  color: "#00f5ff",
+                  cursor: "pointer",
+                }}
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={reloadActive}
+                title="Reload"
+                className="w-9 h-9 flex items-center justify-center transition-all duration-150 hover:scale-110"
+                style={{
+                  background: "rgba(0,245,255,0.06)",
+                  border: "1px solid rgba(0,245,255,0.4)",
+                  color: "#00f5ff",
+                  cursor: "pointer",
+                }}
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+              <div
+                className="flex-1 flex items-center gap-3 px-3 py-2 min-w-0"
+                style={{
+                  background: "rgba(0,245,255,0.04)",
+                  border: "1px solid rgba(0,245,255,0.25)",
+                  fontFamily: "JetBrains Mono, monospace",
+                }}
+              >
+                <span
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{
+                    background: iframeLoaded ? "#00ff9f" : "#ffb400",
+                    boxShadow: `0 0 8px ${iframeLoaded ? "#00ff9f" : "#ffb400"}`,
+                  }}
+                />
+                <span
+                  className="text-[10px] tracking-widest font-bold flex-shrink-0"
+                  style={{ color: active.color, fontFamily: "Orbitron, sans-serif", letterSpacing: "0.2em", textShadow: `0 0 6px ${active.color}66` }}
+                >
+                  {active.engineName.toUpperCase()}
+                </span>
+                <span className="text-[10px]" style={{ color: "rgba(0,245,255,0.4)" }}>//</span>
+                <span className="text-xs truncate" style={{ color: "rgba(0,245,255,0.85)" }}>
+                  {active.query}
+                </span>
+              </div>
+              <button
+                onClick={popOutActive}
+                title="Pop out to new tab"
+                className="hidden sm:flex items-center gap-1.5 px-3 h-9 text-[10px] tracking-widest font-bold transition-all duration-150 hover:scale-105"
+                style={{
+                  background: "rgba(0,245,255,0.06)",
+                  border: "1px solid rgba(0,245,255,0.4)",
+                  color: "#00f5ff",
+                  fontFamily: "Orbitron, sans-serif",
+                  letterSpacing: "0.15em",
+                  cursor: "pointer",
+                }}
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                POP OUT
+              </button>
+              <button
+                onClick={onClose}
+                title="Close (Ctrl)"
+                className="w-9 h-9 flex items-center justify-center transition-all duration-150 hover:scale-110"
+                style={{
+                  background: "rgba(255,80,80,0.06)",
+                  border: "1px solid rgba(255,80,80,0.4)",
+                  color: "#ff8080",
+                  cursor: "pointer",
+                }}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* iframe surface */}
+            <div className="flex-1 relative bg-black overflow-hidden">
+              <iframe
+                key={`${active.engineId}-${reloadKey}`}
+                src={active.src}
+                onLoad={handleIframeLoad}
+                referrerPolicy="no-referrer"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation"
+                className="w-full h-full"
+                style={{ border: "none", background: "#fff" }}
+                title={`${active.engineName} - ${active.query}`}
+              />
+
+              {!iframeLoaded && !embedFailed && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ background: "rgba(0,5,8,0.9)" }}>
+                  <div className="flex flex-col items-center gap-3">
+                    <div
+                      className="w-10 h-10 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin"
+                      style={{ borderTopColor: active.color }}
+                    />
+                    <div className="text-[11px] tracking-widest" style={{ color: "rgba(0,245,255,0.7)", fontFamily: "JetBrains Mono, monospace" }}>
+                      // loading {active.engineName.toLowerCase()}...
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {embedFailed && !iframeLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center p-6" style={{ background: "rgba(0,5,8,0.97)" }}>
+                  <div
+                    className="max-w-md w-full p-6"
+                    style={{
+                      background: "rgba(0,8,12,0.9)",
+                      border: "1px solid rgba(255,180,0,0.4)",
+                      boxShadow: "0 0 24px rgba(255,180,0,0.2)",
+                    }}
+                  >
+                    <div className="flex items-start gap-3 mb-4">
+                      <AlertTriangle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: "#ffb400" }} />
+                      <div>
+                        <div
+                          className="text-sm font-bold tracking-widest mb-1"
+                          style={{ color: "#ffb400", fontFamily: "Orbitron, sans-serif", letterSpacing: "0.15em" }}
+                        >
+                          EMBED REFUSED
+                        </div>
+                        <div className="text-xs leading-relaxed" style={{ color: "rgba(255,220,150,0.85)", fontFamily: "JetBrains Mono, monospace" }}>
+                          {active.engineName} blocks loading inside another page (X-Frame-Options / CSP). This is enforced by the site itself, nothing we can override from the browser.
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={closeActive}
+                        className="py-2.5 text-[10px] tracking-widest font-bold transition-all"
+                        style={{
+                          background: "rgba(0,245,255,0.06)",
+                          border: "1px solid rgba(0,245,255,0.4)",
+                          color: "#00f5ff",
+                          fontFamily: "Orbitron, sans-serif",
+                          letterSpacing: "0.18em",
+                          cursor: "pointer",
+                        }}
+                      >
+                        ← BACK
+                      </button>
+                      <button
+                        onClick={popOutActive}
+                        className="py-2.5 text-[10px] tracking-widest font-bold flex items-center justify-center gap-1.5 transition-all"
+                        style={{
+                          background: "linear-gradient(135deg, rgba(0,245,255,0.18), rgba(0,255,159,0.18))",
+                          border: "1px solid rgba(0,245,255,0.5)",
+                          color: "#00f5ff",
+                          fontFamily: "Orbitron, sans-serif",
+                          letterSpacing: "0.18em",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        POP OUT
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!active && (
+          <>
 
         {/* header */}
         <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "rgba(0,245,255,0.18)" }}>
@@ -475,9 +774,11 @@ export default function WebSearchEmbed({ open, onClose }: WebSearchEmbedProps) {
 
         {/* footer */}
         <div className="px-6 py-3 border-t flex items-center justify-between text-[10px] tracking-widest" style={{ borderColor: "rgba(0,245,255,0.15)", color: "rgba(0,245,255,0.45)", fontFamily: "JetBrains Mono, monospace" }}>
-          <span>// {ENGINES.length} engines · {favs.length} favorites · direct browser query (no proxy)</span>
+          <span>// {ENGINES.length} engines · {favs.length} favorites · in-app embedded view</span>
           <span className="hidden sm:inline">// .GOV V8 SEARCH</span>
         </div>
+          </>
+        )}
       </div>
 
       <style>{`
