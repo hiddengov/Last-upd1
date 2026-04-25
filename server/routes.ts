@@ -1580,6 +1580,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Server-side web search (renders results in our own UI; bypasses iframe X-Frame-Options blocks)
+  app.get('/api/web-search', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const q = ((req.query.q as string) || '').trim();
+      if (!q) return res.status(400).json({ error: 'Missing query' });
+      if (q.length > 200) return res.status(400).json({ error: 'Query too long' });
+
+      const upstream = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`, {
+        method: 'POST',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `q=${encodeURIComponent(q)}&b=&kl=us-en`,
+      });
+
+      if (!upstream.ok) {
+        return res.status(502).json({ error: `Upstream error: ${upstream.status}` });
+      }
+
+      const html = await upstream.text();
+
+      // Parse DuckDuckGo HTML results with regex (lightweight, no dom dep)
+      const results: Array<{ title: string; url: string; snippet: string; displayUrl: string }> = [];
+      const blockRegex = /<div[^>]*class="[^"]*result\s+results_links[^"]*"[^>]*>([\s\S]*?)<div\s+class="clear">/gi;
+      const titleRegex = /<a[^>]*class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i;
+      const snippetRegex = /<a[^>]*class="[^"]*result__snippet[^"]*"[^>]*>([\s\S]*?)<\/a>/i;
+      const displayUrlRegex = /<a[^>]*class="[^"]*result__url[^"]*"[^>]*>([\s\S]*?)<\/a>/i;
+
+      const decodeEntities = (s: string) =>
+        s
+          .replace(/<[^>]+>/g, '')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/&nbsp;/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+      const unwrapDdg = (rawUrl: string): string => {
+        try {
+          let u = rawUrl.replace(/&amp;/g, '&').trim();
+          if (u.startsWith('//')) u = 'https:' + u;
+          // DuckDuckGo wraps targets in /l/?uddg=... — unwrap to the real destination
+          const m = u.match(/[?&]uddg=([^&]+)/);
+          if (m) return decodeURIComponent(m[1]);
+          return u;
+        } catch {
+          return rawUrl;
+        }
+      };
+
+      let m: RegExpExecArray | null;
+      while ((m = blockRegex.exec(html)) !== null && results.length < 25) {
+        const block = m[1];
+        const tMatch = block.match(titleRegex);
+        if (!tMatch) continue;
+        const sMatch = block.match(snippetRegex);
+        const uMatch = block.match(displayUrlRegex);
+
+        const url = unwrapDdg(tMatch[1]);
+        const title = decodeEntities(tMatch[2]);
+        const snippet = sMatch ? decodeEntities(sMatch[1]) : '';
+        const displayUrl = uMatch ? decodeEntities(uMatch[1]) : (() => {
+          try { return new URL(url).hostname; } catch { return url; }
+        })();
+
+        if (title && url && /^https?:\/\//i.test(url)) {
+          results.push({ title, url, snippet, displayUrl });
+        }
+      }
+
+      res.json({ query: q, count: results.length, results });
+    } catch (error: any) {
+      console.error('Web search proxy error:', error);
+      res.status(500).json({ error: 'Failed to perform search' });
+    }
+  });
+
   // IP lookup proxy (avoids CORS issues from frontend providers)
   app.get('/api/ip-lookup/:ip', authenticateUser, async (req: Request, res: Response) => {
     try {

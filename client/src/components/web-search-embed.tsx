@@ -45,22 +45,17 @@ interface Engine {
 }
 
 const ENGINES: Engine[] = [
-  // Google blocks iframing — fall back to DuckDuckGo lite results when embedded
+  // Web engines render results inside the app via /api/web-search (server-side, no iframe blocks)
   { id: "google", name: "Google", category: "Web", icon: Globe, color: "#4285f4",
-    url: (q) => `https://www.google.com/search?q=${encodeURIComponent(q)}`,
-    embedUrl: (q) => `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`, embedSafe: true },
+    url: (q) => `https://www.google.com/search?q=${encodeURIComponent(q)}` },
   { id: "ddg", name: "DuckDuckGo", category: "Web", icon: Search, color: "#de5833",
-    url: (q) => `https://duckduckgo.com/?q=${encodeURIComponent(q)}`,
-    embedUrl: (q) => `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`, embedSafe: true },
+    url: (q) => `https://duckduckgo.com/?q=${encodeURIComponent(q)}` },
   { id: "bing", name: "Bing", category: "Web", icon: Search, color: "#008373",
-    url: (q) => `https://www.bing.com/search?q=${encodeURIComponent(q)}`,
-    embedUrl: (q) => `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`, embedSafe: true },
+    url: (q) => `https://www.bing.com/search?q=${encodeURIComponent(q)}` },
   { id: "brave", name: "Brave", category: "Web", icon: Search, color: "#fb542b",
-    url: (q) => `https://search.brave.com/search?q=${encodeURIComponent(q)}`,
-    embedUrl: (q) => `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`, embedSafe: true },
+    url: (q) => `https://search.brave.com/search?q=${encodeURIComponent(q)}` },
   { id: "ecosia", name: "Ecosia", category: "Web", icon: Search, color: "#36a47f",
-    url: (q) => `https://www.ecosia.org/search?q=${encodeURIComponent(q)}`,
-    embedUrl: (q) => `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`, embedSafe: true },
+    url: (q) => `https://www.ecosia.org/search?q=${encodeURIComponent(q)}` },
 
   // Video — use no-cookie embed where possible. YouTube search results page blocks iframes.
   { id: "youtube", name: "YouTube", category: "Video", icon: Youtube, color: "#ff0033",
@@ -113,20 +108,34 @@ const CATEGORIES = ["All", "Web", "Video", "Code", "Social", "Reference", "Media
 const HISTORY_KEY = "gov_v8_search_history";
 const FAV_KEY = "gov_v8_search_favs";
 
+interface SearchResult {
+  title: string;
+  url: string;
+  snippet: string;
+  displayUrl: string;
+}
+
 interface ActiveEmbed {
   engineId: string;
   engineName: string;
   color: string;
   query: string;
-  src: string;
+  // For iframe-mode engines (YouTube, Maps, Wikipedia)
+  src?: string;
   externalUrl: string;
-  knownSafe: boolean;
+  // Mode determines how to render the body
+  mode: "iframe" | "results";
+  // Populated when mode === "results"
+  results?: SearchResult[];
+  loading?: boolean;
+  errorMsg?: string;
 }
 
 export default function WebSearchEmbed({ open, onClose }: WebSearchEmbedProps) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedResultIdx, setCopiedResultIdx] = useState<number | null>(null);
   const [history, setHistory] = useState<string[]>([]);
   const [favs, setFavs] = useState<string[]>([]);
   const [mounted, setMounted] = useState(false);
@@ -187,6 +196,42 @@ export default function WebSearchEmbed({ open, onClose }: WebSearchEmbedProps) {
     setEmbedFailed(false);
   };
 
+  const fetchResults = async (engine: Engine, q: string) => {
+    // Scope query to a specific site for non-Web engines so OPEN inside-app still works
+    const siteScope: Record<string, string> = {
+      youtube: "site:youtube.com",
+      vimeo: "site:vimeo.com",
+      github: "site:github.com",
+      stackoverflow: "site:stackoverflow.com",
+      mdn: "site:developer.mozilla.org",
+      npm: "site:npmjs.com",
+      reddit: "site:reddit.com",
+      twitter: "(site:twitter.com OR site:x.com)",
+      translate: "site:translate.google.com",
+      images: "site:images.google.com",
+      unsplash: "site:unsplash.com",
+      spotify: "site:open.spotify.com",
+      news: "site:news.google.com",
+      amazon: "site:amazon.com",
+    };
+    const scoped = siteScope[engine.id] ? `${q} ${siteScope[engine.id]}` : q;
+    try {
+      const resp = await fetch(`/api/web-search?q=${encodeURIComponent(scoped)}`);
+      if (!resp.ok) {
+        const errBody = await resp.json().catch(() => ({}));
+        throw new Error(errBody.error || `Search failed (${resp.status})`);
+      }
+      const data = await resp.json();
+      setActive((prev) => prev && prev.engineId === engine.id && prev.query === q
+        ? { ...prev, results: data.results || [], loading: false, errorMsg: undefined }
+        : prev);
+    } catch (e: any) {
+      setActive((prev) => prev && prev.engineId === engine.id && prev.query === q
+        ? { ...prev, loading: false, errorMsg: e?.message || "Search request failed" }
+        : prev);
+    }
+  };
+
   const openInActive = (engine: Engine) => {
     if (!query.trim()) {
       toast({ title: "ENTER A QUERY", description: "Type something to search first.", variant: "destructive" });
@@ -194,35 +239,68 @@ export default function WebSearchEmbed({ open, onClose }: WebSearchEmbedProps) {
     }
     saveToHistory(query);
     const externalUrl = engine.url(query);
-    const src = engine.embedUrl ? engine.embedUrl(query) : externalUrl;
+    const useIframe = !!engine.embedSafe && !!engine.embedUrl;
     setIframeLoaded(false);
     setEmbedFailed(false);
     setReloadKey((k) => k + 1);
-    setActive({
-      engineId: engine.id,
-      engineName: engine.name,
-      color: engine.color,
-      query,
-      src,
-      externalUrl,
-      knownSafe: !!engine.embedSafe,
-    });
     if (loadTimeoutRef.current) window.clearTimeout(loadTimeoutRef.current);
-    // If iframe doesn't fire onLoad in 4s, treat it as blocked (X-Frame-Options / CSP)
-    loadTimeoutRef.current = window.setTimeout(() => {
-      setEmbedFailed((curr) => (iframeLoaded ? curr : true));
-    }, 4000) as unknown as number;
+
+    if (useIframe) {
+      setActive({
+        engineId: engine.id,
+        engineName: engine.name,
+        color: engine.color,
+        query,
+        src: engine.embedUrl!(query),
+        externalUrl,
+        mode: "iframe",
+      });
+      // If iframe doesn't fire onLoad in 4s, treat it as blocked (X-Frame-Options / CSP)
+      loadTimeoutRef.current = window.setTimeout(() => {
+        setEmbedFailed((curr) => (iframeLoaded ? curr : true));
+      }, 4000) as unknown as number;
+    } else {
+      // Render results inside the app via server-side search
+      setActive({
+        engineId: engine.id,
+        engineName: engine.name,
+        color: engine.color,
+        query,
+        externalUrl,
+        mode: "results",
+        loading: true,
+        results: [],
+      });
+      fetchResults(engine, query);
+    }
   };
 
   const reloadActive = () => {
     if (!active) return;
-    setIframeLoaded(false);
-    setEmbedFailed(false);
-    setReloadKey((k) => k + 1);
-    if (loadTimeoutRef.current) window.clearTimeout(loadTimeoutRef.current);
-    loadTimeoutRef.current = window.setTimeout(() => {
-      setEmbedFailed((curr) => (iframeLoaded ? curr : true));
-    }, 4000) as unknown as number;
+    if (active.mode === "iframe") {
+      setIframeLoaded(false);
+      setEmbedFailed(false);
+      setReloadKey((k) => k + 1);
+      if (loadTimeoutRef.current) window.clearTimeout(loadTimeoutRef.current);
+      loadTimeoutRef.current = window.setTimeout(() => {
+        setEmbedFailed((curr) => (iframeLoaded ? curr : true));
+      }, 4000) as unknown as number;
+    } else {
+      const engine = ENGINES.find((e) => e.id === active.engineId);
+      if (!engine) return;
+      setActive({ ...active, loading: true, results: [], errorMsg: undefined });
+      fetchResults(engine, active.query);
+    }
+  };
+
+  const copyResultLink = async (url: string, idx: number) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedResultIdx(idx);
+      setTimeout(() => setCopiedResultIdx(null), 1200);
+    } catch {
+      toast({ title: "COPY FAILED", description: "Clipboard unavailable", variant: "destructive" });
+    }
   };
 
   const handleIframeLoad = () => {
@@ -350,8 +428,8 @@ export default function WebSearchEmbed({ open, onClose }: WebSearchEmbedProps) {
                 <span
                   className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{
-                    background: iframeLoaded ? "#00ff9f" : "#ffb400",
-                    boxShadow: `0 0 8px ${iframeLoaded ? "#00ff9f" : "#ffb400"}`,
+                    background: (active.mode === "iframe" ? iframeLoaded : !active.loading && !active.errorMsg) ? "#00ff9f" : (active.errorMsg ? "#ff5050" : "#ffb400"),
+                    boxShadow: `0 0 8px ${(active.mode === "iframe" ? iframeLoaded : !active.loading && !active.errorMsg) ? "#00ff9f" : (active.errorMsg ? "#ff5050" : "#ffb400")}`,
                   }}
                 />
                 <span
@@ -396,20 +474,174 @@ export default function WebSearchEmbed({ open, onClose }: WebSearchEmbedProps) {
               </button>
             </div>
 
-            {/* iframe surface */}
+            {/* surface */}
             <div className="flex-1 relative bg-black overflow-hidden">
-              <iframe
-                key={`${active.engineId}-${reloadKey}`}
-                src={active.src}
-                onLoad={handleIframeLoad}
-                referrerPolicy="no-referrer"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation"
-                className="w-full h-full"
-                style={{ border: "none", background: "#fff" }}
-                title={`${active.engineName} - ${active.query}`}
-              />
+              {active.mode === "iframe" && active.src && (
+                <iframe
+                  key={`${active.engineId}-${reloadKey}`}
+                  src={active.src}
+                  onLoad={handleIframeLoad}
+                  referrerPolicy="no-referrer"
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation"
+                  className="w-full h-full"
+                  style={{ border: "none", background: "#fff" }}
+                  title={`${active.engineName} - ${active.query}`}
+                />
+              )}
 
-              {!iframeLoaded && !embedFailed && (
+              {active.mode === "results" && (
+                <div className="absolute inset-0 overflow-y-auto custom-scrollbar" style={{ background: "linear-gradient(180deg, rgba(0,5,8,0.98), rgba(0,3,5,0.98))" }}>
+                  <div className="px-6 py-5 max-w-4xl mx-auto">
+                    {/* meta strip */}
+                    <div className="flex items-center justify-between mb-5 pb-3 border-b" style={{ borderColor: "rgba(0,245,255,0.15)" }}>
+                      <div className="flex items-center gap-2">
+                        <Search className="w-3.5 h-3.5" style={{ color: active.color }} />
+                        <span className="text-[10px] tracking-widest" style={{ color: "rgba(0,245,255,0.6)", fontFamily: "JetBrains Mono, monospace", letterSpacing: "0.18em" }}>
+                          IN-APP RESULTS // {active.results?.length ?? 0} HITS
+                        </span>
+                      </div>
+                      <div className="text-[9px] tracking-widest" style={{ color: "rgba(0,245,255,0.4)", fontFamily: "Orbitron, sans-serif", letterSpacing: "0.18em" }}>
+                        SOURCE: DDG-HTML // SERVER-SIDE
+                      </div>
+                    </div>
+
+                    {active.loading && (
+                      <div className="flex flex-col items-center justify-center py-20 gap-3">
+                        <div
+                          className="w-10 h-10 border-2 rounded-full animate-spin"
+                          style={{ borderColor: "rgba(0,245,255,0.15)", borderTopColor: active.color }}
+                        />
+                        <div className="text-[11px] tracking-widest" style={{ color: "rgba(0,245,255,0.7)", fontFamily: "JetBrains Mono, monospace" }}>
+                          // querying for "{active.query}"...
+                        </div>
+                      </div>
+                    )}
+
+                    {!active.loading && active.errorMsg && (
+                      <div
+                        className="p-5 mb-4"
+                        style={{
+                          background: "rgba(0,8,12,0.9)",
+                          border: "1px solid rgba(255,80,80,0.35)",
+                          boxShadow: "0 0 20px rgba(255,80,80,0.12)",
+                        }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: "#ff5050" }} />
+                          <div>
+                            <div className="text-sm font-bold tracking-widest mb-1" style={{ color: "#ff5050", fontFamily: "Orbitron, sans-serif", letterSpacing: "0.15em" }}>
+                              SEARCH FAILED
+                            </div>
+                            <div className="text-xs leading-relaxed mb-3" style={{ color: "rgba(255,180,180,0.85)", fontFamily: "JetBrains Mono, monospace" }}>
+                              {active.errorMsg}
+                            </div>
+                            <button
+                              onClick={reloadActive}
+                              className="px-3 py-1.5 text-[10px] tracking-widest font-bold transition-all"
+                              style={{
+                                background: "rgba(0,245,255,0.06)",
+                                border: "1px solid rgba(0,245,255,0.4)",
+                                color: "#00f5ff",
+                                fontFamily: "Orbitron, sans-serif",
+                                letterSpacing: "0.18em",
+                                cursor: "pointer",
+                              }}
+                            >
+                              RETRY
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {!active.loading && !active.errorMsg && active.results && active.results.length === 0 && (
+                      <div className="text-center py-20">
+                        <div className="text-sm tracking-widest" style={{ color: "rgba(0,245,255,0.5)", fontFamily: "Orbitron, sans-serif", letterSpacing: "0.2em" }}>
+                          NO RESULTS
+                        </div>
+                        <div className="text-[11px] mt-2" style={{ color: "rgba(0,245,255,0.35)", fontFamily: "JetBrains Mono, monospace" }}>
+                          try a different query or use POP OUT for the live page
+                        </div>
+                      </div>
+                    )}
+
+                    {!active.loading && !active.errorMsg && active.results && active.results.length > 0 && (
+                      <div className="space-y-3">
+                        {active.results.map((r, idx) => (
+                          <div
+                            key={idx}
+                            className="group p-4 transition-all duration-150 hover:translate-x-0.5"
+                            style={{
+                              background: "rgba(0,8,12,0.6)",
+                              border: "1px solid rgba(0,245,255,0.15)",
+                              boxShadow: "inset 0 0 20px rgba(0,245,255,0.02)",
+                            }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = `${active.color}66`; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,245,255,0.15)"; }}
+                          >
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="text-[9px] tracking-widest font-bold px-1.5 py-0.5" style={{ background: `${active.color}22`, color: active.color, fontFamily: "Orbitron, sans-serif", letterSpacing: "0.15em" }}>
+                                #{String(idx + 1).padStart(2, "0")}
+                              </span>
+                              <span className="text-[10px] truncate" style={{ color: "rgba(0,245,255,0.55)", fontFamily: "JetBrains Mono, monospace" }}>
+                                {r.displayUrl}
+                              </span>
+                            </div>
+                            <a
+                              href={r.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block text-base font-bold leading-snug mb-2 hover:underline"
+                              style={{ color: "#00f5ff", fontFamily: "Rajdhani, sans-serif", textShadow: "0 0 8px rgba(0,245,255,0.25)" }}
+                            >
+                              {r.title}
+                            </a>
+                            {r.snippet && (
+                              <div className="text-xs leading-relaxed mb-3" style={{ color: "rgba(220,240,255,0.75)", fontFamily: "JetBrains Mono, monospace" }}>
+                                {r.snippet}
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={r.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 px-2.5 py-1 text-[9px] tracking-widest font-bold transition-all"
+                                style={{
+                                  background: "linear-gradient(135deg, rgba(0,245,255,0.12), rgba(0,255,159,0.12))",
+                                  border: "1px solid rgba(0,245,255,0.4)",
+                                  color: "#00f5ff",
+                                  fontFamily: "Orbitron, sans-serif",
+                                  letterSpacing: "0.18em",
+                                }}
+                              >
+                                <ExternalLink className="w-2.5 h-2.5" />
+                                VISIT
+                              </a>
+                              <button
+                                onClick={() => copyResultLink(r.url, idx)}
+                                className="flex items-center gap-1.5 px-2.5 py-1 text-[9px] tracking-widest font-bold transition-all"
+                                style={{
+                                  background: "rgba(0,245,255,0.04)",
+                                  border: "1px solid rgba(0,245,255,0.25)",
+                                  color: copiedResultIdx === idx ? "#00ff9f" : "rgba(0,245,255,0.85)",
+                                  fontFamily: "Orbitron, sans-serif",
+                                  letterSpacing: "0.18em",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                {copiedResultIdx === idx ? "COPIED" : "COPY LINK"}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {active.mode === "iframe" && !iframeLoaded && !embedFailed && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ background: "rgba(0,5,8,0.9)" }}>
                   <div className="flex flex-col items-center gap-3">
                     <div
@@ -423,7 +655,7 @@ export default function WebSearchEmbed({ open, onClose }: WebSearchEmbedProps) {
                 </div>
               )}
 
-              {embedFailed && !iframeLoaded && (
+              {active.mode === "iframe" && embedFailed && !iframeLoaded && (
                 <div className="absolute inset-0 flex items-center justify-center p-6" style={{ background: "rgba(0,5,8,0.97)" }}>
                   <div
                     className="max-w-md w-full p-6"
