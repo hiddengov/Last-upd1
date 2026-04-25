@@ -9,6 +9,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import KeyAccess from "@/pages/key-access";
 import Auth from "@/pages/auth";
 import Dashboard from "@/pages/dashboard";
+import BootScreen from "@/components/boot-screen";
 import LogEntries from "@/pages/log-entries";
 import ImageConfig from "@/pages/image-config";
 import Settings from "@/pages/settings";
@@ -25,6 +26,9 @@ function Router() {
   const [hasAccessKey, setHasAccessKey] = useState(() => {
     return localStorage.getItem('hasAccessKey') === 'true';
   });
+  const [bootDone, setBootDone] = useState(() => {
+    return sessionStorage.getItem('govBootComplete') === 'true';
+  });
 
   const handleAccessGranted = () => {
     setHasAccessKey(true);
@@ -32,7 +36,14 @@ function Router() {
   };
 
   const handleLogin = (token: string, user: any) => {
+    sessionStorage.removeItem('govBootComplete');
+    setBootDone(false);
     login(token, user);
+  };
+
+  const handleBootComplete = () => {
+    sessionStorage.setItem('govBootComplete', 'true');
+    setBootDone(true);
   };
 
   if (isLoading) {
@@ -56,7 +67,12 @@ function Router() {
     return <Auth onLogin={handleLogin} />;
   }
 
-  // Show main app once authenticated
+  // Show eDEX-style boot screen once per session after authentication
+  if (!bootDone) {
+    return <BootScreen onComplete={handleBootComplete} />;
+  }
+
+  // Show main app once authenticated and booted
   return (
     <Switch>
       <Route path="/" component={Dashboard} />

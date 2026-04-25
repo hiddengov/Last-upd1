@@ -1345,6 +1345,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Encrypted secure signup: profile name only -> long auto-generated key used as the password
+  app.post('/api/register-encrypted', async (req: Request, res: Response) => {
+    try {
+      const rawName = (req.body?.profileName ?? req.body?.username ?? '').toString().trim();
+      if (!rawName) {
+        return res.status(400).json({ error: 'Profile name is required' });
+      }
+      if (rawName.length < 3 || rawName.length > 32) {
+        return res.status(400).json({ error: 'Profile name must be 3-32 characters' });
+      }
+      if (!/^[a-zA-Z0-9_\-\. ]+$/.test(rawName)) {
+        return res.status(400).json({ error: 'Profile name contains invalid characters' });
+      }
+
+      const existing = await storage.getUserByUsername(rawName);
+      if (existing) {
+        return res.status(400).json({ error: 'Profile name already exists' });
+      }
+
+      // Generate a very long encryption key: 96 bytes -> 192 hex chars, grouped XXXX-XXXX-...
+      const rawKey = randomBytes(96).toString('hex').toUpperCase();
+      const grouped = rawKey.match(/.{1,4}/g)?.join('-') || rawKey;
+
+      const user = await storage.createUser({
+        username: rawName,
+        password: grouped,
+        accessKeyUsed: req.body?.accessKey || null,
+      });
+
+      res.json({
+        success: true,
+        username: user.username,
+        encryptionKey: grouped,
+        recoveryKey: user.plainRecoveryKey,
+        user: {
+          id: user.id,
+          username: user.username,
+          theme: user.theme,
+        },
+      });
+    } catch (error: any) {
+      console.error('Encrypted registration error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   app.post('/api/recover-account', async (req: Request, res: Response) => {
     try {
       const { username, recoveryKey, newPassword } = recoverAccountSchema.parse(req.body);
@@ -1531,6 +1577,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Email update error:', error);
       res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // IP lookup proxy (avoids CORS issues from frontend providers)
+  app.get('/api/ip-lookup/:ip', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const ip = (req.params.ip || '').trim();
+      const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+      const ipv6Regex = /^[0-9a-fA-F:]+$/;
+      if (!ip || (!ipv4Regex.test(ip) && !ipv6Regex.test(ip))) {
+        return res.status(400).json({ error: 'Invalid IP address' });
+      }
+
+      const fields = 'status,message,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,asname,mobile,proxy,hosting,query';
+      const upstream = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=${fields}`, {
+        headers: { 'User-Agent': 'GOV-V8/1.0' }
+      });
+
+      if (!upstream.ok) {
+        return res.status(502).json({ error: `Upstream error: ${upstream.status}` });
+      }
+
+      const data = await upstream.json();
+      if (data.status !== 'success') {
+        return res.status(404).json({ error: data.message || 'Lookup failed' });
+      }
+
+      res.json({
+        ip: data.query || ip,
+        country: data.country || 'Unknown',
+        countryCode: data.countryCode || '',
+        region: data.regionName || data.region || 'Unknown',
+        city: data.city || 'Unknown',
+        zip: data.zip || '',
+        lat: data.lat ?? 0,
+        lon: data.lon ?? 0,
+        timezone: data.timezone || 'Unknown',
+        isp: data.isp || 'Unknown',
+        org: data.org || 'Unknown',
+        as: data.as || data.asname || 'Unknown',
+        mobile: !!data.mobile,
+        proxy: !!data.proxy,
+        hosting: !!data.hosting,
+        vpn: !!data.proxy,
+        tor: false
+      });
+    } catch (error) {
+      console.error('IP lookup proxy error:', error);
+      res.status(500).json({ error: 'Failed to look up IP' });
     }
   });
 

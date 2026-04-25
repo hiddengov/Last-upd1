@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useTheme } from "@/contexts/ThemeContext";
-import { AlertTriangle, Eye, EyeOff } from "lucide-react";
+import { AlertTriangle, Eye, EyeOff, KeyRound, Copy, ShieldCheck, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface AuthProps {
@@ -56,6 +56,8 @@ export default function Auth({ onLogin }: AuthProps) {
 
   const [loginData, setLoginData] = useState({ username: "", password: "" });
   const [registerData, setRegisterData] = useState({ username: "", password: "", confirmPassword: "" });
+  const [encProfileName, setEncProfileName] = useState("");
+  const [generatedKey, setGeneratedKey] = useState<{ username: string; encryptionKey: string } | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -87,6 +89,69 @@ export default function Auth({ onLogin }: AuthProps) {
       }
     } catch { setError("CONNECTION ERROR. RETRY."); }
     finally { setIsLoading(false); }
+  };
+
+  const handleEncryptedRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!encProfileName.trim()) { setError("PROFILE NAME REQUIRED"); return; }
+    if (encProfileName.trim().length < 3) { setError("MINIMUM 3 CHARACTERS"); return; }
+    setIsLoading(true);
+    setError("");
+    try {
+      const response = await fetch('/api/register-encrypted', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profileName: encProfileName.trim() }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setGeneratedKey({ username: data.username, encryptionKey: data.encryptionKey });
+        toast({ title: "ENCRYPTED ACCOUNT INITIALIZED", description: "Save your key — it cannot be recovered." });
+      } else {
+        setError(data.error || "REGISTRATION FAILED");
+      }
+    } catch { setError("CONNECTION ERROR. RETRY."); }
+    finally { setIsLoading(false); }
+  };
+
+  const copyKey = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({ title: "COPIED", description: "Encryption key copied to clipboard" });
+    } catch {
+      toast({ title: "COPY FAILED", description: "Use the download button instead", variant: "destructive" });
+    }
+  };
+
+  const downloadKey = () => {
+    if (!generatedKey) return;
+    const content = `.GOV V8 // ENCRYPTED CREDENTIALS
+================================================
+Profile Name : ${generatedKey.username}
+Encryption Key:
+${generatedKey.encryptionKey}
+================================================
+KEEP THIS FILE SAFE. The encryption key IS your login.
+Use the profile name and encryption key on the LOGIN tab.
+`;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `gov_v8_${generatedKey.username}_credentials.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const useGeneratedKeyForLogin = () => {
+    if (!generatedKey) return;
+    setLoginData({ username: generatedKey.username, password: generatedKey.encryptionKey });
+    setActiveTab("login");
+    setGeneratedKey(null);
+    setEncProfileName("");
+    toast({ title: "READY", description: "Credentials prefilled. Click AUTHENTICATE." });
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -194,17 +259,22 @@ export default function Auth({ onLogin }: AuthProps) {
             )}
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-8 p-1 rounded-none"
+              <TabsList className="grid w-full grid-cols-3 mb-8 p-1 rounded-none"
                 style={{ background: 'rgba(0,245,255,0.04)', border: '1px solid rgba(0,245,255,0.15)' }}>
                 <TabsTrigger value="login"
-                  className="rounded-none text-xs tracking-widest uppercase font-bold data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 transition-all duration-300"
-                  style={{ fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.2em', color: 'rgba(0,245,255,0.4)' }}>
+                  className="rounded-none text-[10px] tracking-widest uppercase font-bold data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 transition-all duration-300"
+                  style={{ fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.18em', color: 'rgba(0,245,255,0.4)' }}>
                   LOGIN
                 </TabsTrigger>
                 <TabsTrigger value="register"
-                  className="rounded-none text-xs tracking-widest uppercase font-bold data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 transition-all duration-300"
-                  style={{ fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.2em', color: 'rgba(0,245,255,0.4)' }}>
+                  className="rounded-none text-[10px] tracking-widest uppercase font-bold data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 transition-all duration-300"
+                  style={{ fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.18em', color: 'rgba(0,245,255,0.4)' }}>
                   REGISTER
+                </TabsTrigger>
+                <TabsTrigger value="encrypted"
+                  className="rounded-none text-[10px] tracking-widest uppercase font-bold data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-300 transition-all duration-300"
+                  style={{ fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.18em', color: 'rgba(0,255,159,0.4)' }}>
+                  ENCRYPTED
                 </TabsTrigger>
               </TabsList>
 
@@ -350,6 +420,134 @@ export default function Auth({ onLogin }: AuthProps) {
                     ) : '[ CREATE ACCOUNT ]'}
                   </button>
                 </form>
+              </TabsContent>
+
+              <TabsContent value="encrypted">
+                {!generatedKey ? (
+                  <form onSubmit={handleEncryptedRegister} className="space-y-5 animate-fade-in-up">
+                    <div className="p-3 border rounded flex items-start gap-3"
+                      style={{ background: 'rgba(0,255,159,0.04)', borderColor: 'rgba(0,255,159,0.25)' }}>
+                      <ShieldCheck className="h-4 w-4 mt-0.5 flex-shrink-0" style={{ color: '#00ff9f' }} />
+                      <div className="text-[11px] leading-relaxed" style={{ color: 'rgba(180,255,220,0.75)', fontFamily: 'JetBrains Mono, monospace' }}>
+                        Just pick a profile name. We generate a long encryption key — that key IS your password. No email, no recovery prompts.
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs tracking-widest uppercase mb-2" style={{ color: 'rgba(0,255,159,0.7)', fontFamily: 'JetBrains Mono, monospace' }}>
+                        // PROFILE NAME
+                      </label>
+                      <input
+                        type="text"
+                        value={encProfileName}
+                        onChange={(e) => setEncProfileName(e.target.value)}
+                        placeholder="agent_smith"
+                        maxLength={32}
+                        className="w-full px-4 py-3 text-sm rounded-none"
+                        style={{
+                          background: 'rgba(0,255,159,0.04)',
+                          border: '1px solid rgba(0,255,159,0.25)',
+                          color: '#00ff9f',
+                          fontFamily: 'JetBrains Mono, monospace',
+                          outline: 'none',
+                          transition: 'all 0.3s ease',
+                        }}
+                        onFocus={(e) => { e.target.style.borderColor = '#00ff9f'; e.target.style.boxShadow = '0 0 15px rgba(0,255,159,0.2)'; }}
+                        onBlur={(e) => { e.target.style.borderColor = 'rgba(0,255,159,0.25)'; e.target.style.boxShadow = 'none'; }}
+                        disabled={isLoading}
+                      />
+                      <p className="mt-2 text-[10px]" style={{ color: 'rgba(0,255,159,0.45)', fontFamily: 'JetBrains Mono, monospace' }}>
+                        3-32 chars · letters, numbers, _ - . space
+                      </p>
+                    </div>
+
+                    <button type="submit" disabled={isLoading}
+                      className="w-full py-3 mt-2 text-sm font-black tracking-widest uppercase relative overflow-hidden transition-all duration-300"
+                      style={{
+                        background: isLoading ? 'rgba(0,255,159,0.05)' : 'linear-gradient(135deg, rgba(0,255,159,0.18), rgba(0,200,120,0.18))',
+                        border: '1px solid rgba(0,255,159,0.6)',
+                        color: isLoading ? 'rgba(0,255,159,0.5)' : '#00ff9f',
+                        fontFamily: 'Orbitron, sans-serif',
+                        letterSpacing: '0.25em',
+                        clipPath: 'polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%)',
+                        cursor: isLoading ? 'not-allowed' : 'pointer',
+                        boxShadow: '0 0 20px rgba(0,255,159,0.2)',
+                      }}
+                      onMouseEnter={(e) => { if (!isLoading) (e.target as HTMLElement).style.boxShadow = '0 0 30px rgba(0,255,159,0.5), 0 0 60px rgba(0,255,159,0.2)'; }}
+                      onMouseLeave={(e) => { (e.target as HTMLElement).style.boxShadow = '0 0 20px rgba(0,255,159,0.2)'; }}
+                    >
+                      {isLoading ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <span className="w-3 h-3 border border-green-400 border-t-transparent rounded-full animate-spin" />
+                          GENERATING KEY...
+                        </span>
+                      ) : (
+                        <span className="flex items-center justify-center gap-2">
+                          <KeyRound className="w-4 h-4" />
+                          [ GENERATE ENCRYPTED KEY ]
+                        </span>
+                      )}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="space-y-4 animate-fade-in-up">
+                    <div className="p-3 border rounded flex items-start gap-3"
+                      style={{ background: 'rgba(255,180,0,0.05)', borderColor: 'rgba(255,180,0,0.4)' }}>
+                      <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" style={{ color: '#ffb400' }} />
+                      <div className="text-[11px] leading-relaxed" style={{ color: 'rgba(255,220,150,0.85)', fontFamily: 'JetBrains Mono, monospace' }}>
+                        SAVE THIS KEY NOW. It will not be shown again. Without it the account is unrecoverable.
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-[10px] tracking-widest uppercase mb-1" style={{ color: 'rgba(0,255,159,0.55)', fontFamily: 'JetBrains Mono, monospace' }}>
+                        // PROFILE NAME
+                      </div>
+                      <div className="px-3 py-2 text-sm break-all"
+                        style={{ background: 'rgba(0,255,159,0.05)', border: '1px solid rgba(0,255,159,0.25)', color: '#00ff9f', fontFamily: 'JetBrains Mono, monospace' }}>
+                        {generatedKey.username}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-[10px] tracking-widest uppercase mb-1" style={{ color: 'rgba(0,255,159,0.55)', fontFamily: 'JetBrains Mono, monospace' }}>
+                        // ENCRYPTION KEY (= YOUR PASSWORD)
+                      </div>
+                      <div className="px-3 py-3 text-[11px] break-all max-h-44 overflow-y-auto"
+                        style={{ background: 'rgba(0,255,159,0.05)', border: '1px solid rgba(0,255,159,0.25)', color: '#00ff9f', fontFamily: 'JetBrains Mono, monospace', lineHeight: 1.6 }}>
+                        {generatedKey.encryptionKey}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" onClick={() => copyKey(generatedKey.encryptionKey)}
+                        className="py-2.5 text-xs tracking-widest uppercase flex items-center justify-center gap-2 transition-all"
+                        style={{ background: 'rgba(0,245,255,0.06)', border: '1px solid rgba(0,245,255,0.4)', color: '#00f5ff', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.15em', cursor: 'pointer' }}>
+                        <Copy className="w-3.5 h-3.5" /> COPY
+                      </button>
+                      <button type="button" onClick={downloadKey}
+                        className="py-2.5 text-xs tracking-widest uppercase flex items-center justify-center gap-2 transition-all"
+                        style={{ background: 'rgba(0,245,255,0.06)', border: '1px solid rgba(0,245,255,0.4)', color: '#00f5ff', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.15em', cursor: 'pointer' }}>
+                        <Download className="w-3.5 h-3.5" /> DOWNLOAD
+                      </button>
+                    </div>
+
+                    <button type="button" onClick={useGeneratedKeyForLogin}
+                      className="w-full py-3 mt-2 text-sm font-black tracking-widest uppercase relative overflow-hidden transition-all duration-300"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(0,255,159,0.18), rgba(0,200,120,0.18))',
+                        border: '1px solid rgba(0,255,159,0.6)',
+                        color: '#00ff9f',
+                        fontFamily: 'Orbitron, sans-serif',
+                        letterSpacing: '0.25em',
+                        clipPath: 'polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%)',
+                        cursor: 'pointer',
+                        boxShadow: '0 0 20px rgba(0,255,159,0.2)',
+                      }}>
+                      [ I SAVED IT — LOGIN NOW ]
+                    </button>
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </div>

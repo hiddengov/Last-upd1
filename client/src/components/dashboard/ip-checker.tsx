@@ -64,31 +64,33 @@ export default function IPChecker() {
     setIpInfo(null);
 
     try {
-      // Using ipwhois.app which is free, HTTPS, and doesn't require API key
-      const response = await fetch(`https://ipwhois.app/json/${ipAddress.trim()}`);
+      // Use our backend proxy to avoid CORS / free-plan issues with public providers
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/ip-lookup/${encodeURIComponent(ipAddress.trim())}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
+      });
       const data = await response.json();
 
-      if (!data.success) {
-        setError(data.message || 'Failed to get IP information');
+      if (!response.ok) {
+        setError(data.error || 'Failed to get IP information');
         return;
       }
 
-      // Transform the response to our interface
       const transformedData: IPInfo = {
         ip: data.ip || ipAddress.trim(),
         country: data.country || 'Unknown',
         region: data.region || 'Unknown',
         city: data.city || 'Unknown',
-        lat: data.latitude || 0,
-        lon: data.longitude || 0,
+        lat: typeof data.lat === 'number' ? data.lat : 0,
+        lon: typeof data.lon === 'number' ? data.lon : 0,
         timezone: data.timezone || 'Unknown',
         isp: data.isp || 'Unknown',
         org: data.org || 'Unknown',
-        as: data.asn || 'Unknown',
-        vpn: data.type === 'VPN' || data.type === 'Proxy' || false,
-        proxy: data.type === 'Proxy' || false,
-        tor: data.type === 'Tor' || false,
-        hosting: data.type === 'Hosting' || data.type === 'Data Center' || false
+        as: data.as || 'Unknown',
+        vpn: !!data.vpn,
+        proxy: !!data.proxy,
+        tor: !!data.tor,
+        hosting: !!data.hosting,
       };
 
       setIpInfo(transformedData);
