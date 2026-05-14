@@ -2202,6 +2202,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin impersonation — dev only: create a session token as any user
+  app.post('/api/admin/impersonate/:userId', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      if (!req.user.isDev) {
+        return res.status(403).json({ error: 'Access denied: Developer privileges required' });
+      }
+      const { userId } = req.params;
+      if (userId === req.user.id) {
+        return res.status(400).json({ error: 'Cannot impersonate yourself' });
+      }
+      const targetUser = await storage.getUser(userId);
+      if (!targetUser) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      if (targetUser.isDev) {
+        return res.status(403).json({ error: 'Cannot impersonate other developer accounts' });
+      }
+      // Create a session token for the target user
+      const sessionToken = randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+      await storage.createSession({ userId: targetUser.id, sessionToken, expiresAt });
+      console.log(`🔐 Dev ${req.user.username} impersonating user ${targetUser.username}`);
+      res.json({
+        token: sessionToken,
+        user: {
+          id: targetUser.id,
+          username: targetUser.username,
+          theme: targetUser.theme || 'default',
+          isDev: false,
+          accountType: targetUser.accountType,
+        }
+      });
+    } catch (error: any) {
+      console.error('Impersonate error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   // ===== END ADMIN PANEL ENDPOINTS =====
 
   // YouTube proxy route that logs IP and redirects to real video

@@ -176,7 +176,7 @@ export default function ExtensionGenerator() {
       <SnowEffect color="#ffffff" glow={true} density={60} speed={1.2} />
       <Sidebar />
 
-      <main className="flex-1 overflow-auto relative z-10">
+      <main className="flex-1 overflow-auto relative z-10 pb-16 md:pb-0">
         <header className="bg-card/80 backdrop-blur-md border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="animate-slide-in-up">

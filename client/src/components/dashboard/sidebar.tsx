@@ -66,7 +66,7 @@ export default function Sidebar() {
   const isAdmin = user?.isDev || user?.accountType === 'admin' || user?.accountType === 'developer';
 
   return (
-    <aside className="w-64 flex flex-col relative z-20 flex-shrink-0"
+    <aside className="hidden md:flex w-64 flex-col relative z-20 flex-shrink-0"
       style={{
         background: 'rgba(0, 4, 12, 0.95)',
         borderRight: '1px solid rgba(0,245,255,0.12)',

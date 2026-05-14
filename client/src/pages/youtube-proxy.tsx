@@ -104,7 +104,7 @@ export default function YoutubeProxy() {
       >
         <div className="flex h-screen relative z-10">
           <Sidebar />
-          <main className="flex-1 overflow-auto">
+          <main className="flex-1 overflow-auto pb-16 md:pb-0">
             {/* Header */}
             <header className="bg-black/20 backdrop-blur-md border-b border-white/10 px-4 sm:px-6 py-4">
               <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">

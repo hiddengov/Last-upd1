@@ -128,7 +128,7 @@ export default function LogEntries() {
       <SnowEffect color="#ffffff" glow={true} density={60} speed={1.2} />
       <Sidebar />
 
-      <main className="flex-1 overflow-auto relative z-10">
+      <main className="flex-1 overflow-auto relative z-10 pb-16 md:pb-0">
         {/* Header */}
         <header className="bg-card/80 backdrop-blur-md border-b border-border px-4 sm:px-6 py-4">
           <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">

@@ -53,7 +53,7 @@ export default function Dashboard() {
     <div className="flex h-screen overflow-hidden relative" style={{ background: '#000508' }}>
       <Sidebar />
 
-      <main className="flex-1 overflow-auto relative z-10" style={{ minWidth: 0 }}>
+      <main className="flex-1 overflow-auto relative z-10 pb-16 md:pb-0" style={{ minWidth: 0 }}>
         {/* Header */}
         <header className="sticky top-0 z-20 px-6 py-4 border-b"
           style={{

