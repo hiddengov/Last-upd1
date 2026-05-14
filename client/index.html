@@ -2,9 +2,28 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover" />
     <title>.GOV V8 | BETA</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Apple PWA (Add to Home Screen = full app, no browser UI) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content=".GOV V8" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
+    <!-- Android / Chrome PWA -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content=".GOV V8" />
+    <meta name="theme-color" content="#000508" />
+    <meta name="msapplication-TileColor" content="#000508" />
+
+    <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23000000'/%3E%3Crect x='1' y='1' width='62' height='62' fill='none' stroke='%2300f5ff' stroke-width='1.5' opacity='0.8'/%3E%3Ctext x='50%25' y='56%25' font-family='Arial Black,Arial,sans-serif' font-size='18' font-weight='900' fill='%2300f5ff' text-anchor='middle' dominant-baseline='middle' letter-spacing='1'%3EGOV%3C/text%3E%3Cline x1='8' y1='20' x2='56' y2='20' stroke='%2300f5ff' stroke-width='0.8' opacity='0.4'/%3E%3Cline x1='8' y1='44' x2='56' y2='44' stroke='%2300f5ff' stroke-width='0.8' opacity='0.4'/%3E%3C/svg%3E" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@200..800&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Geist+Mono:wght@100..900&display=swap" rel="stylesheet">
