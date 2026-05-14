@@ -620,26 +620,81 @@ export default function SettingsPage() {
                   ) : (
                     <div className="space-y-2">
                       {devUsers.map((u: any) => (
-                        <div key={u.id} className="flex items-center justify-between p-3"
-                          style={{ background: "rgba(0,245,255,0.03)", border: "1px solid rgba(0,245,255,0.08)" }}>
-                          <div>
-                            <div className="text-[11px] font-bold" style={{ color: "rgba(200,240,255,0.9)", fontFamily: "Rajdhani, sans-serif" }}>{u.username}</div>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-[9px] px-1.5 py-0.5" style={{ color: u.isDev ? CY.purple : CY.cyan, background: u.isDev ? "rgba(160,80,255,0.1)" : "rgba(0,245,255,0.08)", border: `1px solid ${u.isDev ? "rgba(160,80,255,0.3)" : "rgba(0,245,255,0.2)"}`, fontFamily: CY.font, letterSpacing: "0.1em" }}>
-                                {u.isDev ? "DEV" : u.accountType?.toUpperCase() || "USER"}
-                              </span>
-                              <span className="text-[9px] px-1.5 py-0.5" style={{ color: u.isBanned ? CY.red : CY.green, background: u.isBanned ? "rgba(255,80,80,0.08)" : "rgba(0,255,159,0.08)", border: `1px solid ${u.isBanned ? "rgba(255,80,80,0.25)" : "rgba(0,255,159,0.25)"}`, fontFamily: CY.font }}>
-                                {u.isBanned ? "BANNED" : "ACTIVE"}
-                              </span>
+                        <div key={u.id} style={{ background: "rgba(0,245,255,0.03)", border: `1px solid ${editingUser?.id === u.id ? "rgba(160,80,255,0.3)" : "rgba(0,245,255,0.08)"}` }}>
+                          {/* User row */}
+                          <div className="flex items-center justify-between p-3">
+                            <div>
+                              <div className="text-[11px] font-bold" style={{ color: "rgba(200,240,255,0.9)", fontFamily: "Rajdhani, sans-serif" }}>{u.username}</div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[9px] px-1.5 py-0.5" style={{ color: u.isDev ? CY.purple : CY.cyan, background: u.isDev ? "rgba(160,80,255,0.1)" : "rgba(0,245,255,0.08)", border: `1px solid ${u.isDev ? "rgba(160,80,255,0.3)" : "rgba(0,245,255,0.2)"}`, fontFamily: CY.font, letterSpacing: "0.1em" }}>
+                                  {u.isDev ? "DEV" : u.accountType?.toUpperCase() || "USER"}
+                                </span>
+                                <span className="text-[9px] px-1.5 py-0.5" style={{ color: u.isBanned ? CY.red : CY.green, background: u.isBanned ? "rgba(255,80,80,0.08)" : "rgba(0,255,159,0.08)", border: `1px solid ${u.isBanned ? "rgba(255,80,80,0.25)" : "rgba(0,255,159,0.25)"}`, fontFamily: CY.font }}>
+                                  {u.isBanned ? "BANNED" : "ACTIVE"}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <CyberBtn small variant="purple"
+                                onClick={() => {
+                                  if (editingUser?.id === u.id) { setEditingUser(null); }
+                                  else { setEditingUser(u); editRoleForm.setValue("accountType", u.accountType || "user"); editRoleForm.setValue("isDev", u.isDev || false); }
+                                }}>
+                                <Shield className="w-3 h-3" />
+                                {editingUser?.id === u.id ? "CANCEL" : "ROLE"}
+                              </CyberBtn>
+                              {!u.isBanned
+                                ? <CyberBtn small variant="warning" onClick={() => handleBanUser(u.id, "Admin action")}><Ban className="w-3 h-3" />BAN</CyberBtn>
+                                : <CyberBtn small variant="success" onClick={() => handleUnbanUser(u.id)}><UserCheck className="w-3 h-3" />UNBAN</CyberBtn>
+                              }
+                              <CyberBtn small variant="danger" onClick={() => handleDeleteUser(u.id)}><Trash2 className="w-3 h-3" /></CyberBtn>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1">
-                            {!u.isBanned
-                              ? <CyberBtn small variant="warning" onClick={() => handleBanUser(u.id, "Admin action")}><Ban className="w-3 h-3" />BAN</CyberBtn>
-                              : <CyberBtn small variant="success" onClick={() => handleUnbanUser(u.id)}><UserCheck className="w-3 h-3" />UNBAN</CyberBtn>
-                            }
-                            <CyberBtn small variant="danger" onClick={() => handleDeleteUser(u.id)}><Trash2 className="w-3 h-3" /></CyberBtn>
-                          </div>
+                          {/* Inline role editor */}
+                          {editingUser?.id === u.id && (
+                            <div className="px-3 pb-3 border-t" style={{ borderColor: "rgba(160,80,255,0.2)", background: "rgba(160,80,255,0.04)" }}>
+                              <div className="pt-3">
+                                <div className="text-[9px] font-bold tracking-widest mb-3" style={{ color: CY.purple, fontFamily: CY.font, letterSpacing: "0.15em" }}>EDIT ROLE — {u.username.toUpperCase()}</div>
+                                <Form {...editRoleForm}>
+                                  <form onSubmit={editRoleForm.handleSubmit(handleEditRole)} className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <FormField control={editRoleForm.control} name="accountType" render={({ field }) => (
+                                        <div>
+                                          <CyberLabel>ACCOUNT TYPE</CyberLabel>
+                                          <Select onValueChange={field.onChange} value={field.value}>
+                                            <SelectTrigger className="h-8 text-[10px]" style={{ background: "rgba(0,245,255,0.04)", border: "1px solid rgba(160,80,255,0.3)", color: "#e0f8ff", fontFamily: CY.mono }}>
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent style={{ background: "#000d1a", border: "1px solid rgba(160,80,255,0.3)", zIndex: 9999 }}>
+                                              <SelectItem value="user">User</SelectItem>
+                                              <SelectItem value="tester">Tester</SelectItem>
+                                              <SelectItem value="developer">Developer</SelectItem>
+                                              <SelectItem value="admin">Admin</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                      )} />
+                                      <FormField control={editRoleForm.control} name="isDev" render={({ field }) => (
+                                        <div>
+                                          <CyberLabel>DEV PRIVILEGES</CyberLabel>
+                                          <div className="flex items-center gap-2 h-8">
+                                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                            <span className="text-[10px]" style={{ color: field.value ? CY.purple : "rgba(0,245,255,0.4)", fontFamily: CY.mono }}>
+                                              {field.value ? "ENABLED" : "DISABLED"}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      )} />
+                                    </div>
+                                    <CyberBtn type="submit" disabled={isLoading} variant="purple">
+                                      {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Shield className="w-3 h-3" />}
+                                      {isLoading ? "SAVING..." : "SAVE ROLE"}
+                                    </CyberBtn>
+                                  </form>
+                                </Form>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                       {devUsers.length === 0 && (
